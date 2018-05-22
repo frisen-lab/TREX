@@ -11,40 +11,6 @@
 
 # Contact: leonie.von.berlin@stud.ki.se
 
-# Default arguments:
-#   - Genome name: hs38_egfp
-#   - Chromosome name: chrEGFP-30N
-#   - Path: current direcory
-#   - Name: lineage_run
-#   - Position of first base inside barcode: 726 (including 0)
-#   - Position of last base inside barcode : 756 (including 0)
-#   - Minimum barcode length: 10
-#   - Minimum allowed hamming distance: 4
-
-# Optional arguments (alternatively use --help flag):
-#  -h, --help            show this help message and exit
-#  -gn GENOME_NAME, --genome_name GENOME_NAME
-#                        name of the genome as indicated in cell ranger count
-#                        run with the flag --genome. Default hs38_egfp
-#  -chr CHR              barcode chromosome name as indicated in .fasta file. 
-#                        Default: 'chrEGFP-30N'. See cellranger_instructions.sh
-#  -p PATH, --path PATH  path to cell ranger "outs" directory. Default: current
-#                        directory
-#  -n NAME, --name NAME  name of the run and directory created by program.
-#                        Default: lineage_run
-#  -s START, --start START
-#                        Position of first base INSIDE the barcode (with first
-#                        base of sequence on position 0). Default: 726
-#  -e END, --end END     Position of last base INSIDE the barcode (with first
-#                        base of sequence on position 0). Default: 756
-#  -m MIN_LENGTH, --min_length MIN_LENGTH
-#                        Minimum number of bases a barcode must have. Default:
-#                        10
-#  -ham HAMMING, --hamming HAMMING
-#                        Minimum hamming distance allowed for two barcodes to
-#                        be called similar. Default: 4
-# -l, --loom             Optional flag: Creates loom-file from cell ranger and
-#                        barcode data. File will have the same name as the run
 
 ########################################################################################
 ###                        Code start: Import and preparations                       ###
