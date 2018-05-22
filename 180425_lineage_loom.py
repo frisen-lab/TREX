@@ -65,6 +65,11 @@ def read_cellid_barcodes(path):
 
 
 def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
+    """
+    bam_path -- path to input BAM file
+    output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
+        required tags are written to this file
+    """
     # Opening required files: possorted_genome_bam.bam contains all aligned reads in bam format,
     alignment_file = pysam.AlignmentFile(bam_path)
     out_bam = pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file)
@@ -78,40 +83,37 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
         if not read.has_tag('CB') or not read.has_tag('UB'):
             continue
         # Filters out reads that have not approved cellIDs
-        cellid = read.get_tag('CB')
-        if cellid not in cell_ids:
+        cell_id = read.get_tag('CB')
+        if cell_id not in cell_ids:
             continue
         # Collects information from the bam-entry of the read
         # writes a new bam_file with only those reads aligning to barcode-chromosome. See chr_name_entries.bam
         out_bam.write(read)
         barcode = ''
 
-        umi = read.get_tag('UB')
         queryseq = read.query_sequence
         query_align_end = read.query_alignment_end
         query_align_start = read.query_alignment_start
         ref_start = read.reference_start
-        alignment_pairs = read.get_aligned_pairs()
-        cigar = read.cigartuples
         len_read = read.infer_query_length()
         start_check = start_bc - len_read
         end_check = start_check + len_bc + 2
 
         # Extracts barcodes based on the alignment-pair list (gives position of read and corresponding reference position)
-        for query_pos, ref_pos in alignment_pairs:
+        for query_pos, ref_pos in read.get_aligned_pairs():
             if ref_pos is None:  # part of read that doesn't align to ref
                 if start_check < ref_start < end_check and query_align_end <= \
                         query_pos:  # takes soft clipped bases from the end (downstream of query aligned seq) of those reads that have the barcode at the end
                     if start_bc < (ref_start + query_pos) < end_bc:  # makes sure that the soft clipped base is IN the barcode and not up-/downstream of it
-                        barcode += str(queryseq[query_pos])  # adds soft clipped base of barcode to barcode-string
+                        barcode += queryseq[query_pos]  # adds soft clipped base of barcode to barcode-string
                 elif query_align_start > query_pos and start_bc < (
                         (ref_start - len_bc) + query_pos) < end_bc:  # takes soft clipped bases from the beginning (upstream of query aligned seq) of those reads that have the barcode at the beginning
-                    barcode += str(queryseq[query_pos])
+                    barcode += queryseq[query_pos]
             elif start_bc < ref_pos < end_bc:  # part of read that aligns to barcode area
                 if query_pos is None:  # a deletion in the read in a barcode postion
                     barcode += '0'  # deletion in the barcode are indicated with 0
                 else:
-                    barcode += str(queryseq[query_pos])  # takes base in barcode position and adds to barcode string
+                    barcode += queryseq[query_pos]  # takes base in barcode position and adds to barcode string
 
         if barcode == '':
             barcode = len_bc * '-'  # sequences with no barcode are indicated with len_bc*-
@@ -122,14 +124,13 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
                 barcode = barcode + (len_bc - len(barcode)) * '-'
             else:
                 barcode = (len_bc - len(barcode)) * '-' + barcode
-        read_col.append((cellid, umi, barcode))
-    # calling read_col will give a collection of all cellids, umis and corresponding barcodes. See reads.txt
+        read_col.append((cell_id, read.get_tag('UB'), barcode))
 
     # sorts reads first based on UMI, then CellID, then barcode
-    read_sorted = sorted(read_col, key=lambda read: (read[1], read[0], read[2]))
+    sorted_reads = sorted(read_col, key=lambda read: (read[1], read[0], read[2]))
     alignment_file.close()
     out_bam.close()
-    return read_sorted
+    return sorted_reads
 
 
 def main():
