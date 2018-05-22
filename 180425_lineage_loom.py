@@ -95,26 +95,20 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
         end_check = start_check + len_bc + 2
 
         # Extracts barcodes based on the alignment-pair list (gives position of read and corresponding reference position)
-        for i in range(0, len(alignment_pairs)):
-            if alignment_pairs[i][1] is None:  # part of read that doesn't align to ref
+        for query_pos, ref_pos in alignment_pairs:
+            if ref_pos is None:  # part of read that doesn't align to ref
                 if start_check < ref_start < end_check and query_align_end <= \
-                        alignment_pairs[i][
-                            0]:  # takes soft clipped bases from the end (downstream of query aligned seq) of those reads that have the barcode at the end
-                    if start_bc < (ref_start + alignment_pairs[i][
-                        0]) < end_bc:  # makes sure that the soft clipped base is IN the barcode and not up-/downstream of it
-                        barcode = barcode + str(queryseq[alignment_pairs[i][
-                            0]])  # adds soft clipped base of barcode to barcode-string
-                elif query_align_start > alignment_pairs[i][0] and start_bc < (
-                        (ref_start - len_bc) + alignment_pairs[i][
-                    0]) < end_bc:  # takes soft clipped bases from the beginning (upstream of query aligned seq) of those reads that have the barcode at the beginning
-                    barcode = barcode + str(queryseq[alignment_pairs[i][0]])
-            elif start_bc < alignment_pairs[i][
-                1] < end_bc:  # part of read that aligns to barcode area
-                if alignment_pairs[i][0] is None:  # a deletion in the read in a barcode postion
-                    barcode = barcode + '0'  # deletion in the barcode are indicated with 0
+                        query_pos:  # takes soft clipped bases from the end (downstream of query aligned seq) of those reads that have the barcode at the end
+                    if start_bc < (ref_start + query_pos) < end_bc:  # makes sure that the soft clipped base is IN the barcode and not up-/downstream of it
+                        barcode = barcode + str(queryseq[query_pos])  # adds soft clipped base of barcode to barcode-string
+                elif query_align_start > query_pos and start_bc < (
+                        (ref_start - len_bc) + query_pos) < end_bc:  # takes soft clipped bases from the beginning (upstream of query aligned seq) of those reads that have the barcode at the beginning
+                    barcode = barcode + str(queryseq[query_pos])
+            elif start_bc < ref_pos < end_bc:  # part of read that aligns to barcode area
+                if query_pos is None:  # a deletion in the read in a barcode postion
+                    barcode += '0'  # deletion in the barcode are indicated with 0
                 else:
-                    barcode = barcode + str(queryseq[alignment_pairs[i][
-                        0]])  # takes base in barcode position and adds to barcode string
+                    barcode += str(queryseq[query_pos])  # takes base in barcode position and adds to barcode string
 
         if barcode == '':
             barcode = len_bc * '-'  # sequences with no barcode are indicated with len_bc*-
