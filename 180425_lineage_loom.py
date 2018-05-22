@@ -20,17 +20,17 @@ __author__ = 'leonie.von.berlin@stud.ki.se'
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-gn', '--genome_name',
-        help='name of the genome as indicated in cell ranger count run with the flag --genome. Default hs38_egfp',
-        type=str, default='hg38_Tomato-N')
-    parser.add_argument('-chr',
-        help="barcode chromosome name as indicated in .fasta file. Default: 'chrEGFP-30N. See cellranger_instructions.sh",
-        type=str, default='chrTomato-N')
+    parser.add_argument('--genome-name',
+        help='name of the genome as indicated in cell ranger count run with the flag --genome. Default %(default)s',
+        default='hg38_Tomato-N')
+    parser.add_argument('--chromosome', '--chr',
+        help="barcode chromosome name as indicated in .fasta file. Default: %(default)s. See cellranger_instructions.sh",
+        default='chrTomato-N')
     parser.add_argument('-p', '--path',
-        help='path to cell ranger "outs" directory. Default: current directory', type=str,
+        help='path to cell ranger "outs" directory. Default: current directory',
         default=os.getcwd())
     parser.add_argument('-n', '--name',
-        help='name of the run and directory created by program. Default: lineage_run', type=str,
+        help='name of the run and directory created by program. Default: lineage_run',
         default='lineage_run')
     parser.add_argument('-s', '--start',
         help='Position of first base INSIDE the barcode (with first base of sequence on position 0). Default: %(default)s',
@@ -38,13 +38,13 @@ def parse_arguments():
     parser.add_argument('-e', '--end',
         help='Position of last base INSIDE the barcode (with first base of sequence on position 0). Default: %(default)s',
         type=int, default=724)
-    parser.add_argument('-m', '--min_length',
+    parser.add_argument('-m', '--min-length',
         help='Minimum number of bases a barcode must have. Default: 10', type=int, default=10)
-    parser.add_argument('-ham', '--hamming',
-        help='Minimum hamming distance allowed for two barcodes to be called similar. Default: 4',
+    parser.add_argument('--hamming',
+        help='Minimum hamming distance allowed for two barcodes to be called similar. Default: %(default)s',
         type=int, default=4)
     parser.add_argument('-l', '--loom',
-        help='Optional flag: Creates loom-file from cell ranger and barcode data. File will have the same name as the run',
+        help='If given, create loom-file from cell ranger and barcode data. File will have the same name as the run',
         action='store_true')
     return parser.parse_args()
 
@@ -137,7 +137,7 @@ def main():
 
     # Loading the user or default based arguments
     genome_name = args.genome_name
-    chr_name = args.chr
+    chr_name = args.chromosome
     pwd = args.path
     run_name = args.name
     start_bc = args.start - 1
