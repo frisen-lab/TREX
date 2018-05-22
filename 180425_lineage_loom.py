@@ -16,7 +16,6 @@
 ###                        Code start: Import and preparations                       ###
 ########################################################################################
 
-# Importing tools
 import pysam
 import os.path
 import argparse
@@ -474,7 +473,7 @@ def write_loom():
                 cnt_fulldict['6'].append(cnt_dict['6'][index])
                 break
 
-        if found == False:
+        if not found:
             bc_fulldict['1'].append('-')
             bc_fulldict['2'].append('-')
             bc_fulldict['3'].append('-')
