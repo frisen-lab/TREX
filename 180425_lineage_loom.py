@@ -1,20 +1,10 @@
-#################                LINEAGE PROGRAM             ###########################
-######################################################################################## 
+"""
+Description: Program for the extraction and filtering of random barcodes from single-cell sequencing data
 
-# Description: Program for the extraction and filtering of random barcodes from single-cell sequencing data
+Preparation: Program processes cell ranger output files. Run cell ranger before. Follow instructions => cellranger_instructions.sh
 
-# Information: type 'python lineage_program.py -h' for information about optional input arguments or see below
-
-# Preparation: Program processes cell ranger output files. Run cell ranger before. Follow instructions => cellranger_instructions.sh
-
-# Run: Run program in cellranger 'outs' directory OR indicate path to 'outs'-directory via --path flag
-
-# Contact: leonie.von.berlin@stud.ki.se
-
-
-########################################################################################
-###                        Code start: Import and preparations                       ###
-########################################################################################
+Run: Run program in cellranger 'outs' directory OR indicate path to 'outs'-directory via --path flag
+"""
 
 import pysam
 import os.path
@@ -24,35 +14,41 @@ from collections import Counter
 from collections import defaultdict
 import operator
 
-# Defining input arguments
-parser = argparse.ArgumentParser()
-parser.add_argument('-gn', '--genome_name',
-    help='name of the genome as indicated in cell ranger count run with the flag --genome. Default hs38_egfp',
-    type=str, default='hg38_Tomato-N')
-parser.add_argument('-chr',
-    help="barcode chromosome name as indicated in .fasta file. Default: 'chrEGFP-30N. See cellranger_instructions.sh",
-    type=str, default='chrTomato-N')
-parser.add_argument('-p', '--path',
-    help='path to cell ranger "outs" directory. Default: current directory', type=str,
-    default=os.getcwd())
-parser.add_argument('-n', '--name',
-    help='name of the run and directory created by program. Default: lineage_run', type=str,
-    default='lineage_run')
-parser.add_argument('-s', '--start',
-    help='Position of first base INSIDE the barcode (with first base of sequence on position 0). Default: 726',
-    type=int, default=694)
-parser.add_argument('-e', '--end',
-    help='Position of last base INSIDE the barcode (with first base of sequence on position 0). Default: 756',
-    type=int, default=724)
-parser.add_argument('-m', '--min_length',
-    help='Minimum number of bases a barcode must have. Default: 10', type=int, default=10)
-parser.add_argument('-ham', '--hamming',
-    help='Minimum hamming distance allowed for two barcodes to be called similar. Default: 4',
-    type=int, default=4)
-parser.add_argument('-l', '--loom',
-    help='Optional flag: Creates loom-file from cell ranger and barcode data. File will have the same name as the run',
-    action='store_true')
-args = parser.parse_args()
+
+__author__ = 'leonie.von.berlin@stud.ki.se'
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-gn', '--genome_name',
+        help='name of the genome as indicated in cell ranger count run with the flag --genome. Default hs38_egfp',
+        type=str, default='hg38_Tomato-N')
+    parser.add_argument('-chr',
+        help="barcode chromosome name as indicated in .fasta file. Default: 'chrEGFP-30N. See cellranger_instructions.sh",
+        type=str, default='chrTomato-N')
+    parser.add_argument('-p', '--path',
+        help='path to cell ranger "outs" directory. Default: current directory', type=str,
+        default=os.getcwd())
+    parser.add_argument('-n', '--name',
+        help='name of the run and directory created by program. Default: lineage_run', type=str,
+        default='lineage_run')
+    parser.add_argument('-s', '--start',
+        help='Position of first base INSIDE the barcode (with first base of sequence on position 0). Default: %(default)s',
+        type=int, default=694)
+    parser.add_argument('-e', '--end',
+        help='Position of last base INSIDE the barcode (with first base of sequence on position 0). Default: %(default)s',
+        type=int, default=724)
+    parser.add_argument('-m', '--min_length',
+        help='Minimum number of bases a barcode must have. Default: 10', type=int, default=10)
+    parser.add_argument('-ham', '--hamming',
+        help='Minimum hamming distance allowed for two barcodes to be called similar. Default: 4',
+        type=int, default=4)
+    parser.add_argument('-l', '--loom',
+        help='Optional flag: Creates loom-file from cell ranger and barcode data. File will have the same name as the run',
+        action='store_true')
+    return parser.parse_args()
+
+args = parse_arguments()
 
 # Loading the user or default based arguments
 genome_name = args.genome_name
@@ -94,7 +90,6 @@ groups_file.write(
 
 #  1. Extracts reads aligning to barcode-chromosome, 2. extracts barcodes, UMIs and cellIDs
 #   from reads, 3. outputs UMI-sorted reads with barcodes 
-
 
 def read_cellid_barcodes(path):
     """Read barcodes.tsv"""
@@ -177,6 +172,8 @@ def read_bam(bam_path, output_bam_path):
     alignmentbam.close()
     EGFPbam.close()
     return read_sorted
+
+
 
 
 ids = read_cellid_barcodes(os.path.join(pwd, 'filtered_gene_bc_matrices', genome_name, 'barcodes.tsv'))
