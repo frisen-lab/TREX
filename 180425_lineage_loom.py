@@ -61,8 +61,6 @@
 
 # Importing tools
 import pysam
-import sys
-import os
 import os.path
 import argparse
 import numpy as np
