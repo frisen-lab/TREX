@@ -50,15 +50,18 @@ def parse_arguments():
 
 
 def read_cellid_barcodes(path):
-    """Read barcodes.tsv"""
-    # barcodes.tsv is a list of corrected and approved cellIDs
+    """
+    Read barcodes.tsv, which contains a list of corrected and approved cellIDs like this:
+
+    AAACCTGAGCGACGTA-1
+    AAACCTGCATACTCTT-1
+    """
     with open(path) as f:
-        # Extacts the corrected, approved cellIDs from the barcode.tsv file
         ids = []
         for line in f:
             line = line.strip('\n')
             ids.append(line)
-    return ids
+    return set(ids)
 
 
 def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
