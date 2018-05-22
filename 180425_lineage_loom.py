@@ -63,14 +63,14 @@ def read_cellid_barcodes(path):
 
 def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
     # Opening required files: possorted_genome_bam.bam contains all aligned reads in bam format,
-    alignmentbam = pysam.AlignmentFile(bam_path)
-    EGFPbam = pysam.AlignmentFile(output_bam_path, 'wb', template=alignmentbam)
+    alignment_file = pysam.AlignmentFile(bam_path)
+    out_bam = pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file)
 
     len_bc = end_bc - start_bc - 1
 
     # Fetches those reads aligning to the artifical, barcode-containing chromosome
     read_col = []
-    for read in alignmentbam.fetch(chr_name):
+    for read in alignment_file.fetch(chr_name):
         # Skip reads without cellID or UMI
         if not read.has_tag('CB') or not read.has_tag('UB'):
             continue
@@ -79,8 +79,8 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
         if cellid not in cell_ids:
             continue
         # Collects information from the bam-entry of the read
-        EGFPbam.write(
-            read)  # writes a new bam_file with only those reads aligning to barcode-chromosome. See chr_name_entries.bam
+        # writes a new bam_file with only those reads aligning to barcode-chromosome. See chr_name_entries.bam
+        out_bam.write(read)
         barcode = ''
 
         umi = read.get_tag('UB')
@@ -100,10 +100,10 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
                 if start_check < ref_start < end_check and query_align_end <= \
                         query_pos:  # takes soft clipped bases from the end (downstream of query aligned seq) of those reads that have the barcode at the end
                     if start_bc < (ref_start + query_pos) < end_bc:  # makes sure that the soft clipped base is IN the barcode and not up-/downstream of it
-                        barcode = barcode + str(queryseq[query_pos])  # adds soft clipped base of barcode to barcode-string
+                        barcode += str(queryseq[query_pos])  # adds soft clipped base of barcode to barcode-string
                 elif query_align_start > query_pos and start_bc < (
                         (ref_start - len_bc) + query_pos) < end_bc:  # takes soft clipped bases from the beginning (upstream of query aligned seq) of those reads that have the barcode at the beginning
-                    barcode = barcode + str(queryseq[query_pos])
+                    barcode += str(queryseq[query_pos])
             elif start_bc < ref_pos < end_bc:  # part of read that aligns to barcode area
                 if query_pos is None:  # a deletion in the read in a barcode postion
                     barcode += '0'  # deletion in the barcode are indicated with 0
@@ -112,8 +112,9 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
 
         if barcode == '':
             barcode = len_bc * '-'  # sequences with no barcode are indicated with len_bc*-
-        if len(
-                barcode) < len_bc:  # sequences containing only a part of the barcode have other positions upstream or downstream filled with -
+
+        # sequences containing only a part of the barcode have other positions upstream or downstream filled with -
+        if len(barcode) < len_bc:
             if start_check < ref_start < end_check:
                 barcode = barcode + (len_bc - len(barcode)) * '-'
             else:
@@ -123,8 +124,8 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
 
     # sorts reads first based on UMI, then CellID, then barcode
     read_sorted = sorted(read_col, key=lambda read: (read[1], read[0], read[2]))
-    alignmentbam.close()
-    EGFPbam.close()
+    alignment_file.close()
+    out_bam.close()
     return read_sorted
 
 
