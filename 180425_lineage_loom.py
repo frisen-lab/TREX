@@ -69,7 +69,7 @@ parser.add_argument('-chr',
     type=str, default='chrTomato-N')
 parser.add_argument('-p', '--path',
     help='path to cell ranger "outs" directory. Default: current directory', type=str,
-    default=os.getcwd)
+    default=os.getcwd())
 parser.add_argument('-n', '--name',
     help='name of the run and directory created by program. Default: lineage_run', type=str,
     default='lineage_run')
