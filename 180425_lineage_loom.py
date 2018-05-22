@@ -150,14 +150,13 @@ def main():
 
     # Creating an output folder named after user or default defined run-name in current working directory
     os.makedirs(run_name)
-    home_pwd = os.getcwd()
 
     # Opening output files in the recently created output folder
-    read_file = open(os.path.join(home_pwd, run_name, 'reads.txt'), 'w+')
-    mol_file = open(os.path.join(home_pwd, run_name, 'molecules.txt'), 'w+')
-    cell_file = open(os.path.join(home_pwd, run_name, 'cells.txt'), 'w+')
-    cellfilt_file = open(os.path.join(home_pwd, run_name, 'cells_filtered.txt'), 'w+')
-    groups_file = open(os.path.join(home_pwd, run_name, 'groups.txt'), 'w+')
+    read_file = open(os.path.join(run_name, 'reads.txt'), 'w+')
+    mol_file = open(os.path.join(run_name, 'molecules.txt'), 'w+')
+    cell_file = open(os.path.join(run_name, 'cells.txt'), 'w+')
+    cellfilt_file = open(os.path.join(run_name, 'cells_filtered.txt'), 'w+')
+    groups_file = open(os.path.join(run_name, 'groups.txt'), 'w+')
 
     # Writing the first commented line into output files
     read_file.write(
@@ -180,10 +179,10 @@ def main():
 
     cell_ids = read_cellid_barcodes(os.path.join(pwd, 'filtered_gene_bc_matrices', genome_name, 'barcodes.tsv'))
 
-    read_sorted = read_bam(os.path.join(pwd, 'possorted_genome_bam.bam'), os.path.join(home_pwd, run_name, chr_name + '_entries.bam'), chr_name, cell_ids, start_bc, end_bc)
+    read_sorted = read_bam(os.path.join(pwd, 'possorted_genome_bam.bam'), os.path.join(run_name, chr_name + '_entries.bam'), chr_name, cell_ids, start_bc, end_bc)
 
     for read in read_sorted:
-        read_file.write(read[0] + '\t' + read[1] + '\t' + read[2] + '\n')
+        print(*read[:3], sep='\t', file=read_file)
 
     ########################################################################################
     ###                       Part III: Molecule construction                            ###
@@ -440,7 +439,7 @@ def main():
         import loompy
 
         loom_name = os.path.basename(pwd[:-5])
-        pwd_loom = os.path.join(home_pwd, run_name, loom_name + '.loom')
+        pwd_loom = os.path.join(run_name, loom_name + '.loom')
         if not os.path.exists(pwd_loom):
             loompy.create_from_cellranger(pwd[:-5], run_name)
         # connects to the just created loom file in order to modify it
