@@ -105,9 +105,6 @@ os.makedirs(run_name)
 home_pwd = os.getcwd()
 
 # Opening required files: possorted_genome_bam.bam contains all aligned reads in bam format,
-#   barcodes.tsv is a list of corrected and approved cellIDs
-filt_cellids = open(os.path.join(pwd, 'filtered_gene_bc_matrices', genome_name, 'barcodes.tsv'),
-    'r')
 alignmentbam = pysam.AlignmentFile(os.path.join(pwd, 'possorted_genome_bam.bam'), 'rb')
 
 # Opening output files in the recently created output folder
@@ -138,11 +135,20 @@ groups_file.write(
 #  1. Extracts reads aligning to barcode-chromosome, 2. extracts barcodes, UMIs and cellIDs
 #   from reads, 3. outputs UMI-sorted reads with barcodes 
 
-# Extacts the corrected, approved cellIDs from the barcode.tsv file
-ids = []
-for line in filt_cellids:
-    line = line.strip('\n')
-    ids.append(line)
+
+def read_cellid_barcodes(path):
+    """Read barcodes.tsv"""
+    # barcodes.tsv is a list of corrected and approved cellIDs
+    with open(path) as f:
+        # Extacts the corrected, approved cellIDs from the barcode.tsv file
+        ids = []
+        for line in f:
+            line = line.strip('\n')
+            ids.append(line)
+    return ids
+
+
+ids = read_cellid_barcodes(os.path.join(pwd, 'filtered_gene_bc_matrices', genome_name, 'barcodes.tsv'))
 
 # Fetches those reads aligning to the artifical, barcode-containing chromosome
 read_col = []
@@ -534,7 +540,6 @@ cellfilt_file.close()
 cell_file.close()
 EGFPbam.close()
 alignmentbam.close()
-filt_cellids.close()
 read_file.close()
 mol_file.close()
 groups_file.close()
