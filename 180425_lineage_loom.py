@@ -126,13 +126,72 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, start_bc, end_bc):
                 barcode = barcode + (len_bc - len(barcode)) * '-'
             else:
                 barcode = (len_bc - len(barcode)) * '-' + barcode
-        read_col.append((cell_id, read.get_tag('UB'), barcode))
+        umi = read.get_tag('UB')
+        read_col.append((cell_id, umi, barcode))
 
     # sorts reads first based on UMI, then CellID, then barcode
     sorted_reads = sorted(read_col, key=lambda read: (read[1], read[0], read[2]))
     alignment_file.close()
     out_bam.close()
+    assert len(sorted_reads) == 0 or len(sorted_reads[0][2]) == len_bc
     return sorted_reads
+
+
+def compute_molecules(read_sorted):
+    if read_sorted:
+        len_bc = len(read_sorted[0][2])
+    else:
+        len_bc = -1
+    # extracts the start and end index of groups with identical UMI and cellID
+    group_pos = [0]
+    for i in range(0, len(read_sorted) - 1):
+        if not (read_sorted[i][1] == read_sorted[i + 1][1] and read_sorted[i][0] == read_sorted[i + 1][0]):
+            group_pos.append(i + 1)
+
+    # creates a list of sublists, each representing one group of reads with identical UMI/cellID
+    groups = []
+    for i in range(0, len(group_pos) - 1):
+        groups.append(read_sorted[group_pos[i]:group_pos[i + 1]])
+    groups.append(read_sorted[group_pos[-1]:(len(read_sorted) + 1)])
+
+    # converts each sequence of each group that is greater than 1 into a binary code, sums up binary code of all sequences, calculates max value for each position and outputs consensus sequence
+    letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
+
+    mol_col = list()
+    for group in groups:  # takes out each group
+        if len(group) > 1:  # filters out groups that contain only one read
+            consens_np = np.zeros([len_bc, 6], dtype='float16')
+            for j in range(0, len(group)):  # takes out each sequence from a group
+                align = np.zeros([len_bc, 6], dtype='float16')
+                for (l, s) in enumerate(group[j][2]):  # takes out each base from sequence
+                    # turns each base into a number and position in numpy array
+                    if s == 'A':
+                        align[l, 0] = 1
+                    elif s == 'C':
+                        align[l, 1] = 1
+                    elif s == 'G':
+                        align[l, 2] = 1
+                    elif s == 'T':
+                        align[l, 3] = 1
+                    elif s == '-':
+                        align[l, 4] = 0.1
+                    elif s == '0':
+                        align[l, 5] = 0.1
+                consens_np = consens_np + align  # sums up numbers of each position
+            # calculate base with maximum count for each position
+            bin_consens = np.argmax(align, axis=1)
+            # converts maximum counts into consensus sequence
+            x = letters[bin_consens]
+            consensus = ''.join(x)
+
+            mol_col.append((group[0][0], group[0][1], consensus))
+        else:
+            mol_col.append((group[0][0], group[0][1], group[0][2]))
+    # calling mol_col will give a list of all molecules with corresponding UMIs/cellIDs. See molecules.txt
+
+    # sorts molecules based on cellIDs, then barcodes, then UMIs
+    mol_sorted = sorted(mol_col, key=lambda mol: (mol[0], mol[2], mol[1]))
+    return groups, mol_sorted
 
 
 def main():
@@ -193,57 +252,9 @@ def main():
     #   2. forms consensus sequence of all barcodes of one group, 3. outputs molecules and
     #   corresponding CellIDs/UMIs
 
-    # extracts the start and end index of groups with identical UMI and cellID
-    group_pos = [0]
-    for i in range(0, len(read_sorted) - 1):
-        if not (read_sorted[i][1] == read_sorted[i + 1][1] and read_sorted[i][0] == read_sorted[i + 1][0]):
-            group_pos.append(i + 1)
-
-    # creates a list of sublists, each representing one group of reads with identical UMI/cellID
-    groups = []
-    for i in range(0, len(group_pos) - 1):
-        groups.append(read_sorted[group_pos[i]:group_pos[i + 1]])
-    groups.append(read_sorted[group_pos[-1]:(len(read_sorted) + 1)])
-
-    # converts each sequence of each group that is greater than 1 into a binary code, sums up binary code of all sequences, calculates max value for each position and outputs consensus sequence
-    letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
-
-    mol_col = list()
-    for group in groups:  # takes out each group
-        if len(group) > 1:  # filters out groups that contain only one read
-            consens_np = np.zeros([len_bc, 6], dtype='float16')
-            for j in range(0, len(group)):  # takes out each sequence from a group
-                align = np.zeros([len_bc, 6], dtype='float16')
-                for (l, s) in enumerate(group[j][2]):  # takes out each base from sequence
-                    # turns each base into a number and position in numpy array
-                    if s == 'A':
-                        align[l, 0] = 1
-                    elif s == 'C':
-                        align[l, 1] = 1
-                    elif s == 'G':
-                        align[l, 2] = 1
-                    elif s == 'T':
-                        align[l, 3] = 1
-                    elif s == '-':
-                        align[l, 4] = 0.1
-                    elif s == '0':
-                        align[l, 5] = 0.1
-                consens_np = consens_np + align  # sums up numbers of each position
-            bin_consens = np.argmax(align,
-                axis=1)  # calculates base with maximum count for each position
-            x = letters[bin_consens]  # converts maximum counts into consensus sequence
-            consensus = ''.join(x)
-
-            mol_col.append((group[0][0], group[0][1], consensus))
-        else:
-            mol_col.append((group[0][0], group[0][1], group[0][2]))
-    # calling mol_col will give a list of all molecules with corresponding UMIs/cellIDs. See molecules.txt
-
-    # sorts molecules based on cellIDs, then barcodes, then UMIs
-    mol_sorted = sorted(mol_col, key=lambda mol: (mol[0], mol[2], mol[1]))
-
+    groups, mol_sorted = compute_molecules(read_sorted)
     for mol in mol_sorted:
-        mol_file.write(mol[0] + '\t' + mol[1] + '\t' + mol[2] + '\n')
+        print(*mol[:3], sep='\t', file=mol_file)
 
     ########################################################################################
     ###                          Part IV: Cell construction                              ###
