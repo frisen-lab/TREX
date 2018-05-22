@@ -348,7 +348,6 @@ def main():
 
     barcode_list = []
     cellid_list = []
-    umi_list = []
 
     for mol in mol_sorted:
         cellid = mol[0]
@@ -364,9 +363,7 @@ def main():
     # extracts the start and end index of groups with identical cellID
     group_pos = [0]
     for i in range(0, len(cellid_list) - 1):
-        if cellid_list[i] == cellid_list[i + 1]:
-            pass
-        else:
+        if cellid_list[i] != cellid_list[i + 1]:
             group_pos.append(i + 1)
 
     # creates a list of sublists, each representing one group of molecules with identical cellID
