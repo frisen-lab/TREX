@@ -232,9 +232,7 @@ for read in read_sorted:
 # extracts the start and end index of groups with identical UMI and cellID
 group_pos = [0]
 for i in range(0, len(read_sorted) - 1):
-    if read_sorted[i][1] == read_sorted[i + 1][1] and read_sorted[i][0] == read_sorted[i + 1][0]:
-        pass
-    else:
+    if not (read_sorted[i][1] == read_sorted[i + 1][1] and read_sorted[i][0] == read_sorted[i + 1][0]):
         group_pos.append(i + 1)
 
 # creates a list of sublists, each representing one group of reads with identical UMI/cellID
@@ -247,12 +245,12 @@ groups.append(read_sorted[group_pos[-1]:(len(read_sorted) + 1)])
 letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
 
 mol_col = list()
-for i in range(0, len(groups)):  # takes out each group
-    if len(groups[i]) > 1:  # filters out groups that contain only one read
+for group in groups:  # takes out each group
+    if len(group) > 1:  # filters out groups that contain only one read
         consens_np = np.zeros([len_bc, 6], dtype='float16')
-        for j in range(0, len(groups[i])):  # takes out each sequence from a group
+        for j in range(0, len(group)):  # takes out each sequence from a group
             align = np.zeros([len_bc, 6], dtype='float16')
-            for (l, s) in enumerate(groups[i][j][2]):  # takes out each base from sequence
+            for (l, s) in enumerate(group[j][2]):  # takes out each base from sequence
                 # turns each base into a number and position in numpy array
                 if s == 'A':
                     align[l, 0] = 1
@@ -272,9 +270,9 @@ for i in range(0, len(groups)):  # takes out each group
         x = letters[bin_consens]  # converts maximum counts into consensus sequence
         consensus = ''.join(x)
 
-        mol_col.append((groups[i][0][0], groups[i][0][1], consensus))
+        mol_col.append((group[0][0], group[0][1], consensus))
     else:
-        mol_col.append((groups[i][0][0], groups[i][0][1], groups[i][0][2]))
+        mol_col.append((group[0][0], group[0][1], group[0][2]))
 # calling mol_col will give a list of all molecules with corresponding UMIs/cellIDs. See molecules.txt
 
 # sorts molecules based on cellIDs, then barcodes, then UMIs
