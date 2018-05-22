@@ -64,7 +64,7 @@ def read_cellid_barcodes(path):
     return set(ids)
 
 
-def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
+def read_bam(bam_path, output_bam_path, cell_ids, chr_name, start_bc, end_bc):
     """
     bam_path -- path to input BAM file
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
@@ -89,7 +89,6 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
         # Collects information from the bam-entry of the read
         # writes a new bam_file with only those reads aligning to barcode-chromosome. See chr_name_entries.bam
         out_bam.write(read)
-        barcode = ''
 
         queryseq = read.query_sequence
         query_align_end = read.query_alignment_end
@@ -100,8 +99,10 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
         end_check = start_check + len_bc + 2
 
         # Extracts barcodes based on the alignment-pair list (gives position of read and corresponding reference position)
+        barcode = ''
         for query_pos, ref_pos in read.get_aligned_pairs():
-            if ref_pos is None:  # part of read that doesn't align to ref
+            if ref_pos is None:
+                # This part of the read does not align to the reference
                 if start_check < ref_start < end_check and query_align_end <= \
                         query_pos:  # takes soft clipped bases from the end (downstream of query aligned seq) of those reads that have the barcode at the end
                     if start_bc < (ref_start + query_pos) < end_bc:  # makes sure that the soft clipped base is IN the barcode and not up-/downstream of it
@@ -110,13 +111,14 @@ def read_bam(bam_path, output_bam_path, chr_name, cell_ids, start_bc, end_bc):
                         (ref_start - len_bc) + query_pos) < end_bc:  # takes soft clipped bases from the beginning (upstream of query aligned seq) of those reads that have the barcode at the beginning
                     barcode += queryseq[query_pos]
             elif start_bc < ref_pos < end_bc:  # part of read that aligns to barcode area
-                if query_pos is None:  # a deletion in the read in a barcode postion
+                if query_pos is None:  # a deletion in the read in a barcode position
                     barcode += '0'  # deletion in the barcode are indicated with 0
                 else:
                     barcode += queryseq[query_pos]  # takes base in barcode position and adds to barcode string
 
         if barcode == '':
-            barcode = len_bc * '-'  # sequences with no barcode are indicated with len_bc*-
+            # This read does not cover the barcode
+            barcode = len_bc * '-'
 
         # sequences containing only a part of the barcode have other positions upstream or downstream filled with -
         if len(barcode) < len_bc:
@@ -139,7 +141,7 @@ def main():
     # Loading the user or default based arguments
     genome_name = args.genome_name
     chr_name = args.chromosome
-    pwd = args.path
+    output_dir = args.path
     run_name = args.name
     start_bc = args.start - 1
     end_bc = args.end
@@ -176,9 +178,9 @@ def main():
     #  1. Extracts reads aligning to barcode-chromosome, 2. extracts barcodes, UMIs and cellIDs
     #   from reads, 3. outputs UMI-sorted reads with barcodes
 
-    cell_ids = read_cellid_barcodes(os.path.join(pwd, 'filtered_gene_bc_matrices', genome_name, 'barcodes.tsv'))
+    cell_ids = read_cellid_barcodes(os.path.join(output_dir, 'filtered_gene_bc_matrices', genome_name, 'barcodes.tsv'))
 
-    read_sorted = read_bam(os.path.join(pwd, 'possorted_genome_bam.bam'), os.path.join(run_name, chr_name + '_entries.bam'), chr_name, cell_ids, start_bc, end_bc)
+    read_sorted = read_bam(os.path.join(output_dir, 'possorted_genome_bam.bam'), os.path.join(run_name, chr_name + '_entries.bam'), cell_ids, chr_name, start_bc, end_bc)
 
     for read in read_sorted:
         print(*read[:3], sep='\t', file=read_file)
@@ -437,10 +439,10 @@ def main():
                     # creates the loom file based on cellranger output files
         import loompy
 
-        loom_name = os.path.basename(pwd[:-5])
+        loom_name = os.path.basename(output_dir[:-5])
         pwd_loom = os.path.join(run_name, loom_name + '.loom')
         if not os.path.exists(pwd_loom):
-            loompy.create_from_cellranger(pwd[:-5], run_name)
+            loompy.create_from_cellranger(output_dir[:-5], run_name)
         # connects to the just created loom file in order to modify it
         ds = loompy.connect(pwd_loom)
         # gets a list of all cellIDs appearing in the loom file
