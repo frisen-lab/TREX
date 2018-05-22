@@ -153,56 +153,60 @@ ids = read_cellid_barcodes(os.path.join(pwd, 'filtered_gene_bc_matrices', genome
 # Fetches those reads aligning to the artifical, barcode-containing chromosome
 read_col = []
 for read in alignmentbam.fetch(chr_name):
-    if read.has_tag('CB') and read.has_tag(
-            'UB'):  # Filters out reads that have no corrected cellID or umi
-        if read.get_tag('CB') in ids:  # Filters out reads that have not approved cellIDs
-            # Collects information from the bam-entry of the read
-            EGFPbam.write(
-                read)  # writes a new bam_file with only those reads aligning to barcode-chromosome. See chr_name_entries.bam
-            barcode = ''
-            cellid = read.get_tag('CB')
-            umi = read.get_tag('UB')
-            queryseq = read.query_sequence
-            query_align_end = read.query_alignment_end
-            query_align_start = read.query_alignment_start
-            ref_start = read.reference_start
-            alignment_pairs = read.get_aligned_pairs()
-            cigar = read.cigartuples
-            len_read = read.infer_query_length()
-            start_check = start_bc - len_read
-            end_check = start_check + len_bc + 2
+    # Skip reads without cellID or UMI
+    if not read.has_tag('CB') or not read.has_tag('UB'):
+        continue
+    # Filters out reads that have not approved cellIDs
+    cellid = read.get_tag('CB')
+    if cellid not in ids:
+        continue
+    # Collects information from the bam-entry of the read
+    EGFPbam.write(
+        read)  # writes a new bam_file with only those reads aligning to barcode-chromosome. See chr_name_entries.bam
+    barcode = ''
 
-            # Extracts barcodes based on the alignment-pair list (gives position of read and corresponding reference position)
-            for i in range(0, len(alignment_pairs)):
-                if alignment_pairs[i][1] is None:  # part of read that doesn't align to ref
-                    if start_check < ref_start < end_check and query_align_end <= \
-                            alignment_pairs[i][
-                                0]:  # takes soft clipped bases from the end (downstream of query aligned seq) of those reads that have the barcode at the end
-                        if start_bc < (ref_start + alignment_pairs[i][
-                            0]) < end_bc:  # makes sure that the soft clipped base is IN the barcode and not up-/downstream of it
-                            barcode = barcode + str(queryseq[alignment_pairs[i][
-                                0]])  # adds soft clipped base of barcode to barcode-string
-                    elif query_align_start > alignment_pairs[i][0] and start_bc < (
-                            (ref_start - len_bc) + alignment_pairs[i][
-                        0]) < end_bc:  # takes soft clipped bases from the beginning (upstream of query aligned seq) of those reads that have the barcode at the beginning
-                        barcode = barcode + str(queryseq[alignment_pairs[i][0]])
-                elif start_bc < alignment_pairs[i][
-                    1] < end_bc:  # part of read that aligns to barcode area
-                    if alignment_pairs[i][0] is None:  # a deletion in the read in a barcode postion
-                        barcode = barcode + '0'  # deletion in the barcode are indicated with 0
-                    else:
-                        barcode = barcode + str(queryseq[alignment_pairs[i][
-                            0]])  # takes base in barcode position and adds to barcode string
+    umi = read.get_tag('UB')
+    queryseq = read.query_sequence
+    query_align_end = read.query_alignment_end
+    query_align_start = read.query_alignment_start
+    ref_start = read.reference_start
+    alignment_pairs = read.get_aligned_pairs()
+    cigar = read.cigartuples
+    len_read = read.infer_query_length()
+    start_check = start_bc - len_read
+    end_check = start_check + len_bc + 2
 
-            if barcode == '':
-                barcode = len_bc * '-'  # sequences with no barcode are indicated with len_bc*-
-            if len(
-                    barcode) < len_bc:  # sequences containing only a part of the barcode have other positions upstream or downstream filled with -
-                if start_check < ref_start < end_check:
-                    barcode = barcode + (len_bc - len(barcode)) * '-'
-                else:
-                    barcode = (len_bc - len(barcode)) * '-' + barcode
-            read_col.append((cellid, umi, barcode))
+    # Extracts barcodes based on the alignment-pair list (gives position of read and corresponding reference position)
+    for i in range(0, len(alignment_pairs)):
+        if alignment_pairs[i][1] is None:  # part of read that doesn't align to ref
+            if start_check < ref_start < end_check and query_align_end <= \
+                    alignment_pairs[i][
+                        0]:  # takes soft clipped bases from the end (downstream of query aligned seq) of those reads that have the barcode at the end
+                if start_bc < (ref_start + alignment_pairs[i][
+                    0]) < end_bc:  # makes sure that the soft clipped base is IN the barcode and not up-/downstream of it
+                    barcode = barcode + str(queryseq[alignment_pairs[i][
+                        0]])  # adds soft clipped base of barcode to barcode-string
+            elif query_align_start > alignment_pairs[i][0] and start_bc < (
+                    (ref_start - len_bc) + alignment_pairs[i][
+                0]) < end_bc:  # takes soft clipped bases from the beginning (upstream of query aligned seq) of those reads that have the barcode at the beginning
+                barcode = barcode + str(queryseq[alignment_pairs[i][0]])
+        elif start_bc < alignment_pairs[i][
+            1] < end_bc:  # part of read that aligns to barcode area
+            if alignment_pairs[i][0] is None:  # a deletion in the read in a barcode postion
+                barcode = barcode + '0'  # deletion in the barcode are indicated with 0
+            else:
+                barcode = barcode + str(queryseq[alignment_pairs[i][
+                    0]])  # takes base in barcode position and adds to barcode string
+
+    if barcode == '':
+        barcode = len_bc * '-'  # sequences with no barcode are indicated with len_bc*-
+    if len(
+            barcode) < len_bc:  # sequences containing only a part of the barcode have other positions upstream or downstream filled with -
+        if start_check < ref_start < end_check:
+            barcode = barcode + (len_bc - len(barcode)) * '-'
+        else:
+            barcode = (len_bc - len(barcode)) * '-' + barcode
+    read_col.append((cellid, umi, barcode))
 # calling read_col will give a collection of all cellids, umis and corresponding barcodes. See reads.txt
 
 # sorts reads first based on UMI, then CellID, then barcode
