@@ -104,12 +104,7 @@ minham = args.hamming + 1
 os.makedirs(run_name)
 home_pwd = os.getcwd()
 
-# Opening required files: possorted_genome_bam.bam contains all aligned reads in bam format,
-alignmentbam = pysam.AlignmentFile(os.path.join(pwd, 'possorted_genome_bam.bam'), 'rb')
-
 # Opening output files in the recently created output folder
-EGFPbam = pysam.AlignmentFile(os.path.join(home_pwd, run_name, chr_name + '_entries.bam'), 'wb',
-    template=alignmentbam)
 read_file = open(os.path.join(home_pwd, run_name, 'reads.txt'), 'w+')
 mol_file = open(os.path.join(home_pwd, run_name, 'molecules.txt'), 'w+')
 cell_file = open(os.path.join(home_pwd, run_name, 'cells.txt'), 'w+')
@@ -148,7 +143,11 @@ def read_cellid_barcodes(path):
     return ids
 
 
-def read_sorted_reads():
+def read_bam(bam_path, output_bam_path):
+    # Opening required files: possorted_genome_bam.bam contains all aligned reads in bam format,
+    alignmentbam = pysam.AlignmentFile(bam_path)
+    EGFPbam = pysam.AlignmentFile(output_bam_path, 'wb', template=alignmentbam)
+
     # Fetches those reads aligning to the artifical, barcode-containing chromosome
     read_col = []
     for read in alignmentbam.fetch(chr_name):
@@ -210,12 +209,14 @@ def read_sorted_reads():
 
     # sorts reads first based on UMI, then CellID, then barcode
     read_sorted = sorted(read_col, key=lambda read: (read[1], read[0], read[2]))
+    alignmentbam.close()
+    EGFPbam.close()
     return read_sorted
 
 
 ids = read_cellid_barcodes(os.path.join(pwd, 'filtered_gene_bc_matrices', genome_name, 'barcodes.tsv'))
 
-read_sorted = read_sorted_reads()
+read_sorted = read_bam(os.path.join(pwd, 'possorted_genome_bam.bam'), os.path.join(home_pwd, run_name, chr_name + '_entries.bam'))
 
 for read in read_sorted:
     read_file.write(read[0] + '\t' + read[1] + '\t' + read[2] + '\n')
@@ -547,8 +548,6 @@ if args.loom:
 # closes all opened files
 cellfilt_file.close()
 cell_file.close()
-EGFPbam.close()
-alignmentbam.close()
 read_file.close()
 mol_file.close()
 groups_file.close()
