@@ -194,6 +194,97 @@ def compute_molecules(read_sorted):
     return groups, mol_sorted
 
 
+def write_loom(cell_col, output_dir, run_name, len_bc):
+    bc_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
+    cnt_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
+    cellid1 = []
+
+    # brings the barcode data into a format where the most abundant barcode of the cells are in
+    # one list, the second most abundant in another and so on. The same with counts
+    for i in range(0, len(cell_col), 2):
+        sort_d = sorted(cell_col[i + 1].items(), key=operator.itemgetter(1))
+        sort_d.reverse()
+        if len(sort_d) != 0:
+            cellid1.append(cell_col[i])
+            for j in range(0, 6):
+                k = j + 1
+                if j <= len(sort_d) - 1:
+                    bc_dict[str(k)].append(sort_d[j][0])
+                    cnt_dict[str(k)].append(sort_d[j][1])
+                else:
+                    bc_dict[str(k)].append('-')
+                    cnt_dict[str(k)].append(0)
+
+                # creates the loom file based on cellranger output files
+    import loompy
+
+    loom_name = os.path.basename(output_dir[:-5])
+    pwd_loom = os.path.join(run_name, loom_name + '.loom')
+    if not os.path.exists(pwd_loom):
+        loompy.create_from_cellranger(output_dir[:-5], run_name)
+    # connects to the just created loom file in order to modify it
+    ds = loompy.connect(pwd_loom)
+    # gets a list of all cellIDs appearing in the loom file
+    all_cellIDs = ds.ca.CellID
+
+    # brings barcode data into correct format for loom file. Array must have same shape as all_cellIDs
+    bc_fulldict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
+    cnt_fulldict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
+    for id1 in all_cellIDs:
+        found = False
+        for id2 in cellid1:
+            if id1[(len(loom_name) + 1):] == id2:
+                found = True
+                index = cellid1.index(id2)
+                bc_fulldict['1'].append(bc_dict['1'][index])
+                bc_fulldict['2'].append(bc_dict['2'][index])
+                bc_fulldict['3'].append(bc_dict['3'][index])
+                bc_fulldict['4'].append(bc_dict['4'][index])
+                bc_fulldict['5'].append(bc_dict['5'][index])
+                bc_fulldict['6'].append(bc_dict['6'][index])
+
+                cnt_fulldict['1'].append(cnt_dict['1'][index])
+                cnt_fulldict['2'].append(cnt_dict['2'][index])
+                cnt_fulldict['3'].append(cnt_dict['3'][index])
+                cnt_fulldict['4'].append(cnt_dict['4'][index])
+                cnt_fulldict['5'].append(cnt_dict['5'][index])
+                cnt_fulldict['6'].append(cnt_dict['6'][index])
+                break
+
+        if not found:
+            bc_fulldict['1'].append('-')
+            bc_fulldict['2'].append('-')
+            bc_fulldict['3'].append('-')
+            bc_fulldict['4'].append('-')
+            bc_fulldict['5'].append('-')
+            bc_fulldict['6'].append('-')
+
+            cnt_fulldict['1'].append(0)
+            cnt_fulldict['2'].append(0)
+            cnt_fulldict['3'].append(0)
+            cnt_fulldict['4'].append(0)
+            cnt_fulldict['5'].append(0)
+            cnt_fulldict['6'].append(0)
+
+    # adds the barcode information to the loom file
+    ds.ca['linBarcode_1'] = np.array(bc_fulldict['1'], dtype='S%r' % len_bc)
+    ds.ca['linBarcode_2'] = np.array(bc_fulldict['2'], dtype='S%r' % len_bc)
+    ds.ca['linBarcode_3'] = np.array(bc_fulldict['3'], dtype='S%r' % len_bc)
+    ds.ca['linBarcode_4'] = np.array(bc_fulldict['4'], dtype='S%r' % len_bc)
+    ds.ca['linBarcode_5'] = np.array(bc_fulldict['5'], dtype='S%r' % len_bc)
+    ds.ca['linBarcode_6'] = np.array(bc_fulldict['6'], dtype='S%r' % len_bc)
+
+    # adds the count information to the loom file
+    ds.ca['linBarcode_count_1'] = np.array(cnt_fulldict['1'], dtype=int)
+    ds.ca['linBarcode_count_2'] = np.array(cnt_fulldict['2'], dtype=int)
+    ds.ca['linBarcode_count_3'] = np.array(cnt_fulldict['3'], dtype=int)
+    ds.ca['linBarcode_count_4'] = np.array(cnt_fulldict['4'], dtype=int)
+    ds.ca['linBarcode_count_5'] = np.array(cnt_fulldict['5'], dtype=int)
+    ds.ca['linBarcode_count_6'] = np.array(cnt_fulldict['6'], dtype=int)
+
+    ds.close()
+
+
 def main():
     args = parse_arguments()
 
@@ -346,7 +437,6 @@ def main():
         for key in results_sorted:
             cell_file.write(key + '\t' + str(results[key]) + '\t')
         cell_file.write('\n')
-    cell_col_copy = cell_col
 
     # calling cell_col_copy will give all cells and their unfiltered barcodes+counts. See cells.txt
     # calling cell_col will give all cells and filtered barcodes. See below.
@@ -362,7 +452,6 @@ def main():
     #   read are also removed
     # 2. Groups cells with same barcodes that most likely stem from one clone. Outputs a file
     #   with all clones and cellIDs belonging to each clone
-
 
     bc_all = list()
     cellids = list()
@@ -417,6 +506,7 @@ def main():
         for j in range(0, len(groupsdict_s[i][1]), 2):
             groups_file.write(groupsdict_s[i][1][j] + '\t' + str(groupsdict_s[i][1][j + 1]) + '\t')
         groups_file.write('\n')
+    groups_file.close()
     # in groups.txt all barcodes and their corresponding cellIDs can be found
 
 
@@ -426,106 +516,14 @@ def main():
     # An optional feature that 1. creates a loom-file from cellranger output data, 2. adds
     # the barcode results to the loom-file
 
-    def write_loom():
-        bc_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
-        cnt_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
-        cellid1 = []
-
-        # brings the barcode data into a format where the most abundant barcode of the cells are in
-        # one list, the second most abundant in another and so on. The same with counts
-        for i in range(0, len(cell_col), 2):
-            sort_d = sorted(cell_col[i + 1].items(), key=operator.itemgetter(1))
-            sort_d.reverse()
-            if len(sort_d) != 0:
-                cellid1.append(cell_col[i])
-                for j in range(0, 6):
-                    k = j + 1
-                    if j <= len(sort_d) - 1:
-                        bc_dict[str(k)].append(sort_d[j][0])
-                        cnt_dict[str(k)].append(sort_d[j][1])
-                    else:
-                        bc_dict[str(k)].append('-')
-                        cnt_dict[str(k)].append(0)
-
-                    # creates the loom file based on cellranger output files
-        import loompy
-
-        loom_name = os.path.basename(output_dir[:-5])
-        pwd_loom = os.path.join(run_name, loom_name + '.loom')
-        if not os.path.exists(pwd_loom):
-            loompy.create_from_cellranger(output_dir[:-5], run_name)
-        # connects to the just created loom file in order to modify it
-        ds = loompy.connect(pwd_loom)
-        # gets a list of all cellIDs appearing in the loom file
-        all_cellIDs = ds.ca.CellID
-
-        # brings barcode data into correct format for loom file. Array must have same shape as all_cellIDs
-        bc_fulldict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
-        cnt_fulldict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
-        for id1 in all_cellIDs:
-            found = False
-            for id2 in cellid1:
-                if id1[(len(loom_name) + 1):] == id2:
-                    found = True
-                    index = cellid1.index(id2)
-                    bc_fulldict['1'].append(bc_dict['1'][index])
-                    bc_fulldict['2'].append(bc_dict['2'][index])
-                    bc_fulldict['3'].append(bc_dict['3'][index])
-                    bc_fulldict['4'].append(bc_dict['4'][index])
-                    bc_fulldict['5'].append(bc_dict['5'][index])
-                    bc_fulldict['6'].append(bc_dict['6'][index])
-
-                    cnt_fulldict['1'].append(cnt_dict['1'][index])
-                    cnt_fulldict['2'].append(cnt_dict['2'][index])
-                    cnt_fulldict['3'].append(cnt_dict['3'][index])
-                    cnt_fulldict['4'].append(cnt_dict['4'][index])
-                    cnt_fulldict['5'].append(cnt_dict['5'][index])
-                    cnt_fulldict['6'].append(cnt_dict['6'][index])
-                    break
-
-            if not found:
-                bc_fulldict['1'].append('-')
-                bc_fulldict['2'].append('-')
-                bc_fulldict['3'].append('-')
-                bc_fulldict['4'].append('-')
-                bc_fulldict['5'].append('-')
-                bc_fulldict['6'].append('-')
-
-                cnt_fulldict['1'].append(0)
-                cnt_fulldict['2'].append(0)
-                cnt_fulldict['3'].append(0)
-                cnt_fulldict['4'].append(0)
-                cnt_fulldict['5'].append(0)
-                cnt_fulldict['6'].append(0)
-
-        # adds the barcode information to the loom file
-        ds.ca['linBarcode_1'] = np.array(bc_fulldict['1'], dtype='S%r' % len_bc)
-        ds.ca['linBarcode_2'] = np.array(bc_fulldict['2'], dtype='S%r' % len_bc)
-        ds.ca['linBarcode_3'] = np.array(bc_fulldict['3'], dtype='S%r' % len_bc)
-        ds.ca['linBarcode_4'] = np.array(bc_fulldict['4'], dtype='S%r' % len_bc)
-        ds.ca['linBarcode_5'] = np.array(bc_fulldict['5'], dtype='S%r' % len_bc)
-        ds.ca['linBarcode_6'] = np.array(bc_fulldict['6'], dtype='S%r' % len_bc)
-
-        # adds the count information to the loom file
-        ds.ca['linBarcode_count_1'] = np.array(cnt_fulldict['1'], dtype=int)
-        ds.ca['linBarcode_count_2'] = np.array(cnt_fulldict['2'], dtype=int)
-        ds.ca['linBarcode_count_3'] = np.array(cnt_fulldict['3'], dtype=int)
-        ds.ca['linBarcode_count_4'] = np.array(cnt_fulldict['4'], dtype=int)
-        ds.ca['linBarcode_count_5'] = np.array(cnt_fulldict['5'], dtype=int)
-        ds.ca['linBarcode_count_6'] = np.array(cnt_fulldict['6'], dtype=int)
-
-        ds.close()
-
-
     if args.loom:
-        write_loom()
+        write_loom(cell_col, output_dir, run_name, len_bc)
 
     # closes all opened files
     cellfilt_file.close()
     cell_file.close()
     read_file.close()
     mol_file.close()
-    groups_file.close()
 
     # finished!
     print('Run completed!')
