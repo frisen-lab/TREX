@@ -11,15 +11,6 @@
 
 # Contact: leonie.von.berlin@stud.ki.se
 
-# Program requirements:
-#   - Python 3.X
-#   - Pysam (download before running!)
-#   - os
-#   - argparse
-#   - numpy
-#   - collections
-#   - operator
-
 # Default arguments:
 #   - Genome name: hs38_egfp
 #   - Chromosome name: chrEGFP-30N

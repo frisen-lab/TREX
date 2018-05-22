@@ -10,12 +10,12 @@ setup(
     long_description='',
     license='',
     py_modules=['180425_lineage_loom'],
-    install_requires=[],
+    install_requires=['pysam', 'numpy', 'loompy'],
     classifiers=[
         'Development Status :: 1 - Planning',
         'Environment :: Console',
         'Intended Audience :: Science/Research',
-        #'License :: ...',
+        # 'License :: ...',
         'Natural Language :: English',
         "Programming Language :: Python :: 3",
         "Topic :: Scientific/Engineering :: Bio-Informatics"
