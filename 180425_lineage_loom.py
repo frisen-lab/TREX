@@ -308,7 +308,7 @@ for mol in mol_sorted:
         barcode_list.append(barcode)
         cellid_list.append(cellid)
 
-##extracts the start and end index of groups with identical cellID
+# extracts the start and end index of groups with identical cellID
 group_pos = [0]
 for i in range(0, len(cellid_list) - 1):
     if cellid_list[i] == cellid_list[i + 1]:
@@ -451,9 +451,7 @@ for i in range(0, len(groupsdict_s)):
 # An optional feature that 1. creates a loom-file from cellranger output data, 2. adds
 # the barcode results to the loom-file
 
-# only is executed if loom argument was given by user
-if args.loom:
-
+def write_loom():
     bc_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cnt_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cellid1 = []
@@ -542,6 +540,10 @@ if args.loom:
     ds.ca['linBarcode_count_6'] = np.array(cnt_fulldict['6'], dtype=int)
 
     ds.close()
+
+
+if args.loom:
+    write_loom()
 
 # closes all opened files
 cellfilt_file.close()
