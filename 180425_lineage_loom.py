@@ -1,7 +1,9 @@
 """
-Description: Program for the extraction and filtering of random barcodes from single-cell sequencing data
+Description: Program for the extraction and filtering of random barcodes from single-cell
+sequencing data
 
-Preparation: Program processes cell ranger output files. Run cell ranger before. Follow instructions => cellranger_instructions.sh
+Preparation: Program processes cell ranger output files. Run cell ranger before. Follow
+instructions => cellranger_instructions.sh
 
 Run: Run program in cellranger 'outs' directory OR indicate path to 'outs'-directory via --path flag
 """
@@ -21,30 +23,36 @@ __author__ = 'leonie.von.berlin@stud.ki.se'
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--genome-name',
-        help='name of the genome as indicated in cell ranger count run with the flag --genome. Default %(default)s',
+        help='Name of the genome as indicated in cell ranger count run with the flag --genome. '
+             'Default: %(default)s',
         default='hg38_Tomato-N')
     parser.add_argument('--chromosome', '--chr',
-        help="barcode chromosome name as indicated in .fasta file. Default: %(default)s. See cellranger_instructions.sh",
+        help='Barcode chromosome name as indicated in .fasta file. See cellranger_instructions.sh'
+             'Default: %(default)s.',
         default='chrTomato-N')
-    parser.add_argument('-p', '--path',
-        help='path to cell ranger "outs" directory. Default: current directory',
+    parser.add_argument('--path', '-p',
+        help='Path to cell ranger "outs" directory. Default: current directory',
         default=os.getcwd())
-    parser.add_argument('-n', '--name',
+    parser.add_argument('--name', '-n',
         help='name of the run and directory created by program. Default: lineage_run',
         default='lineage_run')
-    parser.add_argument('-s', '--start',
-        help='Position of first base INSIDE the barcode (with first base of sequence on position 0). Default: %(default)s',
+    parser.add_argument('--start', '-s',
+        help='Position of first base INSIDE the barcode (with first base on position 0). '
+             'Default: %(default)s',
         type=int, default=694)
-    parser.add_argument('-e', '--end',
-        help='Position of last base INSIDE the barcode (with first base of sequence on position 0). Default: %(default)s',
+    parser.add_argument('--end', '-e',
+        help='Position of last base INSIDE the barcode (with first base on position 0). '
+             'Default: %(default)s',
         type=int, default=724)
-    parser.add_argument('-m', '--min-length',
+    parser.add_argument('--min-length', '-m',
         help='Minimum number of bases a barcode must have. Default: 10', type=int, default=10)
     parser.add_argument('--hamming',
-        help='Minimum hamming distance allowed for two barcodes to be called similar. Default: %(default)s',
+        help='Minimum hamming distance allowed for two barcodes to be called similar. '
+             'Default: %(default)s',
         type=int, default=4)
     parser.add_argument('-l', '--loom',
-        help='If given, create loom-file from cell ranger and barcode data. File will have the same name as the run',
+        help='If given, create loom-file from cell ranger and barcode data. '
+             'File will have the same name as the run',
         action='store_true')
     return parser.parse_args()
 
@@ -194,7 +202,7 @@ def compute_molecules(read_sorted):
     return groups, mol_sorted
 
 
-def write_loom(cell_col, output_dir, run_name, len_bc):
+def write_loom(cell_col, input_dir, run_name, len_bc):
     bc_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cnt_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cellid1 = []
@@ -215,13 +223,13 @@ def write_loom(cell_col, output_dir, run_name, len_bc):
                     bc_dict[str(k)].append('-')
                     cnt_dict[str(k)].append(0)
 
-                # creates the loom file based on cellranger output files
+    # creates the loom file based on cellranger output files
     import loompy
 
-    loom_name = os.path.basename(output_dir[:-5])
+    loom_name = os.path.basename(input_dir[:-5])
     pwd_loom = os.path.join(run_name, loom_name + '.loom')
     if not os.path.exists(pwd_loom):
-        loompy.create_from_cellranger(output_dir[:-5], run_name)
+        loompy.create_from_cellranger(input_dir[:-5], run_name)
     # connects to the just created loom file in order to modify it
     ds = loompy.connect(pwd_loom)
     # gets a list of all cellIDs appearing in the loom file
@@ -288,11 +296,9 @@ def write_loom(cell_col, output_dir, run_name, len_bc):
 def main():
     args = parse_arguments()
 
-    # Loading the user or default based arguments
-    genome_name = args.genome_name
     chr_name = args.chromosome
-    output_dir = args.path
-    run_name = args.name
+    input_dir = args.path
+    output_dir = args.name
     start_bc = args.start - 1
     end_bc = args.end
     len_bc = end_bc - start_bc - 1
@@ -300,51 +306,50 @@ def main():
     minham = args.hamming + 1
 
     # Creating an output folder named after user or default defined run-name in current working directory
-    os.makedirs(run_name)
+    os.makedirs(output_dir)
 
-    ####################################################################################
-    ###          PART I + II: Barcode extraction and reads construction              ###
-    ####################################################################################
+    # PART I + II: Barcode extraction and reads construction
 
-    #  1. Extracts reads aligning to barcode-chromosome, 2. extracts barcodes, UMIs and cellIDs
-    #   from reads, 3. outputs UMI-sorted reads with barcodes
+    # 1. Extracts reads aligning to barcode-chromosome,
+    # 2. extracts barcodes, UMIs and cellIDs from reads,
+    # 3. outputs UMI-sorted reads with barcodes
 
-    cell_ids = read_cellid_barcodes(os.path.join(output_dir, 'filtered_gene_bc_matrices', genome_name, 'barcodes.tsv'))
+    cell_ids = read_cellid_barcodes(os.path.join(input_dir, 'filtered_gene_bc_matrices', args.genome_name, 'barcodes.tsv'))
 
-    read_sorted = read_bam(os.path.join(output_dir, 'possorted_genome_bam.bam'), os.path.join(run_name, chr_name + '_entries.bam'), cell_ids, chr_name, start_bc, end_bc)
+    sorted_reads = read_bam(
+        os.path.join(input_dir, 'possorted_genome_bam.bam'),
+        os.path.join(output_dir, chr_name + '_entries.bam'),
+        cell_ids, chr_name, start_bc, end_bc)
 
-    with open(os.path.join(run_name, 'reads.txt'), 'w+') as read_file:
+    with open(os.path.join(output_dir, 'reads.txt'), 'w+') as read_file:
         read_file.write(
             '#Each output line corresponds to one read and has the following style: CellID\tUMI\tBarcode' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)' + '\n')
-        for read in read_sorted:
+        for read in sorted_reads:
             print(*read[:3], sep='\t', file=read_file)
 
-    ########################################################################################
-    ###                       Part III: Molecule construction                            ###
-    ########################################################################################
+    # Part III: Molecule construction
 
     # 1. Forms groups of reads with identical CellIDs and UMIs => belong to one molecule,
-    #   2. forms consensus sequence of all barcodes of one group, 3. outputs molecules and
-    #   corresponding CellIDs/UMIs
+    # 2. forms consensus sequence of all barcodes of one group,
+    # 3. outputs molecules and corresponding CellIDs/UMIs
 
-    groups, mol_sorted = compute_molecules(read_sorted)
-    with open(os.path.join(run_name, 'molecules.txt'), 'w+') as mol_file:
+    groups, mol_sorted = compute_molecules(sorted_reads)
+    with open(os.path.join(output_dir, 'molecules.txt'), 'w+') as mol_file:
         mol_file.write(
             '#Each output line corresponds to one molecule and has the following style: CellID\tUMI\tBarcode' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)' + '\n')
         for mol in mol_sorted:
             print(*mol[:3], sep='\t', file=mol_file)
 
-    ########################################################################################
-    ###                          Part IV: Cell construction                              ###
-    ########################################################################################
+    # Part IV: Cell construction
 
     # 1. Forms groups of molecules (with set barcode minimum length) that have identical cellIDs
-    #  => belong to one cell, 2. counts number of appearances of each barcode in each group,
-    #   3. starting from the barcode with the lowest count, compares to barcodes starting with
-    #   the highest counts of a group and calculates hamming distance. If distance is below threshold,
-    #   the two barcodes and counts are merged. Repetition until no barcodes with hamming distance
-    #   below threshold can be found (note that this way of merging is greedy),
-    #   4. Outputs for each cells all its barcodes and corresponding counts
+    #    => belong to one cell,
+    # 2. counts number of appearances of each barcode in each group,
+    # 3. starting from the barcode with the lowest count, compares to barcodes starting with
+    #    the highest counts of a group and calculates hamming distance. If distance is below
+    #    threshold, the two barcodes and counts are merged. Repetition until no barcodes with
+    #    hamming distance below threshold can be found (note that this way of merging is greedy),
+    # 4. Outputs for each cells all its barcodes and corresponding counts
 
     barcode_list = []
     cellid_list = []
@@ -375,7 +380,7 @@ def main():
     cellid_grp.append(cellid_list[group_pos[-1]:(len(cellid_list) + 1)])
     barcode_grp.append(barcode_list[group_pos[-1]:(len(barcode_list) + 1)])
 
-    cell_file = open(os.path.join(run_name, 'cells.txt'), 'w+')
+    cell_file = open(os.path.join(output_dir, 'cells.txt'), 'w+')
     cell_file.write(
         '#Each output line corresponds to one cell and has the following style: CellID\tBarcode1\tCount1\tBarcode2\tCount2...' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)' + '\n')
 
@@ -426,16 +431,15 @@ def main():
     # calling cell_col will give all cells and filtered barcodes. See below.
 
 
-    ########################################################################################
-    ###                    Part V + VI: Barcodes filtering and grouping                  ###
-    ########################################################################################
+    # Part V + VI: Barcodes filtering and grouping
 
-    # 1. Filters barcodes according to two criteria: 1. Barcodes that have only a count of one
-    #   and can be found in another cell are most likely results of contamination and are
-    #   removed, 2. Barcodes that have only a count of one and are also only based on one
-    #   read are also removed
+    # 1. Filters barcodes according to two criteria:
+    #    a) Barcodes that have only a count of one and can be found in another cell are most
+    #       likely results of contamination and are removed,
+    #    b) Barcodes that have only a count of one and are also only based on one read are
+    #       also removed
     # 2. Groups cells with same barcodes that most likely stem from one clone. Outputs a file
-    #   with all clones and cellIDs belonging to each clone
+    #    with all clones and cellIDs belonging to each clone
 
     bc_all = list()
     cellids = list()
@@ -465,7 +469,7 @@ def main():
 
     # calling cell_col will give a list of all cellIDs and only the filtered barcodes
 
-    with open(os.path.join(run_name, 'cells_filtered.txt'), 'w+') as cellfilt_file:
+    with open(os.path.join(output_dir, 'cells_filtered.txt'), 'w+') as cellfilt_file:
         cellfilt_file.write(
             '#Each output line corresponds to one cell and has the following style: CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)' + '\n')
 
@@ -491,7 +495,7 @@ def main():
     groupsdict_s = sorted(groups_dict.items(), key=operator.itemgetter(0))
 
     # in groups.txt all barcodes and their corresponding cellIDs can be found
-    with open(os.path.join(run_name, 'groups.txt'), 'w+') as groups_file:
+    with open(os.path.join(output_dir, 'groups.txt'), 'w+') as groups_file:
         groups_file.write(
             '#Each output line corresponds to one barcode group (clone) and has the following style: Barcode\t:\tCellID1\tbarcode-count1\tCellID2\tbarcode-count2...' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)' + '\n')
 
@@ -503,7 +507,7 @@ def main():
 
     # Create a loom file if requested
     if args.loom:
-        write_loom(cell_col, output_dir, run_name, len_bc)
+        write_loom(cell_col, input_dir, output_dir, len_bc)
 
     print('Run completed!')
 
