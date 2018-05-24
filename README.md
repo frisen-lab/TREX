@@ -18,7 +18,9 @@ a full dataset:
 
 `barcodes.tsv` is a copy of `/proj/uppstore2018019/P10306/pMR439_clone16_P10306_1002/10x_14_pMR439_clone16/outs/filtered_gene_bc_matrices/hg38_Tomato-N/barcodes.tsv`
 
-`chrTomato-N.fa` is a copy of `/proj/uppstore2018019/hg38_tdTomato-N/chrTomato-N.fa`.
+`chrTomato-N.fa` is a copy of `/proj/uppstore2018019/hg38_tdTomato-N/chrTomato-N.fa`,
+with an `A` appended at the end of each line to counter the problem that the
+original file had DOS line breaks, which STAR interpreted as extra nucleotides.
 
 
 Running the tool
