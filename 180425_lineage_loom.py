@@ -144,9 +144,12 @@ def compute_consensus(sequences):
     All sequences must have the same length.
     """
     # converts each sequence of each group that is greater than 1 into a binary code, sums up binary code of all sequences, calculates max value for each position and outputs consensus sequence
-    assert sequences
+    if len(sequences) == 1:
+        return sequences[0]
+
     letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
 
+    assert sequences
     length = len(sequences[0])
     consens_np = np.zeros([length, 6], dtype='float16')
     for sequence in sequences:
@@ -197,11 +200,8 @@ def compute_molecules(sorted_reads):
 
     molecules = []
     for (umi, cell_id), barcodes in xgroups.items():
-        if len(barcodes) > 1:
-            barcode_consensus = compute_consensus(barcodes)
-            molecules.append(Read(cell_id=cell_id, umi=umi, barcode=barcode_consensus))
-        else:
-            molecules.append(Read(cell_id=cell_id, umi=umi, barcode=barcodes[0]))
+        barcode_consensus = compute_consensus(barcodes)
+        molecules.append(Read(cell_id=cell_id, umi=umi, barcode=barcode_consensus))
 
     sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.barcode, mol.umi))
 
