@@ -78,11 +78,8 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barco
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
         required tags are written to this file
     """
-    # Opening required files: possorted_genome_bam.bam contains all aligned reads in bam format,
     alignment_file = pysam.AlignmentFile(bam_path)
     out_bam = pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file)
-
-    barcode_length = barcode_end - barcode_start
 
     # Fetches those reads aligning to the artifical, barcode-containing chromosome
     read_col = []
@@ -134,7 +131,7 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barco
     sorted_reads = sorted(read_col, key=lambda read: (read[1], read[0], read[2]))
     alignment_file.close()
     out_bam.close()
-    assert len(sorted_reads) == 0 or len(sorted_reads[0][2]) == barcode_length
+    assert len(sorted_reads) == 0 or len(sorted_reads[0][2]) == barcode_end - barcode_start
     return sorted_reads
 
 
