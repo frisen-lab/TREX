@@ -118,14 +118,8 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, end_b
                 # TODO start_check/end_check?
                 if start_check <= ref_start <= end_check and query_align_end <= query_pos:
                     # We are in a soft-clipped region at the 3' end of the read
-                    # takes soft clipped bases from the end (downstream of query aligned seq)
-                    # of those reads that have the barcode at the end
-                    # TODO ref_start + query_pos should be sth like
-                    # ref_end + (query_pos - query_align_end)
-                    if barcode_start <= (ref_start + query_pos) < end_bc:
-                        # makes sure that the soft clipped base is IN the barcode and
-                        # not up-/downstream of it
-                        # adds soft clipped base of barcode to barcode-string
+                    if barcode_start <= read.reference_end + (query_pos - query_align_end) < end_bc:
+                        # The soft clipped base is in the barcode region
                         barcode += queryseq[query_pos]
                 elif query_align_start > query_pos and barcode_start <= ((ref_start - barcode_length) + query_pos) < end_bc:
                     # takes soft clipped bases from the beginning (upstream of query aligned seq)
