@@ -443,13 +443,9 @@ def main():
     # 2. Groups cells with same barcodes that most likely stem from one clone. Outputs a file
     #    with all clones and cellIDs belonging to each clone
 
-    bc_all = list()
-    cellids = list()
+    all_barcode_counts = Counter()
     for cell in cells:
-        for barcode, count in cell.barcode_counts.items():
-            cellids.append(cell.cell_id)
-            bc_all.append(barcode)
-            bc_all.append(count)
+        all_barcode_counts.update(cell.barcode_counts)
 
     # filters out barcodes with a count of one that appear in another cell
     for cell in cells:
@@ -457,7 +453,7 @@ def main():
         for key in dict_cp:
             if key in cell.barcode_counts:
                 if cell.barcode_counts[key] == 1:  # filters out barcodes that are only based on one molecule
-                    if bc_all.count(key) > 1:  # filters out barcodes that appear more than once in the whole list
+                    if all_barcode_counts[key] > 1:  # filters out barcodes that appear more than once in the whole list
                         del cell.barcode_counts[key]  # removes barcodes that meet both criteria
                     else:
                         for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
