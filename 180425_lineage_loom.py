@@ -75,6 +75,8 @@ def read_cellid_barcodes(path):
 
 Read = namedtuple('Read', ['cell_id', 'umi', 'barcode'])
 
+Cell = namedtuple('Cell', ['cell_id', 'barcode_counts'])
+
 
 def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barcode_end):
     """
@@ -200,6 +202,69 @@ def compute_molecules(sorted_reads):
         groups_as_lists.append(reads)
 
     return groups_as_lists, sorted_molecules
+
+
+def compute_cells(sorted_molecules, minlen_bc, minham):
+    # 1. Forms groups of molecules (with set barcode minimum length) that have identical cellIDs
+    #    => belong to one cell,
+    # 2. counts number of appearances of each barcode in each group,
+    # 3. starting from the barcode with the lowest count, compares to barcodes starting with
+    #    the highest counts of a group and calculates hamming distance. If distance is below
+    #    threshold, the two barcodes and counts are merged. Repetition until no barcodes with
+    #    hamming distance below threshold can be found (note that this way of merging is greedy),
+    # 4. Outputs for each cells all its barcodes and corresponding counts
+
+    cell_id_groups = defaultdict(list)
+    for molecule in sorted_molecules:
+        barcode = molecule.barcode
+        pure_bc = barcode.strip('-')
+        # TODO may not work as intended (strip only removes prefixes and suffixes)
+        pure_bc0 = barcode.strip('0')
+        if len(pure_bc) > minlen_bc and len(pure_bc0) > minlen_bc:
+            cell_id_groups[molecule.cell_id].append(molecule)
+
+    cells = []
+
+    # merges barcodes and counts below hamming distance
+    cell_col = []
+    found = False
+    for cell_id, molecules in cell_id_groups.items():
+        barcodes = [molecule.barcode for molecule in molecules]
+        results = defaultdict(int)
+        # barcodes sorted by counts
+        mc = sorted(Counter(barcodes).most_common(), key=lambda x: len(x[0].strip('-')),
+            reverse=True)
+        while True:
+            barcode, n = mc.pop(-1)  # takes out and remove barcode with lowest count from list
+            if len(mc) == 0:  # or '0' in x: #if barcode is the last in the list or it contains insertions/deletions (cannot be compared) just keeps barcode without merging
+                results[barcode] += n
+                break
+            for i, m in mc:  # goes through remaining barcodes in list
+                hamming = 0
+                overlap_count = 0
+                for l, k in zip(barcode, i):
+                    if l != '-' and k != '-':  # only compares base-containing and not empty position
+                        overlap_count += 1  # counts the overlap of two barcodes
+                        if l != k:
+                            hamming += 1  # calculates hamming distance based on the similarity of each base-pair
+                if hamming < minham and overlap_count != 0:  # filters out barcode-pairs with hamming distance below set threshold or with no overlapp
+                    if i.count('-') == 0:  # only full barcodes are merged with other groups
+                        results[i] += n
+                    else:
+                        results[barcode] += n
+                    found = True
+                    break
+
+            if not found:  # barcodes that never undergo the hamming distance threshold, are not merged
+                results[barcode] += n
+            else:
+                found = False
+
+        cell_col.append(cell_id)
+        cell_col.append(results)
+
+        cells.append(Cell(cell_id, results))
+    return cells
 
 
 def write_loom(cell_col, input_dir, run_name, len_bc):
@@ -351,60 +416,22 @@ def main():
     #    hamming distance below threshold can be found (note that this way of merging is greedy),
     # 4. Outputs for each cells all its barcodes and corresponding counts
 
-    cell_id_groups = defaultdict(list)
-    for molecule in sorted_molecules:
-        barcode = molecule.barcode
-        pure_bc = barcode.strip('-')
-        # TODO may not work as intended (strip only removes prefixes and suffixes)
-        pure_bc0 = barcode.strip('0')
-        if len(pure_bc) > minlen_bc and len(pure_bc0) > minlen_bc:
-            cell_id_groups[molecule.cell_id].append(molecule)
-
+    cells = compute_cells(sorted_molecules, minlen_bc, minham)
     with open(os.path.join(output_dir, 'cells.txt'), 'w') as cell_file:
         print(
             '#Each output line corresponds to one cell and has the following style: CellID\tBarcode1\tCount1\tBarcode2\tCount2...' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=cell_file)
+        for cell in cells:
+            cell_file.write(cell.cell_id + '\t:\t')
+            sorted_barcodes = sorted(cell.barcode_counts, key=lambda x: cell.barcode_counts[x], reverse=True)
+            for barcode in sorted_barcodes:
+                print(barcode, cell.barcode_counts[barcode], sep='\t', file=cell_file, end='\t')
+            print(file=cell_file)
 
-        # merges barcodes and counts below hamming distance
-        cell_col = []
-        found = False
-        for cell_id, molecules in cell_id_groups.items():
-            barcodes = [molecule.barcode for molecule in molecules]
-            results = defaultdict(int)
-            # barcodes sorted by counts
-            mc = sorted(Counter(barcodes).most_common(), key=lambda x: len(x[0].strip('-')), reverse=True)
-            while True:
-                barcode, n = mc.pop(-1)  # takes out and remove barcode with lowest count from list
-                if len(mc) == 0:  # or '0' in x: #if barcode is the last in the list or it contains insertions/deletions (cannot be compared) just keeps barcode without merging
-                    results[barcode] += n
-                    break
-                for i, m in mc:  # goes through remaining barcodes in list
-                    hamming = 0
-                    overlap_count = 0
-                    for l, k in zip(barcode, i):
-                        if l != '-' and k != '-':  # only compares base-containing and not empty position
-                            overlap_count += 1  # counts the overlap of two barcodes
-                            if l != k:
-                                hamming += 1  # calculates hamming distance based on the similarity of each base-pair
-                    if hamming < minham and overlap_count != 0:  # filters out barcode-pairs with hamming distance below set threshold or with no overlapp
-                        if len(i.strip('-')) == len_bc:  # only full barcodes are merged with other groups
-                            results[i] += n
-                        else:
-                            results[barcode] += n
-                        found = True
-                        break
-
-                if not found:  # barcodes that never undergo the hamming distance threshold, are not merged
-                    results[barcode] += n
-                else:
-                    found = False
-
-            cell_col.append(cell_id)
-            cell_col.append(results)
-            cell_file.write(cell_id + '\t:\t')
-            results_sorted = sorted(results, key=lambda x: results[x], reverse=True)
-            for key in results_sorted:
-                cell_file.write(key + '\t' + str(results[key]) + '\t')
-            cell_file.write('\n')
+    # TODO temporary
+    cell_col = []
+    for cell in cells:
+        cell_col.append(cell.cell_id)
+        cell_col.append(cell.barcode_counts)
 
     # calling cell_col will give all cells and filtered barcodes. See below.
 
