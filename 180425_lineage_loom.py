@@ -181,29 +181,38 @@ def compute_molecules(sorted_reads):
     """
     # extracts the start and end index of groups with identical UMI and cellID
     group_pos = [0]
-    for i in range(0, len(sorted_reads) - 1):
-        if not (sorted_reads[i].umi == sorted_reads[i + 1].umi and sorted_reads[i].cell_id == sorted_reads[i + 1].cell_id):
-            group_pos.append(i + 1)
+    for i in range(1, len(sorted_reads)):
+        if not (sorted_reads[i-1].umi == sorted_reads[i].umi and sorted_reads[i-1].cell_id == sorted_reads[i].cell_id):
+            group_pos.append(i)
 
     # creates a list of sublists, each representing one group of reads with identical UMI/cellID
     groups = []
     for i in range(0, len(group_pos) - 1):
         groups.append(sorted_reads[group_pos[i]:group_pos[i + 1]])
-    groups.append(sorted_reads[group_pos[-1]:(len(sorted_reads) + 1)])
+    groups.append(sorted_reads[group_pos[-1]:])
 
-    mol_col = list()
-    for group in groups:
-        if len(group) > 1:
-            barcodes = [read.barcode for read in group]
+    xgroups = defaultdict(list)
+    for read in sorted_reads:
+        xgroups[(read.umi, read.cell_id)].append(read.barcode)
+
+    molecules = []
+    for (umi, cell_id), barcodes in xgroups.items():
+        if len(barcodes) > 1:
             barcode_consensus = compute_consensus(barcodes)
-            mol_col.append((group[0].cell_id, group[0].umi, barcode_consensus))
+            molecules.append((cell_id, umi, barcode_consensus))
         else:
-            mol_col.append((group[0].cell_id, group[0].umi, group[0].barcode))
-    # calling mol_col will give a list of all molecules with corresponding UMIs/cellIDs. See molecules.txt
+            molecules.append((cell_id, umi, barcodes[0]))
 
     # sorts molecules based on cellIDs, then barcodes, then UMIs
-    mol_sorted = sorted(mol_col, key=lambda mol: (mol[0], mol[2], mol[1]))
-    return groups, mol_sorted
+    sorted_molecules = sorted(molecules, key=lambda mol: (mol[0], mol[2], mol[1]))
+
+    # TODO temporary conversion back to previous format
+    groups = []
+    for (umi, cell_id), barcodes in xgroups.items():
+        reads = [Read(cell_id=cell_id, umi=umi, barcode=barcode) for barcode in barcodes]
+        groups.append(reads)
+
+    return groups, sorted_molecules
 
 
 def write_loom(cell_col, input_dir, run_name, len_bc):
@@ -309,7 +318,6 @@ def main():
     minlen_bc = args.min_length - 1
     minham = args.hamming + 1
 
-    # Creating an output folder named after user or default defined run-name in current working directory
     os.makedirs(output_dir)
 
     # PART I + II: Barcode extraction and reads construction
@@ -318,7 +326,8 @@ def main():
     # 2. extracts barcodes, UMIs and cellIDs from reads,
     # 3. outputs UMI-sorted reads with barcodes
 
-    cell_ids = read_cellid_barcodes(os.path.join(input_dir, 'filtered_gene_bc_matrices', args.genome_name, 'barcodes.tsv'))
+    cell_ids = read_cellid_barcodes(
+        os.path.join(input_dir, 'filtered_gene_bc_matrices', args.genome_name, 'barcodes.tsv'))
 
     sorted_reads = read_bam(
         os.path.join(input_dir, 'possorted_genome_bam.bam'),
@@ -337,11 +346,11 @@ def main():
     # 2. forms consensus sequence of all barcodes of one group,
     # 3. outputs molecules and corresponding CellIDs/UMIs
 
-    groups, mol_sorted = compute_molecules(sorted_reads)
+    groups, sorted_molecules = compute_molecules(sorted_reads)
     with open(os.path.join(output_dir, 'molecules.txt'), 'w') as mol_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: CellID\tUMI\tBarcode' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=mol_file)
-        for mol in mol_sorted:
+        for mol in sorted_molecules:
             print(*mol[:3], sep='\t', file=mol_file)
 
     # Part IV: Cell construction
@@ -358,7 +367,7 @@ def main():
     barcode_list = []
     cellid_list = []
 
-    for mol in mol_sorted:
+    for mol in sorted_molecules:
         cellid = mol[0]
         umi = mol[1]
         barcode = mol[2]
@@ -432,7 +441,6 @@ def main():
             cell_file.write('\n')
 
     # calling cell_col will give all cells and filtered barcodes. See below.
-
 
     # Part V + VI: Barcodes filtering and grouping
 
