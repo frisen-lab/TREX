@@ -370,53 +370,52 @@ def main():
     cellid_grp.append(cellid_list[group_pos[-1]:(len(cellid_list) + 1)])
     barcode_grp.append(barcode_list[group_pos[-1]:(len(barcode_list) + 1)])
 
-    cell_file = open(os.path.join(output_dir, 'cells.txt'), 'w')
-    cell_file.write(
-        '#Each output line corresponds to one cell and has the following style: CellID\tBarcode1\tCount1\tBarcode2\tCount2...' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)' + '\n')
+    with open(os.path.join(output_dir, 'cells.txt'), 'w') as cell_file:
+        print(
+            '#Each output line corresponds to one cell and has the following style: CellID\tBarcode1\tCount1\tBarcode2\tCount2...' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=cell_file)
 
-    # merges barcodes and counts below hamming distance
-    cell_col = []
-    found = False
-    for group in cellid_grp:
-        cellid = group[0]
-        bcgrp = barcode_grp[cellid_grp.index(group)]
-        bc_counts = Counter(bcgrp)  # counts the appearances of different barcodes in each group
-        results = defaultdict(int)
-        mc = sorted(bc_counts.most_common(), key=lambda x: -len(x[0].strip('-')))  # sorts barcodes based on counts
-        while True:
-            x, n = mc.pop(-1)  # takes out and remove barcode with lowest count from list
-            if len(mc) == 0:  # or '0' in x: #if barcode is the last in the list or it contains insertions/deletions (cannot be compared) just keeps barcode without merging
-                results[x] += n
-                break
-            for i, m in mc:  # goes through remaining barcodes in list
-                hamming = 0
-                overlap_count = 0
-                for l, k in zip(x, i):
-                    if l != '-' and k != '-':  # only compares base-containing and not empty position
-                        overlap_count += 1  # counts the overlap of two barcodes
-                        if l != k:
-                            hamming += 1  # calculates hamming distance based on the similarity of each base-pair
-                if hamming < minham and overlap_count != 0:  # filters out barcode-pairs with hamming distance below set threshold or with no overlapp
-                    if len(i.strip('-')) == len_bc:  # only full barcodes are merged with other groups
-                        results[i] += n
-                    else:
-                        results[x] += n
-                    found = True
+        # merges barcodes and counts below hamming distance
+        cell_col = []
+        found = False
+        for group in cellid_grp:
+            cellid = group[0]
+            bcgrp = barcode_grp[cellid_grp.index(group)]
+            bc_counts = Counter(bcgrp)  # counts the appearances of different barcodes in each group
+            results = defaultdict(int)
+            mc = sorted(bc_counts.most_common(), key=lambda x: -len(x[0].strip('-')))  # sorts barcodes based on counts
+            while True:
+                x, n = mc.pop(-1)  # takes out and remove barcode with lowest count from list
+                if len(mc) == 0:  # or '0' in x: #if barcode is the last in the list or it contains insertions/deletions (cannot be compared) just keeps barcode without merging
+                    results[x] += n
                     break
+                for i, m in mc:  # goes through remaining barcodes in list
+                    hamming = 0
+                    overlap_count = 0
+                    for l, k in zip(x, i):
+                        if l != '-' and k != '-':  # only compares base-containing and not empty position
+                            overlap_count += 1  # counts the overlap of two barcodes
+                            if l != k:
+                                hamming += 1  # calculates hamming distance based on the similarity of each base-pair
+                    if hamming < minham and overlap_count != 0:  # filters out barcode-pairs with hamming distance below set threshold or with no overlapp
+                        if len(i.strip('-')) == len_bc:  # only full barcodes are merged with other groups
+                            results[i] += n
+                        else:
+                            results[x] += n
+                        found = True
+                        break
 
-            if not found:  # barcodes that never undergo the hamming distance threshold, are not merged
-                results[x] += n
-            else:
-                found = False
+                if not found:  # barcodes that never undergo the hamming distance threshold, are not merged
+                    results[x] += n
+                else:
+                    found = False
 
-        cell_col.append(cellid)
-        cell_col.append(results)
-        cell_file.write(cellid + '\t:\t')
-        results_sorted = sorted(results, key=lambda x: -results[x])
-        for key in results_sorted:
-            cell_file.write(key + '\t' + str(results[key]) + '\t')
-        cell_file.write('\n')
-    cell_file.close()
+            cell_col.append(cellid)
+            cell_col.append(results)
+            cell_file.write(cellid + '\t:\t')
+            results_sorted = sorted(results, key=lambda x: -results[x])
+            for key in results_sorted:
+                cell_file.write(key + '\t' + str(results[key]) + '\t')
+            cell_file.write('\n')
 
     # calling cell_col will give all cells and filtered barcodes. See below.
 
