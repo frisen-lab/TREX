@@ -135,22 +135,29 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barco
     return sorted_reads
 
 
-def compute_molecules(read_sorted):
-    if read_sorted:
-        len_bc = len(read_sorted[0][2])
+def compute_molecules(sorted_reads):
+    """
+    - Forms groups of reads with identical CellIDs and UMIs => belong to one molecule
+
+    - forms consensus sequence of all barcodes of one group,
+    """
+    # sorted_reads: list of (cell_id, umi, barcode) tuples
+    if sorted_reads:
+        len_bc = len(sorted_reads[0][2])
     else:
         len_bc = -1
+
     # extracts the start and end index of groups with identical UMI and cellID
     group_pos = [0]
-    for i in range(0, len(read_sorted) - 1):
-        if not (read_sorted[i][1] == read_sorted[i + 1][1] and read_sorted[i][0] == read_sorted[i + 1][0]):
+    for i in range(0, len(sorted_reads) - 1):
+        if not (sorted_reads[i][1] == sorted_reads[i + 1][1] and sorted_reads[i][0] == sorted_reads[i + 1][0]):
             group_pos.append(i + 1)
 
     # creates a list of sublists, each representing one group of reads with identical UMI/cellID
     groups = []
     for i in range(0, len(group_pos) - 1):
-        groups.append(read_sorted[group_pos[i]:group_pos[i + 1]])
-    groups.append(read_sorted[group_pos[-1]:(len(read_sorted) + 1)])
+        groups.append(sorted_reads[group_pos[i]:group_pos[i + 1]])
+    groups.append(sorted_reads[group_pos[-1]:(len(sorted_reads) + 1)])
 
     # converts each sequence of each group that is greater than 1 into a binary code, sums up binary code of all sequences, calculates max value for each position and outputs consensus sequence
     letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
@@ -217,11 +224,11 @@ def write_loom(cell_col, input_dir, run_name, len_bc):
     import loompy
 
     loom_name = os.path.basename(input_dir[:-5])
-    pwd_loom = os.path.join(run_name, loom_name + '.loom')
-    if not os.path.exists(pwd_loom):
+    loom_path = os.path.join(run_name, loom_name + '.loom')
+    if not os.path.exists(loom_path):
         loompy.create_from_cellranger(input_dir[:-5], run_name)
     # connects to the just created loom file in order to modify it
-    ds = loompy.connect(pwd_loom)
+    ds = loompy.connect(loom_path)
     # gets a list of all cellIDs appearing in the loom file
     all_cellIDs = ds.ca.CellID
 
