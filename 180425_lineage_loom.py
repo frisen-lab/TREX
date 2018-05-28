@@ -351,32 +351,14 @@ def main():
     #    hamming distance below threshold can be found (note that this way of merging is greedy),
     # 4. Outputs for each cells all its barcodes and corresponding counts
 
-    barcode_list = []
-    cellid_list = []
-
+    cell_id_groups = defaultdict(list)
     for molecule in sorted_molecules:
         barcode = molecule.barcode
         pure_bc = barcode.strip('-')
         # TODO may not work as intended (strip only removes prefixes and suffixes)
         pure_bc0 = barcode.strip('0')
         if len(pure_bc) > minlen_bc and len(pure_bc0) > minlen_bc:
-            barcode_list.append(barcode)
-            cellid_list.append(molecule.cell_id)
-
-    # extracts the start and end index of groups with identical cellID
-    group_pos = [0]
-    for i in range(0, len(cellid_list) - 1):
-        if cellid_list[i] != cellid_list[i + 1]:
-            group_pos.append(i + 1)
-
-    # creates a list of sublists, each representing one group of molecules with identical cellID
-    cell_id_groups = []
-    barcode_groups = []
-    for i in range(0, len(group_pos) - 1):
-        cell_id_groups.append(cellid_list[group_pos[i]:group_pos[i + 1]])
-        barcode_groups.append(barcode_list[group_pos[i]:group_pos[i + 1]])
-    cell_id_groups.append(cellid_list[group_pos[-1]:(len(cellid_list) + 1)])
-    barcode_groups.append(barcode_list[group_pos[-1]:(len(barcode_list) + 1)])
+            cell_id_groups[molecule.cell_id].append(molecule)
 
     with open(os.path.join(output_dir, 'cells.txt'), 'w') as cell_file:
         print(
@@ -385,9 +367,9 @@ def main():
         # merges barcodes and counts below hamming distance
         cell_col = []
         found = False
-        for bcgrp, group in zip(barcode_groups, cell_id_groups):
-            cell_id = group[0]
-            bc_counts = Counter(bcgrp)  # counts the appearances of different barcodes in each group
+        for cell_id, molecules in cell_id_groups.items():
+            barcodes = [molecule.barcode for molecule in molecules]
+            bc_counts = Counter(barcodes)  # counts the appearances of different barcodes in each group
             results = defaultdict(int)
             mc = sorted(bc_counts.most_common(), key=lambda x: -len(x[0].strip('-')))  # sorts barcodes based on counts
             while True:
