@@ -419,7 +419,7 @@ def main():
             cell_col.append(cell_id)
             cell_col.append(results)
             cell_file.write(cell_id + '\t:\t')
-            results_sorted = sorted(results, key=lambda x: -results[x])
+            results_sorted = sorted(results, key=lambda x: results[x], reverse=True)
             for key in results_sorted:
                 cell_file.write(key + '\t' + str(results[key]) + '\t')
             cell_file.write('\n')
