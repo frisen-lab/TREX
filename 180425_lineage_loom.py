@@ -450,17 +450,17 @@ def main():
     # filters out barcodes with a count of one that appear in another cell
     for cell in cells:
         dict_cp = dict(cell.barcode_counts)
-        for key in dict_cp:
-            if key in cell.barcode_counts:
-                if cell.barcode_counts[key] == 1:  # filters out barcodes that are only based on one molecule
-                    if all_barcode_counts[key] > 1:  # filters out barcodes that appear more than once in the whole list
-                        del cell.barcode_counts[key]  # removes barcodes that meet both criteria
-                    else:
-                        for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
-                            if cell.cell_id == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
-                                if len(j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
-                                    if key in cell.barcode_counts:
-                                        del cell.barcode_counts[key]  # deletes those barcodes
+        for barcode in dict_cp:
+            # filters out barcodes that are only based on one molecule
+            if barcode in cell.barcode_counts and cell.barcode_counts[barcode] == 1:
+                if all_barcode_counts[barcode] > 1:  # filters out barcodes that appear more than once in the whole list
+                    del cell.barcode_counts[barcode]  # removes barcodes that meet both criteria
+                else:
+                    for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
+                        if cell.cell_id == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
+                            if len(j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
+                                if barcode in cell.barcode_counts:
+                                    del cell.barcode_counts[barcode]  # deletes those barcodes
 
     with open(os.path.join(output_dir, 'cells_filtered.txt'), 'w') as cellfilt_file:
         print(
@@ -481,12 +481,12 @@ def main():
             # cellIDs and filtered barcodes can be found in cells_filtered.txt
 
             # forms groups of cells with same barcode
-            for key in cell.barcode_counts:
-                if key not in groups_dict:  # creates a new group if not existing yet. Saves cellID in a list
-                    groups_dict.update({key: [cell.cell_id, cell.barcode_counts[key]]})
+            for barcode in cell.barcode_counts:
+                if barcode not in groups_dict:  # creates a new group if not existing yet. Saves cellID in a list
+                    groups_dict.update({barcode: [cell.cell_id, cell.barcode_counts[barcode]]})
                 else:  # updates an existing group by appending cellID to the cellID list
-                    groups_dict[key].append(cell.cell_id)
-                    groups_dict[key].append(cell.barcode_counts[key])
+                    groups_dict[barcode].append(cell.cell_id)
+                    groups_dict[barcode].append(cell.barcode_counts[barcode])
 
     groupsdict_s = sorted(groups_dict.items(), key=operator.itemgetter(0))
 
