@@ -355,15 +355,13 @@ def main():
     cellid_list = []
 
     for molecule in sorted_molecules:
-        cellid = molecule.cell_id
-        umi = molecule.umi
         barcode = molecule.barcode
         pure_bc = barcode.strip('-')
+        # TODO may not work as intended (strip only removes prefixes and suffixes)
         pure_bc0 = barcode.strip('0')
-        if len(pure_bc) > minlen_bc and len(
-                pure_bc0) > minlen_bc:  # filters out barcodes shorter than min length
+        if len(pure_bc) > minlen_bc and len(pure_bc0) > minlen_bc:
             barcode_list.append(barcode)
-            cellid_list.append(cellid)
+            cellid_list.append(molecule.cell_id)
 
     # extracts the start and end index of groups with identical cellID
     group_pos = [0]
@@ -372,13 +370,13 @@ def main():
             group_pos.append(i + 1)
 
     # creates a list of sublists, each representing one group of molecules with identical cellID
-    cellid_grp = []
-    barcode_grp = []
+    cell_id_groups = []
+    barcode_groups = []
     for i in range(0, len(group_pos) - 1):
-        cellid_grp.append(cellid_list[group_pos[i]:group_pos[i + 1]])
-        barcode_grp.append(barcode_list[group_pos[i]:group_pos[i + 1]])
-    cellid_grp.append(cellid_list[group_pos[-1]:(len(cellid_list) + 1)])
-    barcode_grp.append(barcode_list[group_pos[-1]:(len(barcode_list) + 1)])
+        cell_id_groups.append(cellid_list[group_pos[i]:group_pos[i + 1]])
+        barcode_groups.append(barcode_list[group_pos[i]:group_pos[i + 1]])
+    cell_id_groups.append(cellid_list[group_pos[-1]:(len(cellid_list) + 1)])
+    barcode_groups.append(barcode_list[group_pos[-1]:(len(barcode_list) + 1)])
 
     with open(os.path.join(output_dir, 'cells.txt'), 'w') as cell_file:
         print(
@@ -387,9 +385,8 @@ def main():
         # merges barcodes and counts below hamming distance
         cell_col = []
         found = False
-        for group in cellid_grp:
-            cellid = group[0]
-            bcgrp = barcode_grp[cellid_grp.index(group)]
+        for bcgrp, group in zip(barcode_groups, cell_id_groups):
+            cell_id = group[0]
             bc_counts = Counter(bcgrp)  # counts the appearances of different barcodes in each group
             results = defaultdict(int)
             mc = sorted(bc_counts.most_common(), key=lambda x: -len(x[0].strip('-')))  # sorts barcodes based on counts
@@ -419,9 +416,9 @@ def main():
                 else:
                     found = False
 
-            cell_col.append(cellid)
+            cell_col.append(cell_id)
             cell_col.append(results)
-            cell_file.write(cellid + '\t:\t')
+            cell_file.write(cell_id + '\t:\t')
             results_sorted = sorted(results, key=lambda x: -results[x])
             for key in results_sorted:
                 cell_file.write(key + '\t' + str(results[key]) + '\t')
