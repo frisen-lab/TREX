@@ -14,6 +14,7 @@ import argparse
 import numpy as np
 from collections import Counter
 from collections import defaultdict
+from collections import namedtuple
 import operator
 
 
@@ -72,6 +73,9 @@ def read_cellid_barcodes(path):
     return set(ids)
 
 
+Read = namedtuple('Read', ['cell_id', 'umi', 'barcode'])
+
+
 def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barcode_end):
     """
     bam_path -- path to input BAM file
@@ -82,7 +86,7 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barco
     out_bam = pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file)
 
     # Fetches those reads aligning to the artifical, barcode-containing chromosome
-    read_col = []
+    reads = []
     for read in alignment_file.fetch(chr_name):
         # Skip reads without cellID or UMI
         if not read.has_tag('CB') or not read.has_tag('UB'):
@@ -124,14 +128,12 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barco
                 barcode[ref_pos - barcode_start] = query_base
 
         barcode = ''.join(barcode)
-        umi = read.get_tag('UB')
-        read_col.append((cell_id, umi, barcode))
+        reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), barcode=barcode))
 
-    # sorts reads first based on UMI, then CellID, then barcode
-    sorted_reads = sorted(read_col, key=lambda read: (read[1], read[0], read[2]))
+    sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.barcode))
     alignment_file.close()
     out_bam.close()
-    assert len(sorted_reads) == 0 or len(sorted_reads[0][2]) == barcode_end - barcode_start
+    assert len(sorted_reads) == 0 or len(sorted_reads[0].barcode) == barcode_end - barcode_start
     return sorted_reads
 
 
@@ -141,6 +143,7 @@ def compute_consensus(sequences):
 
     All sequences must have the same length.
     """
+    # converts each sequence of each group that is greater than 1 into a binary code, sums up binary code of all sequences, calculates max value for each position and outputs consensus sequence
     assert sequences
     letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
 
@@ -176,16 +179,10 @@ def compute_molecules(sorted_reads):
 
     - forms consensus sequence of all barcodes of one group,
     """
-    # sorted_reads: list of (cell_id, umi, barcode) tuples
-    if sorted_reads:
-        len_bc = len(sorted_reads[0][2])
-    else:
-        len_bc = -1
-
     # extracts the start and end index of groups with identical UMI and cellID
     group_pos = [0]
     for i in range(0, len(sorted_reads) - 1):
-        if not (sorted_reads[i][1] == sorted_reads[i + 1][1] and sorted_reads[i][0] == sorted_reads[i + 1][0]):
+        if not (sorted_reads[i].umi == sorted_reads[i + 1].umi and sorted_reads[i].cell_id == sorted_reads[i + 1].cell_id):
             group_pos.append(i + 1)
 
     # creates a list of sublists, each representing one group of reads with identical UMI/cellID
@@ -194,16 +191,14 @@ def compute_molecules(sorted_reads):
         groups.append(sorted_reads[group_pos[i]:group_pos[i + 1]])
     groups.append(sorted_reads[group_pos[-1]:(len(sorted_reads) + 1)])
 
-    # converts each sequence of each group that is greater than 1 into a binary code, sums up binary code of all sequences, calculates max value for each position and outputs consensus sequence
-
     mol_col = list()
-    for group in groups:  # takes out each group
-        if len(group) > 1:  # filters out groups that contain only one read
-            barcodes = [read[2] for read in group]
+    for group in groups:
+        if len(group) > 1:
+            barcodes = [read.barcode for read in group]
             barcode_consensus = compute_consensus(barcodes)
-            mol_col.append((group[0][0], group[0][1], barcode_consensus))
+            mol_col.append((group[0].cell_id, group[0].umi, barcode_consensus))
         else:
-            mol_col.append((group[0][0], group[0][1], group[0][2]))
+            mol_col.append((group[0].cell_id, group[0].umi, group[0].barcode))
     # calling mol_col will give a list of all molecules with corresponding UMIs/cellIDs. See molecules.txt
 
     # sorts molecules based on cellIDs, then barcodes, then UMIs
@@ -334,7 +329,7 @@ def main():
         print(
             '#Each output line corresponds to one read and has the following style: CellID\tUMI\tBarcode' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=read_file)
         for read in sorted_reads:
-            print(*read[:3], sep='\t', file=read_file)
+            print(read.cell_id, read.umi, read.barcode, sep='\t', file=read_file)
 
     # Part III: Molecule construction
 
