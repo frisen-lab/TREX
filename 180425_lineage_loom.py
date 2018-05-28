@@ -419,7 +419,10 @@ def main():
     cells = compute_cells(sorted_molecules, minlen_bc, minham)
     with open(os.path.join(output_dir, 'cells.txt'), 'w') as cell_file:
         print(
-            '#Each output line corresponds to one cell and has the following style: CellID\tBarcode1\tCount1\tBarcode2\tCount2...' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=cell_file)
+            '#Each output line corresponds to one cell and has the following style: '
+            'CellID\tBarcode1\tCount1\tBarcode2\tCount2...\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=cell_file)
         for cell in cells:
             cell_file.write(cell.cell_id + '\t:\t')
             sorted_barcodes = sorted(cell.barcode_counts, key=lambda x: cell.barcode_counts[x], reverse=True)
@@ -427,11 +430,6 @@ def main():
                 print(barcode, cell.barcode_counts[barcode], sep='\t', file=cell_file, end='\t')
             print(file=cell_file)
 
-    # TODO temporary
-    cell_col = []
-    for cell in cells:
-        cell_col.append(cell.cell_id)
-        cell_col.append(cell.barcode_counts)
 
     # calling cell_col will give all cells and filtered barcodes. See below.
 
@@ -447,58 +445,62 @@ def main():
 
     bc_all = list()
     cellids = list()
-    for i in range(1, len(cell_col), 2):
-        for key in cell_col[i]:
-            cellids.append(cell_col[i - 1])
-            bc_all.append(key)
-            bc_all.append(cell_col[i][key])
+    for cell in cells:
+        for barcode, count in cell.barcode_counts.items():
+            cellids.append(cell.cell_id)
+            bc_all.append(barcode)
+            bc_all.append(count)
 
     # filters out barcodes with a count of one that appear in another cell
-    for i in range(1, len(cell_col), 2):
-        dict_cp = dict(cell_col[i])
+    for cell in cells:
+        dict_cp = dict(cell.barcode_counts)
         for key in dict_cp:
-            if key in cell_col[i]:
-                if cell_col[i][key] == 1:  # filters out barcodes that are only based on one molecule
+            if key in cell.barcode_counts:
+                if cell.barcode_counts[key] == 1:  # filters out barcodes that are only based on one molecule
                     if bc_all.count(key) > 1:  # filters out barcodes that appear more than once in the whole list
-                        del cell_col[i][key]  # removes barcodes that meet both criteria
+                        del cell.barcode_counts[key]  # removes barcodes that meet both criteria
                     else:
                         for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
-                            if cell_col[i - 1] == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
+                            if cell.cell_id == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
                                 if len(j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
-                                    if key in cell_col[i]:
-                                        del cell_col[i][key]  # deletes those barcodes
-
-    # calling cell_col will give a list of all cellIDs and only the filtered barcodes
+                                    if key in cell.barcode_counts:
+                                        del cell.barcode_counts[key]  # deletes those barcodes
 
     with open(os.path.join(output_dir, 'cells_filtered.txt'), 'w') as cellfilt_file:
         print(
-            '#Each output line corresponds to one cell and has the following style: CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=cellfilt_file)
+            '#Each output line corresponds to one cell and has the following style: '
+            'CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=cellfilt_file)
 
         groups_dict = dict()
-        for i in range(0, len(cell_col), 2):
-            sort_d = sorted(cell_col[i + 1].items(), key=operator.itemgetter(1))
-            sort_d.reverse()
+
+        for cell in cells:
+            sort_d = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1), reverse=True)
             if len(sort_d) != 0:
-                cellfilt_file.write(cell_col[i] + '\t:\t')
+                cellfilt_file.write(cell.cell_id + '\t:\t')
                 for tup in sort_d:
                     cellfilt_file.write(tup[0] + '\t' + str(tup[1]) + '\t')
                 cellfilt_file.write('\n')
             # cellIDs and filtered barcodes can be found in cells_filtered.txt
 
             # forms groups of cells with same barcode
-            for key in cell_col[i + 1]:
-                if not key in groups_dict:  # creates a new group if not existing yet. Saves cellID in a list
-                    groups_dict.update({key: [cell_col[i], cell_col[i + 1][key]]})
+            for key in cell.barcode_counts:
+                if key not in groups_dict:  # creates a new group if not existing yet. Saves cellID in a list
+                    groups_dict.update({key: [cell.cell_id, cell.barcode_counts[key]]})
                 else:  # updates an existing group by appending cellID to the cellID list
-                    groups_dict[key].append(cell_col[i])
-                    groups_dict[key].append(cell_col[i + 1][key])
+                    groups_dict[key].append(cell.cell_id)
+                    groups_dict[key].append(cell.barcode_counts[key])
 
     groupsdict_s = sorted(groups_dict.items(), key=operator.itemgetter(0))
 
     # in groups.txt all barcodes and their corresponding cellIDs can be found
     with open(os.path.join(output_dir, 'groups.txt'), 'w') as groups_file:
         print(
-            '#Each output line corresponds to one barcode group (clone) and has the following style: Barcode\t:\tCellID1\tbarcode-count1\tCellID2\tbarcode-count2...' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=groups_file)
+            '#Each output line corresponds to one barcode group (clone) and has '
+            'the following style: Barcode\t:\tCellID1\tbarcode-count1\tCellID2\tbarcode-count2...\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=groups_file)
 
         for i in range(0, len(groupsdict_s)):
             groups_file.write(groupsdict_s[i][0] + '\t:\t')
@@ -508,6 +510,11 @@ def main():
 
     # Create a loom file if requested
     if args.loom:
+        # TODO temporary
+        cell_col = []
+        for cell in cells:
+            cell_col.append(cell.cell_id)
+            cell_col.append(cell.barcode_counts)
         write_loom(cell_col, input_dir, output_dir, len_bc)
 
     print('Run completed!')
