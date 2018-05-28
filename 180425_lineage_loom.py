@@ -369,18 +369,18 @@ def main():
         found = False
         for cell_id, molecules in cell_id_groups.items():
             barcodes = [molecule.barcode for molecule in molecules]
-            bc_counts = Counter(barcodes)  # counts the appearances of different barcodes in each group
             results = defaultdict(int)
-            mc = sorted(bc_counts.most_common(), key=lambda x: -len(x[0].strip('-')))  # sorts barcodes based on counts
+            # barcodes sorted by counts
+            mc = sorted(Counter(barcodes).most_common(), key=lambda x: len(x[0].strip('-')), reverse=True)
             while True:
-                x, n = mc.pop(-1)  # takes out and remove barcode with lowest count from list
+                barcode, n = mc.pop(-1)  # takes out and remove barcode with lowest count from list
                 if len(mc) == 0:  # or '0' in x: #if barcode is the last in the list or it contains insertions/deletions (cannot be compared) just keeps barcode without merging
-                    results[x] += n
+                    results[barcode] += n
                     break
                 for i, m in mc:  # goes through remaining barcodes in list
                     hamming = 0
                     overlap_count = 0
-                    for l, k in zip(x, i):
+                    for l, k in zip(barcode, i):
                         if l != '-' and k != '-':  # only compares base-containing and not empty position
                             overlap_count += 1  # counts the overlap of two barcodes
                             if l != k:
@@ -389,12 +389,12 @@ def main():
                         if len(i.strip('-')) == len_bc:  # only full barcodes are merged with other groups
                             results[i] += n
                         else:
-                            results[x] += n
+                            results[barcode] += n
                         found = True
                         break
 
                 if not found:  # barcodes that never undergo the hamming distance threshold, are not merged
-                    results[x] += n
+                    results[barcode] += n
                 else:
                     found = False
 
