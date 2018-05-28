@@ -182,36 +182,24 @@ def compute_molecules(sorted_reads):
 
     - forms consensus sequence of all barcodes of one group,
     """
-    # extracts the start and end index of groups with identical UMI and cellID
-    group_pos = [0]
-    for i in range(1, len(sorted_reads)):
-        if not (sorted_reads[i-1].umi == sorted_reads[i].umi and sorted_reads[i-1].cell_id == sorted_reads[i].cell_id):
-            group_pos.append(i)
-
-    # creates a list of sublists, each representing one group of reads with identical UMI/cellID
-    groups = []
-    for i in range(0, len(group_pos) - 1):
-        groups.append(sorted_reads[group_pos[i]:group_pos[i + 1]])
-    groups.append(sorted_reads[group_pos[-1]:])
-
-    xgroups = defaultdict(list)
+    groups = defaultdict(list)
     for read in sorted_reads:
-        xgroups[(read.umi, read.cell_id)].append(read.barcode)
+        groups[(read.umi, read.cell_id)].append(read.barcode)
 
     molecules = []
-    for (umi, cell_id), barcodes in xgroups.items():
+    for (umi, cell_id), barcodes in groups.items():
         barcode_consensus = compute_consensus(barcodes)
         molecules.append(Read(cell_id=cell_id, umi=umi, barcode=barcode_consensus))
 
     sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.barcode, mol.umi))
 
     # TODO temporary conversion back to previous format
-    groups = []
-    for (umi, cell_id), barcodes in xgroups.items():
+    groups_as_lists = []
+    for (umi, cell_id), barcodes in groups.items():
         reads = [Read(cell_id=cell_id, umi=umi, barcode=barcode) for barcode in barcodes]
-        groups.append(reads)
+        groups_as_lists.append(reads)
 
-    return groups, sorted_molecules
+    return groups_as_lists, sorted_molecules
 
 
 def write_loom(cell_col, input_dir, run_name, len_bc):
