@@ -199,12 +199,11 @@ def compute_molecules(sorted_reads):
     for (umi, cell_id), barcodes in xgroups.items():
         if len(barcodes) > 1:
             barcode_consensus = compute_consensus(barcodes)
-            molecules.append((cell_id, umi, barcode_consensus))
+            molecules.append(Read(cell_id=cell_id, umi=umi, barcode=barcode_consensus))
         else:
-            molecules.append((cell_id, umi, barcodes[0]))
+            molecules.append(Read(cell_id=cell_id, umi=umi, barcode=barcodes[0]))
 
-    # sorts molecules based on cellIDs, then barcodes, then UMIs
-    sorted_molecules = sorted(molecules, key=lambda mol: (mol[0], mol[2], mol[1]))
+    sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.barcode, mol.umi))
 
     # TODO temporary conversion back to previous format
     groups = []
@@ -350,8 +349,8 @@ def main():
     with open(os.path.join(output_dir, 'molecules.txt'), 'w') as mol_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: CellID\tUMI\tBarcode' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=mol_file)
-        for mol in sorted_molecules:
-            print(*mol[:3], sep='\t', file=mol_file)
+        for molecule in sorted_molecules:
+            print(molecule.cell_id, molecule.umi, molecule.barcode, sep='\t', file=mol_file)
 
     # Part IV: Cell construction
 
@@ -367,10 +366,10 @@ def main():
     barcode_list = []
     cellid_list = []
 
-    for mol in sorted_molecules:
-        cellid = mol[0]
-        umi = mol[1]
-        barcode = mol[2]
+    for molecule in sorted_molecules:
+        cellid = molecule.cell_id
+        umi = molecule.umi
+        barcode = molecule.barcode
         pure_bc = barcode.strip('-')
         pure_bc0 = barcode.strip('0')
         if len(pure_bc) > minlen_bc and len(
@@ -466,15 +465,12 @@ def main():
         for key in dict_cp:
             if key in cell_col[i]:
                 if cell_col[i][key] == 1:  # filters out barcodes that are only based on one molecule
-                    if bc_all.count(
-                            key) > 1:  # filters out barcodes that appear more than once in the whole list
+                    if bc_all.count(key) > 1:  # filters out barcodes that appear more than once in the whole list
                         del cell_col[i][key]  # removes barcodes that meet both criteria
                     else:
                         for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
-                            if (cell_col[i - 1] == j[0][
-                                0]):  # if cellID is identical to cellID in groups, it keeps the group
-                                if len(
-                                        j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
+                            if cell_col[i - 1] == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
+                                if len(j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
                                     if key in cell_col[i]:
                                         del cell_col[i][key]  # deletes those barcodes
 
