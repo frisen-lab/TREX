@@ -135,6 +135,41 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barco
     return sorted_reads
 
 
+def compute_consensus(sequences):
+    """
+    Compute a consensus sequence for a set of sequences.
+
+    All sequences must have the same length.
+    """
+    assert sequences
+    letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
+
+    length = len(sequences[0])
+    consens_np = np.zeros([length, 6], dtype='float16')
+    for sequence in sequences:
+        align = np.zeros([length, 6], dtype='float16')
+        for (l, s) in enumerate(sequence):  # takes out each base from sequence
+            # turns each base into a number and position in numpy array
+            if s == 'A':
+                align[l, 0] = 1
+            elif s == 'C':
+                align[l, 1] = 1
+            elif s == 'G':
+                align[l, 2] = 1
+            elif s == 'T':
+                align[l, 3] = 1
+            elif s == '-':
+                align[l, 4] = 0.1
+            elif s == '0':
+                align[l, 5] = 0.1
+        consens_np = consens_np + align  # sums up numbers of each position
+    # calculate base with maximum count for each position
+    bin_consens = np.argmax(align, axis=1)
+    # converts maximum counts into consensus sequence
+    x = letters[bin_consens]
+    return ''.join(x)
+
+
 def compute_molecules(sorted_reads):
     """
     - Forms groups of reads with identical CellIDs and UMIs => belong to one molecule
@@ -160,36 +195,13 @@ def compute_molecules(sorted_reads):
     groups.append(sorted_reads[group_pos[-1]:(len(sorted_reads) + 1)])
 
     # converts each sequence of each group that is greater than 1 into a binary code, sums up binary code of all sequences, calculates max value for each position and outputs consensus sequence
-    letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
 
     mol_col = list()
     for group in groups:  # takes out each group
         if len(group) > 1:  # filters out groups that contain only one read
-            consens_np = np.zeros([len_bc, 6], dtype='float16')
-            for sequence in group:
-                align = np.zeros([len_bc, 6], dtype='float16')
-                for (l, s) in enumerate(sequence[2]):  # takes out each base from sequence
-                    # turns each base into a number and position in numpy array
-                    if s == 'A':
-                        align[l, 0] = 1
-                    elif s == 'C':
-                        align[l, 1] = 1
-                    elif s == 'G':
-                        align[l, 2] = 1
-                    elif s == 'T':
-                        align[l, 3] = 1
-                    elif s == '-':
-                        align[l, 4] = 0.1
-                    elif s == '0':
-                        align[l, 5] = 0.1
-                consens_np = consens_np + align  # sums up numbers of each position
-            # calculate base with maximum count for each position
-            bin_consens = np.argmax(align, axis=1)
-            # converts maximum counts into consensus sequence
-            x = letters[bin_consens]
-            consensus = ''.join(x)
-
-            mol_col.append((group[0][0], group[0][1], consensus))
+            barcodes = [read[2] for read in group]
+            barcode_consensus = compute_consensus(barcodes)
+            mol_col.append((group[0][0], group[0][1], barcode_consensus))
         else:
             mol_col.append((group[0][0], group[0][1], group[0][2]))
     # calling mol_col will give a list of all molecules with corresponding UMIs/cellIDs. See molecules.txt
