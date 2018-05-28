@@ -166,9 +166,9 @@ def compute_molecules(sorted_reads):
     for group in groups:  # takes out each group
         if len(group) > 1:  # filters out groups that contain only one read
             consens_np = np.zeros([len_bc, 6], dtype='float16')
-            for j in range(0, len(group)):  # takes out each sequence from a group
+            for sequence in group:
                 align = np.zeros([len_bc, 6], dtype='float16')
-                for (l, s) in enumerate(group[j][2]):  # takes out each base from sequence
+                for (l, s) in enumerate(sequence[2]):  # takes out each base from sequence
                     # turns each base into a number and position in numpy array
                     if s == 'A':
                         align[l, 0] = 1
