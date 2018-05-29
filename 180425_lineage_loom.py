@@ -8,14 +8,16 @@ instructions => cellranger_instructions.sh
 Run: Run program in cellranger 'outs' directory OR indicate path to 'outs'-directory via --path flag
 """
 
-import pysam
 import os.path
 import argparse
-import numpy as np
 from collections import Counter
 from collections import defaultdict
 from collections import namedtuple
 import operator
+
+import numpy as np
+import pysam
+import loompy
 
 
 __author__ = 'leonie.von.berlin@stud.ki.se'
@@ -282,7 +284,6 @@ def write_loom(cell_col, input_dir, run_name, len_bc):
                     cnt_dict[str(k)].append(0)
 
     # creates the loom file based on cellranger output files
-    import loompy
 
     loom_name = os.path.basename(input_dir[:-5])
     loom_path = os.path.join(run_name, loom_name + '.loom')
