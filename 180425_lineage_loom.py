@@ -204,7 +204,7 @@ def compute_molecules(sorted_reads):
     return groups_as_lists, sorted_molecules
 
 
-def compute_cells(sorted_molecules, minlen_bc, minham):
+def compute_cells(sorted_molecules, minimum_barcode_length, minham):
     # 1. Forms groups of molecules (with set barcode minimum length) that have identical cellIDs
     #    => belong to one cell,
     # 2. counts number of appearances of each barcode in each group,
@@ -220,7 +220,7 @@ def compute_cells(sorted_molecules, minlen_bc, minham):
         pure_bc = barcode.strip('-')
         # TODO may not work as intended (strip only removes prefixes and suffixes)
         pure_bc0 = barcode.strip('0')
-        if len(pure_bc) > minlen_bc and len(pure_bc0) > minlen_bc:
+        if len(pure_bc) >= minimum_barcode_length and len(pure_bc0) >= minimum_barcode_length:
             cell_id_groups[molecule.cell_id].append(molecule)
 
     cells = []
@@ -361,13 +361,11 @@ def write_loom(cell_col, input_dir, run_name, len_bc):
 def main():
     args = parse_arguments()
 
-    chr_name = args.chromosome
     input_dir = args.path
     output_dir = args.name
-    start_bc = args.start
-    end_bc = args.end
-    len_bc = end_bc - start_bc
-    minlen_bc = args.min_length - 1
+    barcode_start = args.start
+    barcode_end = args.end
+    len_bc = barcode_end - barcode_start
     minham = args.hamming + 1
 
     os.makedirs(output_dir)
@@ -383,8 +381,8 @@ def main():
 
     sorted_reads = read_bam(
         os.path.join(input_dir, 'possorted_genome_bam.bam'),
-        os.path.join(output_dir, chr_name + '_entries.bam'),
-        cell_ids, chr_name, start_bc, end_bc)
+        os.path.join(output_dir, args.chromosome + '_entries.bam'),
+        cell_ids, args.chromosome, barcode_start, barcode_end)
 
     with open(os.path.join(output_dir, 'reads.txt'), 'w') as read_file:
         print(
@@ -416,7 +414,7 @@ def main():
     #    hamming distance below threshold can be found (note that this way of merging is greedy),
     # 4. Outputs for each cells all its barcodes and corresponding counts
 
-    cells = compute_cells(sorted_molecules, minlen_bc, minham)
+    cells = compute_cells(sorted_molecules, args.min_length, minham)
     with open(os.path.join(output_dir, 'cells.txt'), 'w') as cell_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
@@ -430,8 +428,6 @@ def main():
                 print('', barcode, cell.barcode_counts[barcode], sep='\t', file=cell_file, end='')
             print(file=cell_file)
 
-
-    # calling cell_col will give all cells and filtered barcodes. See below.
 
     # Part V + VI: Barcodes filtering and grouping
 
