@@ -223,7 +223,6 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
     cells = []
 
     # merges barcodes and counts below hamming distance
-    cell_col = []
     found = False
     for cell_id, molecules in cell_id_groups.items():
         barcodes = [molecule.barcode for molecule in molecules]
@@ -256,9 +255,6 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
                 results[barcode] += n
             else:
                 found = False
-
-        cell_col.append(cell_id)
-        cell_col.append(results)
 
         cells.append(Cell(cell_id, results))
     return cells
