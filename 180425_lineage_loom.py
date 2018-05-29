@@ -256,7 +256,7 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
             else:
                 found = False
 
-        cells.append(Cell(cell_id, results))
+        cells.append(Cell(cell_id=cell_id, barcode_counts=results))
     return cells
 
 
@@ -293,7 +293,8 @@ def write_loom(cell_col, input_dir, run_name, len_bc):
     # gets a list of all cellIDs appearing in the loom file
     all_cellIDs = ds.ca.CellID
 
-    # brings barcode data into correct format for loom file. Array must have same shape as all_cellIDs
+    # brings barcode data into correct format for loom file.
+    # Array must have same shape as all_cellIDs
     bc_fulldict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cnt_fulldict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     for id1 in all_cellIDs:
@@ -379,7 +380,10 @@ def main():
 
     with open(os.path.join(output_dir, 'reads.txt'), 'w') as read_file:
         print(
-            '#Each output line corresponds to one read and has the following style: CellID\tUMI\tBarcode' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=read_file)
+            '#Each output line corresponds to one read and has the following style: '
+            'CellID\tUMI\tBarcode\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=read_file)
         for read in sorted_reads:
             print(read.cell_id, read.umi, read.barcode, sep='\t', file=read_file)
 
@@ -389,11 +393,14 @@ def main():
     # 2. forms consensus sequence of all barcodes of one group,
     # 3. outputs molecules and corresponding CellIDs/UMIs
 
-    groups, sorted_molecules = compute_molecules(sorted_reads)
+    groups, molecules = compute_molecules(sorted_reads)
     with open(os.path.join(output_dir, 'molecules.txt'), 'w') as mol_file:
         print(
-            '#Each output line corresponds to one molecule and has the following style: CellID\tUMI\tBarcode' + '\n' + '# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)', file=mol_file)
-        for molecule in sorted_molecules:
+            '#Each output line corresponds to one molecule and has the following style: '
+            'CellID\tUMI\tBarcode\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=mol_file)
+        for molecule in molecules:
             print(molecule.cell_id, molecule.umi, molecule.barcode, sep='\t', file=mol_file)
 
     # Part IV: Cell construction
@@ -407,7 +414,7 @@ def main():
     #    hamming distance below threshold can be found (note that this way of merging is greedy),
     # 4. Outputs for each cells all its barcodes and corresponding counts
 
-    cells = compute_cells(sorted_molecules, args.min_length, minham)
+    cells = compute_cells(molecules, args.min_length, minham)
     with open(os.path.join(output_dir, 'cells.txt'), 'w') as cell_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
@@ -420,7 +427,6 @@ def main():
             for barcode in sorted_barcodes:
                 print('', barcode, cell.barcode_counts[barcode], sep='\t', file=cell_file, end='')
             print(file=cell_file)
-
 
     # Part V + VI: Barcodes filtering and grouping
 
