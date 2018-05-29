@@ -14,10 +14,13 @@ from collections import Counter
 from collections import defaultdict
 from collections import namedtuple
 import operator
+import warnings
 
 import numpy as np
 import pysam
-import loompy
+with warnings.catch_warnings():
+    warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
+    import loompy
 
 
 __author__ = 'leonie.von.berlin@stud.ki.se'
