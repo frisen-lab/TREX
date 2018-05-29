@@ -14,7 +14,7 @@ Minimal test dataset
 `mini/` contains a small test dataset. The BAM file was created by downsampling
 a full dataset:
 
-    samtools view -s 0.01 -b /proj/uppstore2018019/P10306/pMR439_clone16_P10306_1002/10x_14_pMR439_clone16/outs/possorted_genome_bam.bam chrTomato-N > new.bam
+    samtools view -s 0.1 -b /proj/uppstore2018019/P10306/pMR439_clone16_P10306_1002/10x_14_pMR439_clone16/outs/possorted_genome_bam.bam chrTomato-N > new.bam
 
 `barcodes.tsv` is a copy of `/proj/uppstore2018019/P10306/pMR439_clone16_P10306_1002/10x_14_pMR439_clone16/outs/filtered_gene_bc_matrices/hg38_Tomato-N/barcodes.tsv`
 
