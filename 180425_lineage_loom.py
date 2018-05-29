@@ -141,41 +141,38 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barco
 
 def compute_consensus(sequences):
     """
-    Compute a consensus sequence for a set of sequences.
+    Compute a consensus for a set of sequences.
 
     All sequences must have the same length.
     """
-    # converts each sequence of each group that is greater than 1 into a binary code, sums up binary code of all sequences, calculates max value for each position and outputs consensus sequence
     if len(sequences) == 1:
         return sequences[0]
+    assert sequences
 
     letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
-
-    assert sequences
     length = len(sequences[0])
     consens_np = np.zeros([length, 6], dtype='float16')
     for sequence in sequences:
         align = np.zeros([length, 6], dtype='float16')
-        for (l, s) in enumerate(sequence):  # takes out each base from sequence
+        for (i, ch) in enumerate(sequence):
             # turns each base into a number and position in numpy array
-            if s == 'A':
-                align[l, 0] = 1
-            elif s == 'C':
-                align[l, 1] = 1
-            elif s == 'G':
-                align[l, 2] = 1
-            elif s == 'T':
-                align[l, 3] = 1
-            elif s == '-':
-                align[l, 4] = 0.1
-            elif s == '0':
-                align[l, 5] = 0.1
-        consens_np = consens_np + align  # sums up numbers of each position
+            if ch == 'A':
+                align[i, 0] = 1
+            elif ch == 'C':
+                align[i, 1] = 1
+            elif ch == 'G':
+                align[i, 2] = 1
+            elif ch == 'T':
+                align[i, 3] = 1
+            elif ch == '-':
+                align[i, 4] = 0.1
+            elif ch == '0':
+                align[i, 5] = 0.1
+        consens_np += align
     # calculate base with maximum count for each position
     bin_consens = np.argmax(align, axis=1)
-    # converts maximum counts into consensus sequence
-    x = letters[bin_consens]
-    return ''.join(x)
+    # convert maximum counts into consensus sequence
+    return ''.join(letters[bin_consens])
 
 
 def compute_molecules(sorted_reads):
