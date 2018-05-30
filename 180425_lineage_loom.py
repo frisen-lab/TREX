@@ -80,6 +80,8 @@ def read_cellid_barcodes(path):
 
 Read = namedtuple('Read', ['cell_id', 'umi', 'barcode'])
 
+Molecule = namedtuple('Molecule', ['cell_id', 'umi', 'barcode', 'read_count'])
+
 Cell = namedtuple('Cell', ['cell_id', 'barcode_counts'])
 
 
@@ -193,7 +195,8 @@ def compute_molecules(sorted_reads):
     molecules = []
     for (umi, cell_id), barcodes in groups.items():
         barcode_consensus = compute_consensus(barcodes)
-        molecules.append(Read(cell_id=cell_id, umi=umi, barcode=barcode_consensus))
+        molecules.append(
+            Molecule(cell_id=cell_id, umi=umi, barcode=barcode_consensus, read_count=len(barcodes)))
 
     sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.barcode, mol.umi))
 
