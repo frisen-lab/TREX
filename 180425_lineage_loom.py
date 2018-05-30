@@ -293,9 +293,11 @@ def filter_cells(cells, molecules):
             if overall_barcode_counts[barcode] > 1:
                 # This barcode occurs also in other cells - remove it
                 del barcode_counts[barcode]
-            else:
-                if cell.cell_id in single_barcode_cell_ids:
-                    del barcode_counts[barcode]
+            elif cell.cell_id in single_barcode_cell_ids:
+                # FIXME
+                # This is probably incorrect (too broad): The barcode is discarded if *any*
+                # barcode in this cell is based on a single read
+                del barcode_counts[barcode]
         new_cells.append(Cell(cell_id=cell.cell_id, barcode_counts=barcode_counts))
     return new_cells
 
