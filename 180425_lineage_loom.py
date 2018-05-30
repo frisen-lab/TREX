@@ -476,14 +476,14 @@ def main():
             for tup in sort_d:
                 cellfilt_file.write('\t' + tup[0] + '\t' + str(tup[1]))
             cellfilt_file.write('\n')
-            # cellIDs and filtered barcodes can be found in cells_filtered.txt
+    # cellIDs and filtered barcodes can be found in cells_filtered.txt
 
     groups_dict = dict()
     for cell in cells:
         # forms groups of cells with same barcode
         for barcode in cell.barcode_counts:
             if barcode not in groups_dict:  # creates a new group if not existing yet. Saves cellID in a list
-                groups_dict.update({barcode: [cell.cell_id, cell.barcode_counts[barcode]]})
+                groups_dict[barcode] = [cell.cell_id, cell.barcode_counts[barcode]]
             else:  # updates an existing group by appending cellID to the cellID list
                 groups_dict[barcode].append(cell.cell_id)
                 groups_dict[barcode].append(cell.barcode_counts[barcode])
