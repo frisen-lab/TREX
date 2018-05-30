@@ -426,11 +426,11 @@ def main():
             '# dash (-) = barcode base outside of read, '
             '0 = deletion in barcode sequence (position unknown)', file=cell_file)
         for cell in cells:
-            cell_file.write(cell.cell_id + '\t:')
+            row = [cell.cell_id, ':']
             sorted_barcodes = sorted(cell.barcode_counts, key=lambda x: cell.barcode_counts[x], reverse=True)
             for barcode in sorted_barcodes:
-                print('', barcode, cell.barcode_counts[barcode], sep='\t', file=cell_file, end='')
-            print(file=cell_file)
+                row.extend([barcode, cell.barcode_counts[barcode]])
+            print(*row, sep='\t', file=cell_file)
 
     # Part V + VI: Barcodes filtering and grouping
 
@@ -472,10 +472,10 @@ def main():
             sort_d = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1), reverse=True)
             if not sort_d:
                 continue
-            cellfilt_file.write(cell.cell_id + '\t:')
+            row = [cell.cell_id, ':']
             for tup in sort_d:
-                cellfilt_file.write('\t' + tup[0] + '\t' + str(tup[1]))
-            cellfilt_file.write('\n')
+                row.extend(tup)
+            print(*row, sep='\t', file=cellfilt_file)
     # cellIDs and filtered barcodes can be found in cells_filtered.txt
 
     groups_dict = defaultdict(list)
@@ -493,10 +493,10 @@ def main():
             '0 = deletion in barcode sequence (position unknown)', file=groups_file)
 
         for barcode in sorted(groups_dict):
-            print(barcode, ':', sep='\t', end='', file=groups_file)
+            row = [barcode, ':']
             for cell_id, barcode_count in groups_dict[barcode]:
-                print('', cell_id, barcode_count, sep='\t', end='', file=groups_file)
-            print(file=groups_file)
+                row.extend([cell_id, barcode_count])
+            print(*row, sep='\t', file=groups_file)
 
     # Create a loom file if requested
     if args.loom:
