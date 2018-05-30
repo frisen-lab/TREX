@@ -12,9 +12,9 @@ import os.path
 import argparse
 from collections import Counter
 from collections import defaultdict
-from collections import namedtuple
 import operator
 import warnings
+from typing import Set, List, Dict, NamedTuple, Iterable
 
 import numpy as np
 import pysam
@@ -40,7 +40,7 @@ def parse_arguments():
         help='Path to cell ranger "outs" directory. Default: current directory',
         default=os.getcwd())
     parser.add_argument('--name', '-n',
-        help='name of the run and directory created by program. Default: lineage_run',
+        help='name of the run and directory created by program. Default: %(default)s',
         default='lineage_run')
     parser.add_argument('--start', '-s',
         help='Position of first base INSIDE the barcode (with first base on position 0). '
@@ -51,7 +51,7 @@ def parse_arguments():
              'Default: %(default)s',
         type=int, default=724)
     parser.add_argument('--min-length', '-m',
-        help='Minimum number of bases a barcode must have. Default: 10', type=int, default=10)
+        help='Minimum number of bases a barcode must have. Default: %(default)s', type=int, default=10)
     parser.add_argument('--hamming',
         help='Minimum hamming distance allowed for two barcodes to be called similar. '
              'Default: %(default)s',
@@ -63,7 +63,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def read_cellid_barcodes(path):
+def read_cellid_barcodes(path: str) -> Set[str]:
     """
     Read barcodes.tsv, which contains a list of corrected and approved cellIDs like this:
 
@@ -78,11 +78,22 @@ def read_cellid_barcodes(path):
     return set(ids)
 
 
-Read = namedtuple('Read', ['cell_id', 'umi', 'barcode'])
+class Read(NamedTuple):
+    cell_id: str
+    umi: str
+    barcode: str
 
-Molecule = namedtuple('Molecule', ['cell_id', 'umi', 'barcode', 'read_count'])
 
-Cell = namedtuple('Cell', ['cell_id', 'barcode_counts'])
+class Molecule(NamedTuple):
+    cell_id: str
+    umi: str
+    barcode: str
+    read_count: int
+
+
+class Cell(NamedTuple):
+    cell_id: str
+    barcode_counts: Dict[str, int]
 
 
 def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barcode_end):
@@ -262,7 +273,7 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
     return cells
 
 
-def filter_cells(cells, molecules):
+def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[Cell]:
     """
     Filter barcodes according to two criteria:
 
@@ -271,7 +282,7 @@ def filter_cells(cells, molecules):
     - Barcodes that have only a count of one and are also only based on one read are
       also removed
     """
-    overall_barcode_counts = Counter()
+    overall_barcode_counts: Dict[str, int] = Counter()
     for cell in cells:
         overall_barcode_counts.update(cell.barcode_counts)
 
@@ -302,7 +313,7 @@ def filter_cells(cells, molecules):
     return new_cells
 
 
-def write_loom(cell_col, input_dir, run_name, len_bc):
+def write_loom(cell_col, input_dir, run_name, barcode_length):
     bc_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cnt_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cellid1 = []
@@ -314,7 +325,7 @@ def write_loom(cell_col, input_dir, run_name, len_bc):
         sort_d.reverse()
         if len(sort_d) != 0:
             cellid1.append(cell_col[i])
-            for j in range(0, 6):
+            for j in range(6):
                 k = j + 1
                 if j <= len(sort_d) - 1:
                     bc_dict[str(k)].append(sort_d[j][0])
@@ -375,12 +386,12 @@ def write_loom(cell_col, input_dir, run_name, len_bc):
             cnt_fulldict['6'].append(0)
 
     # adds the barcode information to the loom file
-    ds.ca['linBarcode_1'] = np.array(bc_fulldict['1'], dtype='S%r' % len_bc)
-    ds.ca['linBarcode_2'] = np.array(bc_fulldict['2'], dtype='S%r' % len_bc)
-    ds.ca['linBarcode_3'] = np.array(bc_fulldict['3'], dtype='S%r' % len_bc)
-    ds.ca['linBarcode_4'] = np.array(bc_fulldict['4'], dtype='S%r' % len_bc)
-    ds.ca['linBarcode_5'] = np.array(bc_fulldict['5'], dtype='S%r' % len_bc)
-    ds.ca['linBarcode_6'] = np.array(bc_fulldict['6'], dtype='S%r' % len_bc)
+    ds.ca['linBarcode_1'] = np.array(bc_fulldict['1'], dtype='S%r' % barcode_length)
+    ds.ca['linBarcode_2'] = np.array(bc_fulldict['2'], dtype='S%r' % barcode_length)
+    ds.ca['linBarcode_3'] = np.array(bc_fulldict['3'], dtype='S%r' % barcode_length)
+    ds.ca['linBarcode_4'] = np.array(bc_fulldict['4'], dtype='S%r' % barcode_length)
+    ds.ca['linBarcode_5'] = np.array(bc_fulldict['5'], dtype='S%r' % barcode_length)
+    ds.ca['linBarcode_6'] = np.array(bc_fulldict['6'], dtype='S%r' % barcode_length)
 
     # adds the count information to the loom file
     ds.ca['linBarcode_count_1'] = np.array(cnt_fulldict['1'], dtype=int)
@@ -403,9 +414,6 @@ def main():
 
     input_dir = args.path
     output_dir = args.name
-    barcode_start = args.start
-    barcode_end = args.end
-    len_bc = barcode_end - barcode_start
     minham = args.hamming + 1
 
     os.makedirs(output_dir)
@@ -422,17 +430,17 @@ def main():
     sorted_reads = read_bam(
         os.path.join(input_dir, 'possorted_genome_bam.bam'),
         os.path.join(output_dir, args.chromosome + '_entries.bam'),
-        cell_ids, args.chromosome, barcode_start, barcode_end)
+        cell_ids, args.chromosome, args.start, args.end)
 
     log(f'Read {len(sorted_reads)} reads containing (parts of) the barcode')
-    with open(os.path.join(output_dir, 'reads.txt'), 'w') as read_file:
+    with open(os.path.join(output_dir, 'reads.txt'), 'w') as reads_file:
         print(
             '#Each output line corresponds to one read and has the following style: '
             'CellID\tUMI\tBarcode\n'
             '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=read_file)
+            '0 = deletion in barcode sequence (position unknown)', file=reads_file)
         for read in sorted_reads:
-            print(read.cell_id, read.umi, read.barcode, sep='\t', file=read_file)
+            print(read.cell_id, read.umi, read.barcode, sep='\t', file=reads_file)
 
     # Part III: Molecule construction
 
@@ -442,14 +450,14 @@ def main():
 
     molecules = compute_molecules(sorted_reads)
     log(f'Detected {len(molecules)} molecules')
-    with open(os.path.join(output_dir, 'molecules.txt'), 'w') as mol_file:
+    with open(os.path.join(output_dir, 'molecules.txt'), 'w') as molecules_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: '
             'CellID\tUMI\tBarcode\n'
             '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=mol_file)
+            '0 = deletion in barcode sequence (position unknown)', file=molecules_file)
         for molecule in molecules:
-            print(molecule.cell_id, molecule.umi, molecule.barcode, sep='\t', file=mol_file)
+            print(molecule.cell_id, molecule.umi, molecule.barcode, sep='\t', file=molecules_file)
 
     # Part IV: Cell construction
 
@@ -464,28 +472,28 @@ def main():
 
     cells = compute_cells(molecules, args.min_length, minham)
     log(f'Detected {len(cells)} cells')
-    with open(os.path.join(output_dir, 'cells.txt'), 'w') as cell_file:
+    with open(os.path.join(output_dir, 'cells.txt'), 'w') as cells_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
             'CellID\tBarcode1\tCount1\tBarcode2\tCount2...\n'
             '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=cell_file)
+            '0 = deletion in barcode sequence (position unknown)', file=cells_file)
         for cell in cells:
             row = [cell.cell_id, ':']
             sorted_barcodes = sorted(cell.barcode_counts, key=lambda x: cell.barcode_counts[x], reverse=True)
             for barcode in sorted_barcodes:
                 row.extend([barcode, cell.barcode_counts[barcode]])
-            print(*row, sep='\t', file=cell_file)
+            print(*row, sep='\t', file=cells_file)
 
     # Part V + VI: Barcodes filtering and grouping
 
     cells = filter_cells(cells, molecules)
-    with open(os.path.join(output_dir, 'cells_filtered.txt'), 'w') as cellfilt_file:
+    with open(os.path.join(output_dir, 'cells_filtered.txt'), 'w') as filtered_cells_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
             'CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...\n'
             '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=cellfilt_file)
+            '0 = deletion in barcode sequence (position unknown)', file=filtered_cells_file)
 
         for cell in cells:
             sort_d = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1), reverse=True)
@@ -494,7 +502,7 @@ def main():
             row = [cell.cell_id, ':']
             for tup in sort_d:
                 row.extend(tup)
-            print(*row, sep='\t', file=cellfilt_file)
+            print(*row, sep='\t', file=filtered_cells_file)
     # cellIDs and filtered barcodes can be found in cells_filtered.txt
 
     # 2. Groups cells with same barcodes that most likely stem from one clone. Outputs a file
@@ -528,7 +536,7 @@ def main():
         for cell in cells:
             cell_col.append(cell.cell_id)
             cell_col.append(cell.barcode_counts)
-        write_loom(cell_col, input_dir, output_dir, len_bc)
+        write_loom(cell_col, input_dir, output_dir, barcode_length=args.end - args.start)
 
     log('Run completed!')
 
