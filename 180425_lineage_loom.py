@@ -197,13 +197,7 @@ def compute_molecules(sorted_reads):
 
     sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.barcode, mol.umi))
 
-    # TODO temporary conversion back to previous format
-    groups_as_lists = []
-    for (umi, cell_id), barcodes in groups.items():
-        reads = [Read(cell_id=cell_id, umi=umi, barcode=barcode) for barcode in barcodes]
-        groups_as_lists.append(reads)
-
-    return groups_as_lists, sorted_molecules
+    return groups, sorted_molecules
 
 
 def compute_cells(sorted_molecules, minimum_barcode_length, minham):
@@ -289,10 +283,10 @@ def filter_cells(cells, groups):
                 # This barcode occurs also in other cells - remove it
                 del cell.barcode_counts[barcode]
             else:
-                for group in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
+                for (umi, cell_id), barcodes in groups.items():
                     # if cellID is identical to cellID in groups, it keeps the group
                     # filters out those barcodes that are based on only one read
-                    if len(group) == 1 and cell.cell_id == group[0].cell_id:
+                    if len(barcodes) == 1 and cell.cell_id == cell_id:
                         if barcode in cell.barcode_counts:
                             del cell.barcode_counts[barcode]  # deletes those barcodes
 
