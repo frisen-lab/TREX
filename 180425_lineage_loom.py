@@ -263,41 +263,41 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
 
 
 def filter_cells(cells, molecules):
-    # 1. Filters barcodes according to two criteria:
-    #    a) Barcodes that have only a count of one and can be found in another cell are most
-    #       likely results of contamination and are removed,
-    #    b) Barcodes that have only a count of one and are also only based on one read are
-    #       also removed
+    """
+    Filter barcodes according to two criteria:
 
-    all_barcode_counts = Counter()
+    - Barcodes that have only a count of one and can be found in another cell are most
+      likely results of contamination and are removed,
+    - Barcodes that have only a count of one and are also only based on one read are
+      also removed
+    """
+    overall_barcode_counts = Counter()
     for cell in cells:
-        all_barcode_counts.update(cell.barcode_counts)
+        overall_barcode_counts.update(cell.barcode_counts)
 
-    molecules_by_cell_id = defaultdict(list)
+    single_barcode_cell_ids = set()
     for molecule in molecules:
-        molecules_by_cell_id[molecule.cell_id].append(molecule)
+        if molecule.read_count == 1:
+            single_barcode_cell_ids.add(molecule.cell_id)
+    # or:
+    # single_barcode_cell_ids = {m.cell_id for m in molecules if m.read_count == 1}
 
     # filters out barcodes with a count of one that appear in another cell
+    new_cells = []
     for cell in cells:
-        dict_cp = dict(cell.barcode_counts)
-        for barcode, count in dict_cp.items():
-            assert barcode in cell.barcode_counts
-            if count != 1:
+        barcode_counts = cell.barcode_counts.copy()
+        for barcode, count in cell.barcode_counts.items():
+            if count > 1:
                 # This barcode occurs more than once in this cell - keep it
                 continue
-            if all_barcode_counts[barcode] > 1:
+            if overall_barcode_counts[barcode] > 1:
                 # This barcode occurs also in other cells - remove it
-                del cell.barcode_counts[barcode]
+                del barcode_counts[barcode]
             else:
-                assert cell.cell_id in molecules_by_cell_id
-                cell_molecules = molecules_by_cell_id[cell.cell_id]
-                for molecule in cell_molecules:
-                    # filters out those barcodes that are based on only one read
-                    if molecule.read_count == 1:
-                        if barcode in cell.barcode_counts:
-                            del cell.barcode_counts[barcode]  # deletes those barcodes
-
-    return cells  # TODO returns original
+                if cell.cell_id in single_barcode_cell_ids:
+                    del barcode_counts[barcode]
+        new_cells.append(Cell(cell_id=cell.cell_id, barcode_counts=barcode_counts))
+    return new_cells
 
 
 def write_loom(cell_col, input_dir, run_name, len_bc):
