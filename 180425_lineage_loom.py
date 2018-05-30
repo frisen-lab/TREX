@@ -481,9 +481,8 @@ def main():
     groups_dict = defaultdict(list)
     for cell in cells:
         # forms groups of cells with same barcode
-        for barcode, counts in cell.barcode_counts.items():
-            groups_dict[barcode].append(cell.cell_id)
-            groups_dict[barcode].append(counts)
+        for barcode, count in cell.barcode_counts.items():
+            groups_dict[barcode].append((cell.cell_id, count))
 
     # in groups.txt all barcodes and their corresponding cellIDs can be found
     with open(os.path.join(output_dir, 'groups.txt'), 'w') as groups_file:
@@ -494,10 +493,9 @@ def main():
             '0 = deletion in barcode sequence (position unknown)', file=groups_file)
 
         for barcode in sorted(groups_dict):
-            items = groups_dict[barcode]
             print(barcode, ':', sep='\t', end='', file=groups_file)
-            for j in range(0, len(items), 2):
-                print('', items[j], items[j + 1], sep='\t', end='', file=groups_file)
+            for cell_id, barcode_count in groups_dict[barcode]:
+                print('', cell_id, barcode_count, sep='\t', end='', file=groups_file)
             print(file=groups_file)
 
     # Create a loom file if requested
