@@ -292,7 +292,7 @@ def filter_cells(cells, groups):
                 for group in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
                     # if cellID is identical to cellID in groups, it keeps the group
                     # filters out those barcodes that are based on only one read
-                    if len(group) == 1 and cell.cell_id == group[0][0]:
+                    if len(group) == 1 and cell.cell_id == group[0].cell_id:
                         if barcode in cell.barcode_counts:
                             del cell.barcode_counts[barcode]  # deletes those barcodes
 
