@@ -200,7 +200,7 @@ def compute_molecules(sorted_reads):
 
     sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.barcode, mol.umi))
 
-    return groups, sorted_molecules
+    return sorted_molecules
 
 
 def compute_cells(sorted_molecules, minimum_barcode_length, minham):
@@ -432,7 +432,7 @@ def main():
     # 2. forms consensus sequence of all barcodes of one group,
     # 3. outputs molecules and corresponding CellIDs/UMIs
 
-    groups, molecules = compute_molecules(sorted_reads)
+    molecules = compute_molecules(sorted_reads)
     with open(os.path.join(output_dir, 'molecules.txt'), 'w') as mol_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: '
