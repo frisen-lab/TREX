@@ -481,9 +481,9 @@ def main():
     groups_dict = defaultdict(list)
     for cell in cells:
         # forms groups of cells with same barcode
-        for barcode in cell.barcode_counts:
+        for barcode, counts in cell.barcode_counts.items():
             groups_dict[barcode].append(cell.cell_id)
-            groups_dict[barcode].append(cell.barcode_counts[barcode])
+            groups_dict[barcode].append(counts)
 
     # in groups.txt all barcodes and their corresponding cellIDs can be found
     with open(os.path.join(output_dir, 'groups.txt'), 'w') as groups_file:
