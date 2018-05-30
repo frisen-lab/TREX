@@ -289,11 +289,12 @@ def filter_cells(cells, groups):
                 # This barcode occurs also in other cells - remove it
                 del cell.barcode_counts[barcode]
             else:
-                for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
-                    if cell.cell_id == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
-                        if len(j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
-                            if barcode in cell.barcode_counts:
-                                del cell.barcode_counts[barcode]  # deletes those barcodes
+                for group in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
+                    # if cellID is identical to cellID in groups, it keeps the group
+                    # filters out those barcodes that are based on only one read
+                    if len(group) == 1 and cell.cell_id == group[0][0]:
+                        if barcode in cell.barcode_counts:
+                            del cell.barcode_counts[barcode]  # deletes those barcodes
 
     return cells  # TODO returns original
 
