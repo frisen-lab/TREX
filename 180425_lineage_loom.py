@@ -393,6 +393,11 @@ def write_loom(cell_col, input_dir, run_name, len_bc):
     ds.close()
 
 
+def log(*args, **kwargs):
+    import sys
+    print(*args, **kwargs, file=sys.stderr)
+
+
 def main():
     args = parse_arguments()
 
@@ -419,6 +424,7 @@ def main():
         os.path.join(output_dir, args.chromosome + '_entries.bam'),
         cell_ids, args.chromosome, barcode_start, barcode_end)
 
+    log(f'Read {len(sorted_reads)} reads containing (parts of) the barcode')
     with open(os.path.join(output_dir, 'reads.txt'), 'w') as read_file:
         print(
             '#Each output line corresponds to one read and has the following style: '
@@ -435,6 +441,7 @@ def main():
     # 3. outputs molecules and corresponding CellIDs/UMIs
 
     molecules = compute_molecules(sorted_reads)
+    log(f'Detected {len(molecules)} molecules')
     with open(os.path.join(output_dir, 'molecules.txt'), 'w') as mol_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: '
@@ -456,6 +463,7 @@ def main():
     # 4. Outputs for each cells all its barcodes and corresponding counts
 
     cells = compute_cells(molecules, args.min_length, minham)
+    log(f'Detected {len(cells)} cells')
     with open(os.path.join(output_dir, 'cells.txt'), 'w') as cell_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
@@ -498,6 +506,7 @@ def main():
         for barcode, count in cell.barcode_counts.items():
             groups_dict[barcode].append((cell.cell_id, count))
 
+    log(f'Detected {len(groups_dict)} unique cell groups')
     # in groups.txt all barcodes and their corresponding cellIDs can be found
     with open(os.path.join(output_dir, 'groups.txt'), 'w') as groups_file:
         print(
@@ -521,7 +530,7 @@ def main():
             cell_col.append(cell.barcode_counts)
         write_loom(cell_col, input_dir, output_dir, len_bc)
 
-    print('Run completed!')
+    log('Run completed!')
 
 
 if __name__ == '__main__':

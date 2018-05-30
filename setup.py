@@ -1,4 +1,9 @@
+import sys
 from setuptools import setup, find_packages
+
+if sys.version_info[:2] < (3, 6):
+    sys.stdout.write('Python 3.6 or later is required\n')
+    sys.exit(1)
 
 setup(
     name='jfrisen1801',
