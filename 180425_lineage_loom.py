@@ -272,6 +272,7 @@ def filter_cells(cells, groups):
     #    b) Barcodes that have only a count of one and are also only based on one read are
     #       also removed
 
+    #import ipdb; ipdb.set_trace()
     all_barcode_counts = Counter()
     for cell in cells:
         all_barcode_counts.update(cell.barcode_counts)
@@ -279,19 +280,23 @@ def filter_cells(cells, groups):
     # filters out barcodes with a count of one that appear in another cell
     for cell in cells:
         dict_cp = dict(cell.barcode_counts)
-        for barcode in dict_cp:
-            # filters out barcodes that are only based on one molecule
-            if barcode in cell.barcode_counts and cell.barcode_counts[barcode] == 1:
-                if all_barcode_counts[barcode] > 1:  # filters out barcodes that appear more than once in the whole list
-                    del cell.barcode_counts[barcode]  # removes barcodes that meet both criteria
-                else:
-                    for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
-                        if cell.cell_id == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
-                            if len(j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
-                                if barcode in cell.barcode_counts:
-                                    del cell.barcode_counts[barcode]  # deletes those barcodes
+        for barcode, count in dict_cp.items():
+            assert barcode in cell.barcode_counts
+            if count != 1:
+                # This barcode occurs more than once in this cell - keep it
+                continue
+            if all_barcode_counts[barcode] > 1:
+                # This barcode occurs also in other cells - remove it
+                del cell.barcode_counts[barcode]
+            else:
+                for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
+                    if cell.cell_id == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
+                        if len(j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
+                            if barcode in cell.barcode_counts:
+                                del cell.barcode_counts[barcode]  # deletes those barcodes
 
     return cells  # TODO returns original
+
 
 def write_loom(cell_col, input_dir, run_name, len_bc):
     bc_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
