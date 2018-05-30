@@ -499,10 +499,10 @@ def main():
             '0 = deletion in barcode sequence (position unknown)', file=groups_file)
 
         for i in range(0, len(groupsdict_s)):
-            groups_file.write(groupsdict_s[i][0] + '\t:')
+            print(groupsdict_s[i][0], ':', sep='\t', end='', file=groups_file)
             for j in range(0, len(groupsdict_s[i][1]), 2):
-                groups_file.write('\t' + groupsdict_s[i][1][j] + '\t' + str(groupsdict_s[i][1][j + 1]))
-            groups_file.write('\n')
+                print('', groupsdict_s[i][1][j], groupsdict_s[i][1][j + 1], sep='\t', end='', file=groups_file)
+            print(file=groups_file)
 
     # Create a loom file if requested
     if args.loom:
