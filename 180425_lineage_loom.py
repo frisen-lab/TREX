@@ -470,11 +470,12 @@ def main():
 
         for cell in cells:
             sort_d = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1), reverse=True)
-            if len(sort_d) != 0:
-                cellfilt_file.write(cell.cell_id + '\t:')
-                for tup in sort_d:
-                    cellfilt_file.write('\t' + tup[0] + '\t' + str(tup[1]))
-                cellfilt_file.write('\n')
+            if not sort_d:
+                continue
+            cellfilt_file.write(cell.cell_id + '\t:')
+            for tup in sort_d:
+                cellfilt_file.write('\t' + tup[0] + '\t' + str(tup[1]))
+            cellfilt_file.write('\n')
             # cellIDs and filtered barcodes can be found in cells_filtered.txt
 
     groups_dict = dict()
