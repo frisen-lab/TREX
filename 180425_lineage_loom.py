@@ -265,6 +265,34 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
     return cells
 
 
+def filter_cells(cells, groups):
+    # 1. Filters barcodes according to two criteria:
+    #    a) Barcodes that have only a count of one and can be found in another cell are most
+    #       likely results of contamination and are removed,
+    #    b) Barcodes that have only a count of one and are also only based on one read are
+    #       also removed
+
+    all_barcode_counts = Counter()
+    for cell in cells:
+        all_barcode_counts.update(cell.barcode_counts)
+
+    # filters out barcodes with a count of one that appear in another cell
+    for cell in cells:
+        dict_cp = dict(cell.barcode_counts)
+        for barcode in dict_cp:
+            # filters out barcodes that are only based on one molecule
+            if barcode in cell.barcode_counts and cell.barcode_counts[barcode] == 1:
+                if all_barcode_counts[barcode] > 1:  # filters out barcodes that appear more than once in the whole list
+                    del cell.barcode_counts[barcode]  # removes barcodes that meet both criteria
+                else:
+                    for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
+                        if cell.cell_id == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
+                            if len(j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
+                                if barcode in cell.barcode_counts:
+                                    del cell.barcode_counts[barcode]  # deletes those barcodes
+
+    return cells  # TODO returns original
+
 def write_loom(cell_col, input_dir, run_name, len_bc):
     bc_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cnt_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
@@ -434,33 +462,7 @@ def main():
 
     # Part V + VI: Barcodes filtering and grouping
 
-    # 1. Filters barcodes according to two criteria:
-    #    a) Barcodes that have only a count of one and can be found in another cell are most
-    #       likely results of contamination and are removed,
-    #    b) Barcodes that have only a count of one and are also only based on one read are
-    #       also removed
-    # 2. Groups cells with same barcodes that most likely stem from one clone. Outputs a file
-    #    with all clones and cellIDs belonging to each clone
-
-    all_barcode_counts = Counter()
-    for cell in cells:
-        all_barcode_counts.update(cell.barcode_counts)
-
-    # filters out barcodes with a count of one that appear in another cell
-    for cell in cells:
-        dict_cp = dict(cell.barcode_counts)
-        for barcode in dict_cp:
-            # filters out barcodes that are only based on one molecule
-            if barcode in cell.barcode_counts and cell.barcode_counts[barcode] == 1:
-                if all_barcode_counts[barcode] > 1:  # filters out barcodes that appear more than once in the whole list
-                    del cell.barcode_counts[barcode]  # removes barcodes that meet both criteria
-                else:
-                    for j in groups:  # groups is a list of groups of reads with identical UMIs/cellIDs (see part II)
-                        if cell.cell_id == j[0][0]:  # if cellID is identical to cellID in groups, it keeps the group
-                            if len(j) == 1:  # filters out those barcodes that are based on only one read => group has only a length of one
-                                if barcode in cell.barcode_counts:
-                                    del cell.barcode_counts[barcode]  # deletes those barcodes
-
+    cells = filter_cells(cells, groups)
     with open(os.path.join(output_dir, 'cells_filtered.txt'), 'w') as cellfilt_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
@@ -477,6 +479,9 @@ def main():
                 row.extend(tup)
             print(*row, sep='\t', file=cellfilt_file)
     # cellIDs and filtered barcodes can be found in cells_filtered.txt
+
+    # 2. Groups cells with same barcodes that most likely stem from one clone. Outputs a file
+    #    with all clones and cellIDs belonging to each clone
 
     groups_dict = defaultdict(list)
     for cell in cells:
