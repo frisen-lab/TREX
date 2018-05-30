@@ -262,7 +262,7 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
     return cells
 
 
-def filter_cells(cells, groups):
+def filter_cells(cells, molecules):
     # 1. Filters barcodes according to two criteria:
     #    a) Barcodes that have only a count of one and can be found in another cell are most
     #       likely results of contamination and are removed,
@@ -286,10 +286,10 @@ def filter_cells(cells, groups):
                 # This barcode occurs also in other cells - remove it
                 del cell.barcode_counts[barcode]
             else:
-                for (umi, cell_id), barcodes in groups.items():
+                for molecule in molecules:
                     # if cellID is identical to cellID in groups, it keeps the group
                     # filters out those barcodes that are based on only one read
-                    if len(barcodes) == 1 and cell.cell_id == cell_id:
+                    if molecule.read_count == 1 and molecule.cell_id == cell.cell_id:
                         if barcode in cell.barcode_counts:
                             del cell.barcode_counts[barcode]  # deletes those barcodes
 
@@ -465,7 +465,7 @@ def main():
 
     # Part V + VI: Barcodes filtering and grouping
 
-    cells = filter_cells(cells, groups)
+    cells = filter_cells(cells, molecules)
     with open(os.path.join(output_dir, 'cells_filtered.txt'), 'w') as cellfilt_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
