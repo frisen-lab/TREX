@@ -269,10 +269,13 @@ def filter_cells(cells, molecules):
     #    b) Barcodes that have only a count of one and are also only based on one read are
     #       also removed
 
-    #import ipdb; ipdb.set_trace()
     all_barcode_counts = Counter()
     for cell in cells:
         all_barcode_counts.update(cell.barcode_counts)
+
+    molecules_by_cell_id = defaultdict(list)
+    for molecule in molecules:
+        molecules_by_cell_id[molecule.cell_id].append(molecule)
 
     # filters out barcodes with a count of one that appear in another cell
     for cell in cells:
@@ -286,10 +289,11 @@ def filter_cells(cells, molecules):
                 # This barcode occurs also in other cells - remove it
                 del cell.barcode_counts[barcode]
             else:
-                for molecule in molecules:
-                    # if cellID is identical to cellID in groups, it keeps the group
+                assert cell.cell_id in molecules_by_cell_id
+                cell_molecules = molecules_by_cell_id[cell.cell_id]
+                for molecule in cell_molecules:
                     # filters out those barcodes that are based on only one read
-                    if molecule.read_count == 1 and molecule.cell_id == cell.cell_id:
+                    if molecule.read_count == 1:
                         if barcode in cell.barcode_counts:
                             del cell.barcode_counts[barcode]  # deletes those barcodes
 
