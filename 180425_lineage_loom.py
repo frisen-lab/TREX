@@ -313,7 +313,7 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
     return new_cells
 
 
-def write_loom(cells, input_dir, run_name, barcode_length):
+def write_loom(cells, input_dir, run_name, barcode_length, top_n=6):
     # Maps cell_id to a list of (barcode, count) pairs that represent the most abundant barcodes.
     most_abundant = dict()
     for cell in cells:
@@ -321,7 +321,7 @@ def write_loom(cells, input_dir, run_name, barcode_length):
             continue
         counts = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1))
         counts.reverse()
-        counts = counts[:6]
+        counts = counts[:top_n]
         most_abundant[cell.cell_id] = counts
 
     sample_dir = input_dir[:-len('outs/')]
@@ -337,15 +337,15 @@ def write_loom(cells, input_dir, run_name, barcode_length):
 
     # brings barcode data into correct format for loom file.
     # Array must have same shape as all_cellIDs
-    barcode_lists = [[] for _ in range(6)]
-    count_lists = [[] for _ in range(6)]
+    barcode_lists = [[] for _ in range(top_n)]
+    count_lists = [[] for _ in range(top_n)]
     for id1 in loom_cell_ids:
         if id1 in most_abundant:
             barcode_counts = most_abundant[id1]
         else:
             barcode_counts = []
         # Fill up to a constant length
-        while len(barcode_counts) < 6:
+        while len(barcode_counts) < top_n:
             barcode_counts.append(('-', 0))
 
         for i, (barcode, count) in enumerate(barcode_counts):
@@ -353,7 +353,7 @@ def write_loom(cells, input_dir, run_name, barcode_length):
             count_lists[i].append(count)
 
     # Add barcode and count information to loom file
-    for i in range(6):
+    for i in range(top_n):
         ds.ca[f'linBarcode_{i+1}'] = np.array(barcode_lists[i], dtype='S%r' % barcode_length)
         ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
 
