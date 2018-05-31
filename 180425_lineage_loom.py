@@ -236,7 +236,6 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
     cells = []
 
     # merges barcodes and counts below hamming distance
-    found = False
     for cell_id, molecules in cell_id_groups.items():
         barcodes = [molecule.barcode for molecule in molecules]
         barcode_counts = defaultdict(int)
@@ -244,7 +243,8 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
         mc = sorted(Counter(barcodes).most_common(), key=lambda x: len(x[0].strip('-')),
             reverse=True)
         while True:
-            barcode, n = mc.pop(-1)  # takes out and remove barcode with lowest count from list
+            found = False
+            barcode, n = mc.pop()  # takes out and remove barcode with lowest count from list
             if len(mc) == 0:  # or '0' in x: #if barcode is the last in the list or it contains insertions/deletions (cannot be compared) just keeps barcode without merging
                 barcode_counts[barcode] += n
                 break
@@ -266,8 +266,6 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
 
             if not found:  # barcodes that never undergo the hamming distance threshold, are not merged
                 barcode_counts[barcode] += n
-            else:
-                found = False
 
         cells.append(Cell(cell_id=cell_id, barcode_counts=barcode_counts))
     return cells
