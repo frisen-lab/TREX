@@ -337,8 +337,8 @@ def write_loom(cells, input_dir, run_name, barcode_length):
 
     # brings barcode data into correct format for loom file.
     # Array must have same shape as all_cellIDs
-    bc_fulldict = [[] for _ in range(6)]
-    cnt_fulldict = [[] for _ in range(6)]
+    barcode_lists = [[] for _ in range(6)]
+    count_lists = [[] for _ in range(6)]
     for id1 in loom_cell_ids:
         if id1 in most_abundant:
             barcode_counts = most_abundant[id1]
@@ -349,13 +349,13 @@ def write_loom(cells, input_dir, run_name, barcode_length):
             barcode_counts.append(('-', 0))
 
         for i, (barcode, count) in enumerate(barcode_counts):
-            bc_fulldict[i].append(barcode)
-            cnt_fulldict[i].append(count)
+            barcode_lists[i].append(barcode)
+            count_lists[i].append(count)
 
     # Add barcode and count information to loom file
     for i in range(6):
-        ds.ca[f'linBarcode_{i+1}'] = np.array(bc_fulldict[i], dtype='S%r' % barcode_length)
-        ds.ca[f'linBarcode_count_{i+1}'] = np.array(cnt_fulldict[i], dtype=int)
+        ds.ca[f'linBarcode_{i+1}'] = np.array(barcode_lists[i], dtype='S%r' % barcode_length)
+        ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
 
     ds.close()
 
