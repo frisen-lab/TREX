@@ -337,8 +337,8 @@ def write_loom(cells, input_dir, run_name, barcode_length):
 
     # brings barcode data into correct format for loom file.
     # Array must have same shape as all_cellIDs
-    bc_fulldict = {i: [] for i in range(6)}
-    cnt_fulldict = {i: [] for i in range(6)}
+    bc_fulldict = [[] for _ in range(6)]
+    cnt_fulldict = [[] for _ in range(6)]
     for id1 in loom_cell_ids:
         if id1 in most_abundant:
             barcode_counts = most_abundant[id1]
