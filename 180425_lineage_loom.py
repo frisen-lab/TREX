@@ -315,8 +315,8 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
 
 def write_loom(cells, input_dir, run_name, barcode_length):
 
-    bc_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
-    cnt_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
+    bc_dict = {i: [] for i in range(6)}
+    cnt_dict = {i: [] for i in range(6)}
     cellid1 = []
 
     # brings the barcode data into a format where the most abundant barcode of the cells are in
@@ -328,13 +328,12 @@ def write_loom(cells, input_dir, run_name, barcode_length):
             continue
         cellid1.append(cell.cell_id)
         for j in range(6):
-            k = j + 1
             if j <= len(sort_d) - 1:
-                bc_dict[str(k)].append(sort_d[j][0])
-                cnt_dict[str(k)].append(sort_d[j][1])
+                bc_dict[j].append(sort_d[j][0])
+                cnt_dict[j].append(sort_d[j][1])
             else:
-                bc_dict[str(k)].append('-')
-                cnt_dict[str(k)].append(0)
+                bc_dict[j].append('-')
+                cnt_dict[j].append(0)
 
     # creates the loom file based on cellranger output files
 
@@ -349,59 +348,28 @@ def write_loom(cells, input_dir, run_name, barcode_length):
 
     # brings barcode data into correct format for loom file.
     # Array must have same shape as all_cellIDs
-    bc_fulldict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
-    cnt_fulldict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
+    bc_fulldict = {i: [] for i in range(6)}
+    cnt_fulldict = {i: [] for i in range(6)}
     for id1 in all_cellIDs:
         found = False
         for id2 in cellid1:
             if id1[(len(loom_name) + 1):] == id2:
                 found = True
                 index = cellid1.index(id2)
-                bc_fulldict['1'].append(bc_dict['1'][index])
-                bc_fulldict['2'].append(bc_dict['2'][index])
-                bc_fulldict['3'].append(bc_dict['3'][index])
-                bc_fulldict['4'].append(bc_dict['4'][index])
-                bc_fulldict['5'].append(bc_dict['5'][index])
-                bc_fulldict['6'].append(bc_dict['6'][index])
-
-                cnt_fulldict['1'].append(cnt_dict['1'][index])
-                cnt_fulldict['2'].append(cnt_dict['2'][index])
-                cnt_fulldict['3'].append(cnt_dict['3'][index])
-                cnt_fulldict['4'].append(cnt_dict['4'][index])
-                cnt_fulldict['5'].append(cnt_dict['5'][index])
-                cnt_fulldict['6'].append(cnt_dict['6'][index])
+                for i in range(6):
+                    bc_fulldict[i].append(bc_dict[i][index])
+                    cnt_fulldict[i].append(cnt_dict[i][index])
                 break
 
         if not found:
-            bc_fulldict['1'].append('-')
-            bc_fulldict['2'].append('-')
-            bc_fulldict['3'].append('-')
-            bc_fulldict['4'].append('-')
-            bc_fulldict['5'].append('-')
-            bc_fulldict['6'].append('-')
+            for i in range(6):
+                bc_fulldict[i].append('-')
+                cnt_fulldict[i].append(0)
 
-            cnt_fulldict['1'].append(0)
-            cnt_fulldict['2'].append(0)
-            cnt_fulldict['3'].append(0)
-            cnt_fulldict['4'].append(0)
-            cnt_fulldict['5'].append(0)
-            cnt_fulldict['6'].append(0)
-
-    # adds the barcode information to the loom file
-    ds.ca['linBarcode_1'] = np.array(bc_fulldict['1'], dtype='S%r' % barcode_length)
-    ds.ca['linBarcode_2'] = np.array(bc_fulldict['2'], dtype='S%r' % barcode_length)
-    ds.ca['linBarcode_3'] = np.array(bc_fulldict['3'], dtype='S%r' % barcode_length)
-    ds.ca['linBarcode_4'] = np.array(bc_fulldict['4'], dtype='S%r' % barcode_length)
-    ds.ca['linBarcode_5'] = np.array(bc_fulldict['5'], dtype='S%r' % barcode_length)
-    ds.ca['linBarcode_6'] = np.array(bc_fulldict['6'], dtype='S%r' % barcode_length)
-
-    # adds the count information to the loom file
-    ds.ca['linBarcode_count_1'] = np.array(cnt_fulldict['1'], dtype=int)
-    ds.ca['linBarcode_count_2'] = np.array(cnt_fulldict['2'], dtype=int)
-    ds.ca['linBarcode_count_3'] = np.array(cnt_fulldict['3'], dtype=int)
-    ds.ca['linBarcode_count_4'] = np.array(cnt_fulldict['4'], dtype=int)
-    ds.ca['linBarcode_count_5'] = np.array(cnt_fulldict['5'], dtype=int)
-    ds.ca['linBarcode_count_6'] = np.array(cnt_fulldict['6'], dtype=int)
+    # Add barcode and count information to loom file
+    for i in range(6):
+        ds.ca[f'linBarcode_{i+1}'] = np.array(bc_fulldict[i], dtype='S%r' % barcode_length)
+        ds.ca[f'linBarcode_count_{i+1}'] = np.array(cnt_fulldict[i], dtype=int)
 
     ds.close()
 
