@@ -314,25 +314,15 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
 
 
 def write_loom(cells, input_dir, run_name, barcode_length):
-    bc_dict = {i: [] for i in range(6)}
-    cnt_dict = {i: [] for i in range(6)}
-    cellid1 = []
-
-    # brings the barcode data into a format where the most abundant barcode of the cells are in
-    # one list, the second most abundant in another and so on. The same with counts
+    # Maps cell_id to a list of (barcode, count) pairs that represent the most abundant barcodes.
+    most_abundant = dict()
     for cell in cells:
-        sort_d = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1))
-        sort_d.reverse()
-        if not sort_d:
+        if not cell.barcode_counts:
             continue
-        cellid1.append(cell.cell_id)
-        for j in range(6):
-            if j < len(sort_d):
-                bc_dict[j].append(sort_d[j][0])
-                cnt_dict[j].append(sort_d[j][1])
-            else:
-                bc_dict[j].append('-')
-                cnt_dict[j].append(0)
+        counts = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1))
+        counts.reverse()
+        counts = counts[:6]
+        most_abundant[cell.cell_id] = counts
 
     sample_dir = input_dir[:-len('outs/')]
     loompy.create_from_cellranger(sample_dir, run_name)
@@ -350,17 +340,17 @@ def write_loom(cells, input_dir, run_name, barcode_length):
     bc_fulldict = {i: [] for i in range(6)}
     cnt_fulldict = {i: [] for i in range(6)}
     for id1 in loom_cell_ids:
-        for id2 in cellid1:
-            if id1 == id2:
-                index = cellid1.index(id2)
-                for i in range(6):
-                    bc_fulldict[i].append(bc_dict[i][index])
-                    cnt_fulldict[i].append(cnt_dict[i][index])
-                break
+        if id1 in most_abundant:
+            barcode_counts = most_abundant[id1]
         else:
-            for i in range(6):
-                bc_fulldict[i].append('-')
-                cnt_fulldict[i].append(0)
+            barcode_counts = []
+        # Fill up to a constant length
+        while len(barcode_counts) < 6:
+            barcode_counts.append(('-', 0))
+
+        for i, (barcode, count) in enumerate(barcode_counts):
+            bc_fulldict[i].append(barcode)
+            cnt_fulldict[i].append(count)
 
     # Add barcode and count information to loom file
     for i in range(6):
