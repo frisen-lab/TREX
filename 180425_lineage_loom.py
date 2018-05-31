@@ -239,14 +239,14 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
     found = False
     for cell_id, molecules in cell_id_groups.items():
         barcodes = [molecule.barcode for molecule in molecules]
-        results = defaultdict(int)
+        barcode_counts = defaultdict(int)
         # barcodes sorted by counts
         mc = sorted(Counter(barcodes).most_common(), key=lambda x: len(x[0].strip('-')),
             reverse=True)
         while True:
             barcode, n = mc.pop(-1)  # takes out and remove barcode with lowest count from list
             if len(mc) == 0:  # or '0' in x: #if barcode is the last in the list or it contains insertions/deletions (cannot be compared) just keeps barcode without merging
-                results[barcode] += n
+                barcode_counts[barcode] += n
                 break
             for i, m in mc:  # goes through remaining barcodes in list
                 hamming = 0
@@ -258,18 +258,18 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
                             hamming += 1  # calculates hamming distance based on the similarity of each base-pair
                 if hamming < minham and overlap_count != 0:  # filters out barcode-pairs with hamming distance below set threshold or with no overlapp
                     if i.count('-') == 0:  # only full barcodes are merged with other groups
-                        results[i] += n
+                        barcode_counts[i] += n
                     else:
-                        results[barcode] += n
+                        barcode_counts[barcode] += n
                     found = True
                     break
 
             if not found:  # barcodes that never undergo the hamming distance threshold, are not merged
-                results[barcode] += n
+                barcode_counts[barcode] += n
             else:
                 found = False
 
-        cells.append(Cell(cell_id=cell_id, barcode_counts=results))
+        cells.append(Cell(cell_id=cell_id, barcode_counts=barcode_counts))
     return cells
 
 
