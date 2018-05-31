@@ -350,17 +350,14 @@ def write_loom(cells, input_dir, run_name, barcode_length):
     bc_fulldict = {i: [] for i in range(6)}
     cnt_fulldict = {i: [] for i in range(6)}
     for id1 in all_cellIDs:
-        found = False
         for id2 in cellid1:
             if id1[(len(sample_name) + 1):] == id2:
-                found = True
                 index = cellid1.index(id2)
                 for i in range(6):
                     bc_fulldict[i].append(bc_dict[i][index])
                     cnt_fulldict[i].append(cnt_dict[i][index])
                 break
-
-        if not found:
+        else:
             for i in range(6):
                 bc_fulldict[i].append('-')
                 cnt_fulldict[i].append(0)
