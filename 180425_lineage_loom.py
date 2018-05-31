@@ -324,16 +324,17 @@ def write_loom(cells, input_dir, run_name, barcode_length):
     for cell in cells:
         sort_d = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1))
         sort_d.reverse()
-        if len(sort_d) != 0:
-            cellid1.append(cell.cell_id)
-            for j in range(6):
-                k = j + 1
-                if j <= len(sort_d) - 1:
-                    bc_dict[str(k)].append(sort_d[j][0])
-                    cnt_dict[str(k)].append(sort_d[j][1])
-                else:
-                    bc_dict[str(k)].append('-')
-                    cnt_dict[str(k)].append(0)
+        if not sort_d:
+            continue
+        cellid1.append(cell.cell_id)
+        for j in range(6):
+            k = j + 1
+            if j <= len(sort_d) - 1:
+                bc_dict[str(k)].append(sort_d[j][0])
+                cnt_dict[str(k)].append(sort_d[j][1])
+            else:
+                bc_dict[str(k)].append('-')
+                cnt_dict[str(k)].append(0)
 
     # creates the loom file based on cellranger output files
 
