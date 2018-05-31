@@ -313,18 +313,19 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
     return new_cells
 
 
-def write_loom(cell_col, input_dir, run_name, barcode_length):
+def write_loom(cells, input_dir, run_name, barcode_length):
+
     bc_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cnt_dict = {'1': [], '2': [], '3': [], '4': [], '5': [], '6': []}
     cellid1 = []
 
     # brings the barcode data into a format where the most abundant barcode of the cells are in
     # one list, the second most abundant in another and so on. The same with counts
-    for i in range(0, len(cell_col), 2):
-        sort_d = sorted(cell_col[i + 1].items(), key=operator.itemgetter(1))
+    for cell in cells:
+        sort_d = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1))
         sort_d.reverse()
         if len(sort_d) != 0:
-            cellid1.append(cell_col[i])
+            cellid1.append(cell.cell_id)
             for j in range(6):
                 k = j + 1
                 if j <= len(sort_d) - 1:
@@ -531,12 +532,7 @@ def main():
 
     # Create a loom file if requested
     if args.loom:
-        # TODO temporary
-        cell_col = []
-        for cell in cells:
-            cell_col.append(cell.cell_id)
-            cell_col.append(cell.barcode_counts)
-        write_loom(cell_col, input_dir, output_dir, barcode_length=args.end - args.start)
+        write_loom(cells, input_dir, output_dir, barcode_length=args.end - args.start)
 
     log('Run completed!')
 
