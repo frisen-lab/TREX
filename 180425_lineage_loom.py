@@ -327,31 +327,31 @@ def write_loom(cells, input_dir, run_name, barcode_length):
             continue
         cellid1.append(cell.cell_id)
         for j in range(6):
-            if j <= len(sort_d) - 1:
+            if j < len(sort_d):
                 bc_dict[j].append(sort_d[j][0])
                 cnt_dict[j].append(sort_d[j][1])
             else:
                 bc_dict[j].append('-')
                 cnt_dict[j].append(0)
 
-    # creates the loom file based on cellranger output files
-
-    sample_name = os.path.basename(input_dir[:-5])
+    sample_dir = input_dir[:-len('outs/')]
+    loompy.create_from_cellranger(sample_dir, run_name)
+    # create_from_cellranger() does not tell us the name of the created file,
+    # so we need to re-derive it from the sample name.
+    sample_name = os.path.basename(sample_dir)
     loom_path = os.path.join(run_name, sample_name + '.loom')
-    if not os.path.exists(loom_path):
-        loompy.create_from_cellranger(input_dir[:-5], run_name)
-    # connects to the just created loom file in order to modify it
     ds = loompy.connect(loom_path)
-    # gets a list of all cellIDs appearing in the loom file
-    all_cellIDs = ds.ca.CellID
+
+    # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
+    loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
 
     # brings barcode data into correct format for loom file.
     # Array must have same shape as all_cellIDs
     bc_fulldict = {i: [] for i in range(6)}
     cnt_fulldict = {i: [] for i in range(6)}
-    for id1 in all_cellIDs:
+    for id1 in loom_cell_ids:
         for id2 in cellid1:
-            if id1[(len(sample_name) + 1):] == id2:
+            if id1 == id2:
                 index = cellid1.index(id2)
                 for i in range(6):
                     bc_fulldict[i].append(bc_dict[i][index])
