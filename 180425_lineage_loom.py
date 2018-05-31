@@ -7,7 +7,7 @@ instructions => cellranger_instructions.sh
 
 Run: Run program in cellranger 'outs' directory OR indicate path to 'outs'-directory via --path flag
 """
-
+import sys
 import os.path
 import argparse
 from collections import Counter
@@ -313,7 +313,12 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
     return new_cells
 
 
-def write_loom(cells, input_dir, run_name, barcode_length, top_n=6):
+def write_loom(cells: List[Cell], cellranger_dir, output_dir, barcode_length, top_n=6):
+    """
+    Create a loom file from a Cell Ranger sample directory and augment it with information about
+    the most abundant barcodes and their counts.
+    """
+    # For each cell, collect the most abundant barcodes and their counts
     # Maps cell_id to a list of (barcode, count) pairs that represent the most abundant barcodes.
     most_abundant = dict()
     for cell in cells:
@@ -324,44 +329,39 @@ def write_loom(cells, input_dir, run_name, barcode_length, top_n=6):
         counts = counts[:top_n]
         most_abundant[cell.cell_id] = counts
 
-    sample_dir = input_dir[:-len('outs/')]
-    loompy.create_from_cellranger(sample_dir, run_name)
+    sample_dir = cellranger_dir[:-len('outs/')]
+    loompy.create_from_cellranger(sample_dir, outdir=output_dir)
     # create_from_cellranger() does not tell us the name of the created file,
     # so we need to re-derive it from the sample name.
     sample_name = os.path.basename(sample_dir)
-    loom_path = os.path.join(run_name, sample_name + '.loom')
-    ds = loompy.connect(loom_path)
+    loom_path = os.path.join(output_dir, sample_name + '.loom')
 
-    # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
-    loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
+    with loompy.connect(loom_path) as ds:
+        # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
+        loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
 
-    # brings barcode data into correct format for loom file.
-    # Array must have same shape as all_cellIDs
-    barcode_lists = [[] for _ in range(top_n)]
-    count_lists = [[] for _ in range(top_n)]
-    for id1 in loom_cell_ids:
-        if id1 in most_abundant:
-            barcode_counts = most_abundant[id1]
-        else:
-            barcode_counts = []
-        # Fill up to a constant length
-        while len(barcode_counts) < top_n:
-            barcode_counts.append(('-', 0))
+        # Transform barcode and count data
+        # brings barcode data into correct format for loom file.
+        # Array must have same shape as all_cellIDs
+        barcode_lists = [[] for _ in range(top_n)]
+        count_lists = [[] for _ in range(top_n)]
+        for cell_id in loom_cell_ids:
+            barcode_counts = most_abundant.get(cell_id, [])
+            # Fill up to a constant length
+            while len(barcode_counts) < top_n:
+                barcode_counts.append(('-', 0))
 
-        for i, (barcode, count) in enumerate(barcode_counts):
-            barcode_lists[i].append(barcode)
-            count_lists[i].append(count)
+            for i, (barcode, count) in enumerate(barcode_counts):
+                barcode_lists[i].append(barcode)
+                count_lists[i].append(count)
 
-    # Add barcode and count information to loom file
-    for i in range(top_n):
-        ds.ca[f'linBarcode_{i+1}'] = np.array(barcode_lists[i], dtype='S%r' % barcode_length)
-        ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
-
-    ds.close()
+        # Add barcode and count information to loom file
+        for i in range(top_n):
+            ds.ca[f'linBarcode_{i+1}'] = np.array(barcode_lists[i], dtype='S%r' % barcode_length)
+            ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
 
 
 def log(*args, **kwargs):
-    import sys
     print(*args, **kwargs, file=sys.stderr)
 
 
