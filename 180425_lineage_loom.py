@@ -314,7 +314,6 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
 
 
 def write_loom(cells, input_dir, run_name, barcode_length):
-
     bc_dict = {i: [] for i in range(6)}
     cnt_dict = {i: [] for i in range(6)}
     cellid1 = []
@@ -337,8 +336,8 @@ def write_loom(cells, input_dir, run_name, barcode_length):
 
     # creates the loom file based on cellranger output files
 
-    loom_name = os.path.basename(input_dir[:-5])
-    loom_path = os.path.join(run_name, loom_name + '.loom')
+    sample_name = os.path.basename(input_dir[:-5])
+    loom_path = os.path.join(run_name, sample_name + '.loom')
     if not os.path.exists(loom_path):
         loompy.create_from_cellranger(input_dir[:-5], run_name)
     # connects to the just created loom file in order to modify it
@@ -353,7 +352,7 @@ def write_loom(cells, input_dir, run_name, barcode_length):
     for id1 in all_cellIDs:
         found = False
         for id2 in cellid1:
-            if id1[(len(loom_name) + 1):] == id2:
+            if id1[(len(sample_name) + 1):] == id2:
                 found = True
                 index = cellid1.index(id2)
                 for i in range(6):
