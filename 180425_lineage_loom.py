@@ -102,57 +102,55 @@ def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barco
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
         required tags are written to this file
     """
-    alignment_file = pysam.AlignmentFile(bam_path)
-    out_bam = pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file)
+    with pysam.AlignmentFile(bam_path) as alignment_file, \
+        pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
 
-    # Fetches those reads aligning to the artifical, barcode-containing chromosome
-    reads = []
-    for read in alignment_file.fetch(chr_name):
-        # Skip reads without cellID or UMI
-        if not read.has_tag('CB') or not read.has_tag('UB'):
-            continue
-        # Filters out reads that have not approved cellIDs
-        cell_id = read.get_tag('CB')
-        if cell_id not in cell_ids:
-            continue
+        # Fetches those reads aligning to the artifical, barcode-containing chromosome
+        reads = []
+        for read in alignment_file.fetch(chr_name):
+            # Skip reads without cellID or UMI
+            if not read.has_tag('CB') or not read.has_tag('UB'):
+                continue
+            # Filters out reads that have not approved cellIDs
+            cell_id = read.get_tag('CB')
+            if cell_id not in cell_ids:
+                continue
 
-        # Write the passing alignments to a separate file
-        # TODO write only the alignments that actually cover the barcode region
-        out_bam.write(read)
+            # Write the passing alignments to a separate file
+            # TODO write only the alignments that actually cover the barcode region
+            out_bam.write(read)
 
-        query_align_end = read.query_alignment_end
-        query_align_start = read.query_alignment_start
+            query_align_end = read.query_alignment_end
+            query_align_start = read.query_alignment_start
 
-        # Extract barcode
-        barcode = ['-'] * (barcode_end - barcode_start)
-        for query_pos, ref_pos in read.get_aligned_pairs():
-            # We replace soft-clipping with an ungapped alignment extending into the soft-clipped
-            # regions, assuming the clipping occurred because the barcode region was encountered.
-            if ref_pos is None:
-                # Soft clip or insertion
-                if query_align_end <= query_pos:
-                    # We are in a soft-clipped region at the 3' end of the read
-                    ref_pos = read.reference_end + (query_pos - query_align_end)
-                elif query_align_start > query_pos:
-                    # We are in a soft-clipped region at the 5' end of the read
-                    ref_pos = read.reference_start - (query_align_start - query_pos)
-                # ref_pos remains None if this is an insertion
+            # Extract barcode
+            barcode = ['-'] * (barcode_end - barcode_start)
+            for query_pos, ref_pos in read.get_aligned_pairs():
+                # We replace soft-clipping with an ungapped alignment extending into the soft-clipped
+                # regions, assuming the clipping occurred because the barcode region was encountered.
+                if ref_pos is None:
+                    # Soft clip or insertion
+                    if query_align_end <= query_pos:
+                        # We are in a soft-clipped region at the 3' end of the read
+                        ref_pos = read.reference_end + (query_pos - query_align_end)
+                    elif query_align_start > query_pos:
+                        # We are in a soft-clipped region at the 5' end of the read
+                        ref_pos = read.reference_start - (query_align_start - query_pos)
+                    # ref_pos remains None if this is an insertion
 
-            if ref_pos is not None and barcode_start <= ref_pos < barcode_end:
-                if query_pos is None:
-                    # Deletion or intron skip
-                    query_base = '0'
-                else:
-                    # Match or mismatch
-                    query_base = read.query_sequence[query_pos]
-                barcode[ref_pos - barcode_start] = query_base
+                if ref_pos is not None and barcode_start <= ref_pos < barcode_end:
+                    if query_pos is None:
+                        # Deletion or intron skip
+                        query_base = '0'
+                    else:
+                        # Match or mismatch
+                        query_base = read.query_sequence[query_pos]
+                    barcode[ref_pos - barcode_start] = query_base
 
-        barcode = ''.join(barcode)
-        reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), barcode=barcode))
+            barcode = ''.join(barcode)
+            reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), barcode=barcode))
 
     sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.barcode))
-    alignment_file.close()
-    out_bam.close()
     assert len(sorted_reads) == 0 or len(sorted_reads[0].barcode) == barcode_end - barcode_start
     return sorted_reads
 
