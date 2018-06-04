@@ -16,6 +16,7 @@ setup(
     license='MIT',
     py_modules=['180425_lineage_loom'],
     install_requires=['pysam', 'numpy', 'loompy'],
+    entry_points={'console_scripts': ['180425_lineage_loom = 180425_lineage_loom:main']},
     classifiers=[
         'Development Status :: 1 - Planning',
         'Environment :: Console',
