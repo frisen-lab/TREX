@@ -12,6 +12,7 @@ import os.path
 import argparse
 from collections import Counter
 from collections import defaultdict
+from glob import glob
 import operator
 import warnings
 import logging
@@ -31,14 +32,14 @@ logger = logging.getLogger(__name__)
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--genome-name',
+    parser.add_argument('--genome-name', metavar='NAME',
         help='Name of the genome as indicated in cell ranger count run with the flag --genome. '
-             'Default: %(default)s',
-        default='hg38_Tomato-N')
+             'Default: Automatically detected',
+        default=None)
     parser.add_argument('--chromosome', '--chr',
-        help='Barcode chromosome name as indicated in .fasta file. See cellranger_instructions.sh'
-             'Default: %(default)s.',
-        default='chrTomato-N')
+        help='Barcode chromosome name as indicated in .fasta file. '
+             'Default: Last chromosome in the BAM file',
+        default=None)
     parser.add_argument('--path', '-p',
         help='Path to cell ranger "outs" directory. Default: current directory',
         default=os.getcwd())
@@ -99,59 +100,63 @@ class Cell(NamedTuple):
     barcode_counts: Dict[str, int]
 
 
-def read_bam(bam_path, output_bam_path, cell_ids, chr_name, barcode_start, barcode_end):
+def read_bam(bam_path, output_dir, cell_ids, chr_name, barcode_start, barcode_end):
     """
     bam_path -- path to input BAM file
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
         required tags are written to this file
     """
-    with pysam.AlignmentFile(bam_path) as alignment_file, \
-        pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
+    with pysam.AlignmentFile(bam_path) as alignment_file:
+        if chr_name is None:
+            chr_name = alignment_file.references[-1]
+            logger.info(f'Reading alignments from reference {chr_name!r}')
 
-        # Fetches those reads aligning to the artifical, barcode-containing chromosome
-        reads = []
-        for read in alignment_file.fetch(chr_name):
-            # Skip reads without cellID or UMI
-            if not read.has_tag('CB') or not read.has_tag('UB'):
-                continue
-            # Filters out reads that have not approved cellIDs
-            cell_id = read.get_tag('CB')
-            if cell_id not in cell_ids:
-                continue
+        output_bam_path = os.path.join(output_dir, chr_name + '_entries.bam')
+        with pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
+            # Fetches those reads aligning to the artifical, barcode-containing chromosome
+            reads = []
+            for read in alignment_file.fetch(chr_name):
+                # Skip reads without cellID or UMI
+                if not read.has_tag('CB') or not read.has_tag('UB'):
+                    continue
+                # Filters out reads that have not approved cellIDs
+                cell_id = read.get_tag('CB')
+                if cell_id not in cell_ids:
+                    continue
 
-            # Write the passing alignments to a separate file
-            # TODO write only the alignments that actually cover the barcode region
-            out_bam.write(read)
+                # Write the passing alignments to a separate file
+                # TODO write only the alignments that actually cover the barcode region
+                out_bam.write(read)
 
-            query_align_end = read.query_alignment_end
-            query_align_start = read.query_alignment_start
+                query_align_end = read.query_alignment_end
+                query_align_start = read.query_alignment_start
 
-            # Extract barcode
-            barcode = ['-'] * (barcode_end - barcode_start)
-            for query_pos, ref_pos in read.get_aligned_pairs():
-                # We replace soft-clipping with an ungapped alignment extending into the soft-clipped
-                # regions, assuming the clipping occurred because the barcode region was encountered.
-                if ref_pos is None:
-                    # Soft clip or insertion
-                    if query_align_end <= query_pos:
-                        # We are in a soft-clipped region at the 3' end of the read
-                        ref_pos = read.reference_end + (query_pos - query_align_end)
-                    elif query_align_start > query_pos:
-                        # We are in a soft-clipped region at the 5' end of the read
-                        ref_pos = read.reference_start - (query_align_start - query_pos)
-                    # ref_pos remains None if this is an insertion
+                # Extract barcode
+                barcode = ['-'] * (barcode_end - barcode_start)
+                for query_pos, ref_pos in read.get_aligned_pairs():
+                    # We replace soft-clipping with an ungapped alignment extending into the soft-clipped
+                    # regions, assuming the clipping occurred because the barcode region was encountered.
+                    if ref_pos is None:
+                        # Soft clip or insertion
+                        if query_align_end <= query_pos:
+                            # We are in a soft-clipped region at the 3' end of the read
+                            ref_pos = read.reference_end + (query_pos - query_align_end)
+                        elif query_align_start > query_pos:
+                            # We are in a soft-clipped region at the 5' end of the read
+                            ref_pos = read.reference_start - (query_align_start - query_pos)
+                        # ref_pos remains None if this is an insertion
 
-                if ref_pos is not None and barcode_start <= ref_pos < barcode_end:
-                    if query_pos is None:
-                        # Deletion or intron skip
-                        query_base = '0'
-                    else:
-                        # Match or mismatch
-                        query_base = read.query_sequence[query_pos]
-                    barcode[ref_pos - barcode_start] = query_base
+                    if ref_pos is not None and barcode_start <= ref_pos < barcode_end:
+                        if query_pos is None:
+                            # Deletion or intron skip
+                            query_base = '0'
+                        else:
+                            # Match or mismatch
+                            query_base = read.query_sequence[query_pos]
+                        barcode[ref_pos - barcode_start] = query_base
 
-            barcode = ''.join(barcode)
-            reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), barcode=barcode))
+                barcode = ''.join(barcode)
+                reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), barcode=barcode))
 
     sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.barcode))
     assert len(sorted_reads) == 0 or len(sorted_reads[0].barcode) == barcode_end - barcode_start
@@ -401,8 +406,18 @@ def main():
     # 2. extracts barcodes, UMIs and cellIDs from reads,
     # 3. outputs UMI-sorted reads with barcodes
 
-    cell_ids = read_cellid_barcodes(
-        os.path.join(input_dir, 'filtered_gene_bc_matrices', args.genome_name, 'barcodes.tsv'))
+    if args.genome_name is None:
+        genomes = glob(os.path.join(args.path, 'filtered_gene_bc_matrices', '*'))
+        if len(genomes) != 1:
+            logger.error('Exactly one genome folder expected in the '
+                "'outs/filtered_gene_bc_matrices/' folder, but found:")
+            for g in genomes:
+                logger.error(f'  {g!r}')
+            sys.exit(1)
+        genome_dir = genomes[0]
+    else:
+        genome_dir = os.path.join(input_dir, 'filtered_gene_bc_matrices', args.genome_name)
+    cell_ids = read_cellid_barcodes(os.path.join(genome_dir, 'barcodes.tsv'))
 
     try:
         os.makedirs(output_dir)
@@ -410,9 +425,9 @@ def main():
         logger.error(f'Output directory {output_dir!r} already exists '
             '(use -o to specify a different one)')
         sys.exit(1)
+
     sorted_reads = read_bam(
-        os.path.join(input_dir, 'possorted_genome_bam.bam'),
-        os.path.join(output_dir, args.chromosome + '_entries.bam'),
+        os.path.join(input_dir, 'possorted_genome_bam.bam'), output_dir,
         cell_ids, args.chromosome, args.start, args.end)
 
     logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode')
