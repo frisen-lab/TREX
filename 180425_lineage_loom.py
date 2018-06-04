@@ -39,7 +39,7 @@ def parse_arguments():
     parser.add_argument('--path', '-p',
         help='Path to cell ranger "outs" directory. Default: current directory',
         default=os.getcwd())
-    parser.add_argument('--name', '-n',
+    parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY',
         help='name of the run and directory created by program. Default: %(default)s',
         default='lineage_run')
     parser.add_argument('--start', '-s',
@@ -367,7 +367,7 @@ def main():
     args = parse_arguments()
 
     input_dir = args.path
-    output_dir = args.name
+    output_dir = args.output
     minham = args.hamming + 1
 
     # PART I + II: Barcode extraction and reads construction
