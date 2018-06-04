@@ -370,8 +370,6 @@ def main():
     output_dir = args.name
     minham = args.hamming + 1
 
-    os.makedirs(output_dir)
-
     # PART I + II: Barcode extraction and reads construction
 
     # 1. Extracts reads aligning to barcode-chromosome,
@@ -380,6 +378,8 @@ def main():
 
     cell_ids = read_cellid_barcodes(
         os.path.join(input_dir, 'filtered_gene_bc_matrices', args.genome_name, 'barcodes.tsv'))
+
+    os.makedirs(output_dir)
 
     sorted_reads = read_bam(
         os.path.join(input_dir, 'possorted_genome_bam.bam'),
