@@ -165,6 +165,9 @@ def compute_consensus(sequences):
         return sequences[0]
     assert sequences
 
+    # TODO
+    # Ensure that the sequences are actually somewhat similar
+
     letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
     length = len(sequences[0])
     consens_np = np.zeros([length, 6], dtype='float16')
@@ -377,8 +380,12 @@ def main():
     cell_ids = read_cellid_barcodes(
         os.path.join(input_dir, 'filtered_gene_bc_matrices', args.genome_name, 'barcodes.tsv'))
 
-    os.makedirs(output_dir)
-
+    try:
+        os.makedirs(output_dir)
+    except FileExistsError:
+        log(f'ERROR: Output directory {output_dir!r} already exists '
+            '(use -o to specify a different one)')
+        sys.exit(1)
     sorted_reads = read_bam(
         os.path.join(input_dir, 'possorted_genome_bam.bam'),
         os.path.join(output_dir, args.chromosome + '_entries.bam'),
