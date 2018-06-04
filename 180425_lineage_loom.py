@@ -14,6 +14,7 @@ from collections import Counter
 from collections import defaultdict
 import operator
 import warnings
+import logging
 from typing import Set, List, Dict, NamedTuple, Iterable
 
 import numpy as np
@@ -24,6 +25,8 @@ with warnings.catch_warnings():
 
 
 __author__ = 'leonie.von.berlin@stud.ki.se'
+
+logger = logging.getLogger(__name__)
 
 
 def parse_arguments():
@@ -360,12 +363,33 @@ def write_loom(cells: List[Cell], cellranger_dir, output_dir, barcode_length, to
             ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
 
 
-def log(*args, **kwargs):
-    print(*args, **kwargs, file=sys.stderr)
+class NiceFormatter(logging.Formatter):
+    """
+    Do not prefix "INFO:" to info-level log messages (but do it for all other
+    levels).
+
+    Based on http://stackoverflow.com/a/9218261/715090 .
+    """
+    def format(self, record):
+        if record.levelno != logging.INFO:
+            record.msg = '{}: {}'.format(record.levelname, record.msg)
+        return super().format(record)
+
+
+def setup_logging(debug: bool):
+    """
+    Set up logging. If debug is True, then DEBUG level messages are printed.
+    """
+    handler = logging.StreamHandler()
+    handler.setFormatter(NiceFormatter())
+    root = logging.getLogger()
+    root.addHandler(handler)
+    root.setLevel(logging.DEBUG if debug else logging.INFO)
 
 
 def main():
     args = parse_arguments()
+    setup_logging(debug=False)
 
     input_dir = args.path
     output_dir = args.output
@@ -383,7 +407,7 @@ def main():
     try:
         os.makedirs(output_dir)
     except FileExistsError:
-        log(f'ERROR: Output directory {output_dir!r} already exists '
+        logger.error(f'Output directory {output_dir!r} already exists '
             '(use -o to specify a different one)')
         sys.exit(1)
     sorted_reads = read_bam(
@@ -391,7 +415,7 @@ def main():
         os.path.join(output_dir, args.chromosome + '_entries.bam'),
         cell_ids, args.chromosome, args.start, args.end)
 
-    log(f'Read {len(sorted_reads)} reads containing (parts of) the barcode')
+    logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode')
     with open(os.path.join(output_dir, 'reads.txt'), 'w') as reads_file:
         print(
             '#Each output line corresponds to one read and has the following style: '
@@ -408,7 +432,7 @@ def main():
     # 3. outputs molecules and corresponding CellIDs/UMIs
 
     molecules = compute_molecules(sorted_reads)
-    log(f'Detected {len(molecules)} molecules')
+    logger.info(f'Detected {len(molecules)} molecules')
     with open(os.path.join(output_dir, 'molecules.txt'), 'w') as molecules_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: '
@@ -430,7 +454,7 @@ def main():
     # 4. Outputs for each cells all its barcodes and corresponding counts
 
     cells = compute_cells(molecules, args.min_length, minham)
-    log(f'Detected {len(cells)} cells')
+    logger.info(f'Detected {len(cells)} cells')
     with open(os.path.join(output_dir, 'cells.txt'), 'w') as cells_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
@@ -473,7 +497,7 @@ def main():
         for barcode, count in cell.barcode_counts.items():
             groups_dict[barcode].append((cell.cell_id, count))
 
-    log(f'Detected {len(groups_dict)} unique cell groups')
+    logger.info(f'Detected {len(groups_dict)} unique cell groups')
     # in groups.txt all barcodes and their corresponding cellIDs can be found
     with open(os.path.join(output_dir, 'groups.txt'), 'w') as groups_file:
         print(
@@ -492,7 +516,7 @@ def main():
     if args.loom:
         write_loom(cells, input_dir, output_dir, barcode_length=args.end - args.start)
 
-    log('Run completed!')
+    logger.info('Run completed!')
 
 
 if __name__ == '__main__':
