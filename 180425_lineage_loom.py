@@ -1,11 +1,5 @@
 """
-Description: Program for the extraction and filtering of random barcodes from single-cell
-sequencing data
-
-Preparation: Program processes cell ranger output files. Run cell ranger before. Follow
-instructions => cellranger_instructions.sh
-
-Run: Run program in cellranger 'outs' directory OR indicate path to 'outs'-directory via --path flag
+Extract and filter random barcodes from single-cell sequencing data
 """
 import sys
 import os.path
@@ -31,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(usage=__doc__)
     parser.add_argument('--genome-name', metavar='NAME',
         help='Name of the genome as indicated in cell ranger count run with the flag --genome. '
              'Default: Automatically detected',
@@ -47,13 +41,11 @@ def parse_arguments():
         help='name of the run and directory created by program. Default: %(default)s',
         default='lineage_run')
     parser.add_argument('--start', '-s',
-        help='Position of first base INSIDE the barcode (with first base on position 0). '
-             'Default: %(default)s',
-        type=int, default=694)
+        help='Position of first barcode base. Default: Automatically detected',
+        type=int, default=None)
     parser.add_argument('--end', '-e',
-        help='Position of last base INSIDE the barcode (with first base on position 0). '
-             'Default: %(default)s',
-        type=int, default=724)
+        help='Position of last barcode base. Default: Automatically detected',
+        type=int, default=None)
     parser.add_argument('--min-length', '-m',
         help='Minimum number of bases a barcode must have. Default: %(default)s', type=int, default=10)
     parser.add_argument('--hamming',
@@ -100,7 +92,45 @@ class Cell(NamedTuple):
     barcode_counts: Dict[str, int]
 
 
-def read_bam(bam_path, output_dir, cell_ids, chr_name, barcode_start, barcode_end):
+def detect_barcode_location(alignment_file, reference_name):
+    """
+    Detect where the barcode is located on the reference by inspecting the alignments.
+
+    Return (barcode_start, barcode_end)
+    """
+    # Look for reference positions at which reads are soft-clipped at their 3' end
+    starts = Counter()
+    reference_length = alignment_file.get_reference_length(reference_name)
+    for alignment in alignment_file.fetch(reference_name):
+        clip_right = alignment.query_length - alignment.query_alignment_end
+        if clip_right >= 5:
+            starts[alignment.reference_end] += 1
+    # The most common reference position that is soft clipped could be the 3' end
+    # of the contig. If so, take the 2nd most common position as barcode start.
+    first, second = starts.most_common(2)
+    barcode_start = first[0] if first[0] < reference_length else second[0]
+
+    # Soft-clipping at the 5' end cannot be used to find the barcode end when
+    # the barcode region is too far at the 3' end of the contig. Instead,
+    # look at pileups and check base frequencies (over the barcode, bases should
+    # be roughly uniformly distributed).
+    barcode_end = barcode_start
+    for column in alignment_file.pileup(reference_name, start=barcode_start):
+        if column.reference_pos < barcode_start:
+            # See pileup() documentation
+            continue
+        bases = [p.alignment.query_sequence[p.query_position] for p in column.pileups if p.query_position is not None]
+        counter = Counter(bases)
+        # Test whether the bases occur at roughly uniform frequencies
+        if counter.most_common()[0][1] / len(bases) > 0.75:
+            # We appear to have found the end of the barcode
+            barcode_end = column.reference_pos
+            break
+
+    return (barcode_start, barcode_end)
+
+
+def read_bam(bam_path, output_dir, cell_ids, chr_name, barcode_start=None, barcode_end=None):
     """
     bam_path -- path to input BAM file
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
@@ -109,8 +139,14 @@ def read_bam(bam_path, output_dir, cell_ids, chr_name, barcode_start, barcode_en
     with pysam.AlignmentFile(bam_path) as alignment_file:
         if chr_name is None:
             chr_name = alignment_file.references[-1]
-            logger.info(f'Reading alignments from reference {chr_name!r}')
 
+        if barcode_start is None or barcode_end is None:
+            if barcode_start is not None or barcode_end is not None:
+                raise ValueError('Either both or none of barcode start and end must be provided')
+            barcode_start, barcode_end = detect_barcode_location(alignment_file, chr_name)
+        logger.info(f'Reading barcode sequences from {chr_name}:{barcode_start+1}-{barcode_end}')
+        if barcode_end - barcode_start < 10:
+            raise ValueError('Detected barcode length too short, something is wrong')
         output_bam_path = os.path.join(output_dir, chr_name + '_entries.bam')
         with pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
             # Fetches those reads aligning to the artifical, barcode-containing chromosome
@@ -134,8 +170,9 @@ def read_bam(bam_path, output_dir, cell_ids, chr_name, barcode_start, barcode_en
                 # Extract barcode
                 barcode = ['-'] * (barcode_end - barcode_start)
                 for query_pos, ref_pos in read.get_aligned_pairs():
-                    # We replace soft-clipping with an ungapped alignment extending into the soft-clipped
-                    # regions, assuming the clipping occurred because the barcode region was encountered.
+                    # Replace soft-clipping with an ungapped alignment extending into the
+                    # soft-clipped region, assuming the clipping occurred because the barcode
+                    # region was encountered.
                     if ref_pos is None:
                         # Soft clip or insertion
                         if query_align_end <= query_pos:
@@ -428,7 +465,7 @@ def main():
 
     sorted_reads = read_bam(
         os.path.join(input_dir, 'possorted_genome_bam.bam'), output_dir,
-        cell_ids, args.chromosome, args.start, args.end)
+        cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
 
     logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode')
     with open(os.path.join(output_dir, 'reads.txt'), 'w') as reads_file:
@@ -529,7 +566,7 @@ def main():
 
     # Create a loom file if requested
     if args.loom:
-        write_loom(cells, input_dir, output_dir, barcode_length=args.end - args.start)
+        write_loom(cells, input_dir, output_dir, barcode_length=args.end - args.start + 1)
 
     logger.info('Run completed!')
 
