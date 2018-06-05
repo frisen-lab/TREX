@@ -454,6 +454,7 @@ def main():
     else:
         genome_dir = os.path.join(input_dir, 'filtered_gene_bc_matrices', args.genome_name)
     cell_ids = read_cellid_barcodes(os.path.join(genome_dir, 'barcodes.tsv'))
+    logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
     try:
         os.makedirs(output_dir)
