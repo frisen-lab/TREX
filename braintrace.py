@@ -18,21 +18,21 @@ with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
 
-
+__version__ = '0.1'
 __author__ = 'leonie.von.berlin@stud.ki.se'
 
 logger = logging.getLogger(__name__)
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(usage=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument('--genome-name', metavar='NAME',
         help='Name of the genome as indicated in cell ranger count run with the flag --genome. '
-             'Default: Automatically detected',
+             'Default: Auto-detected',
         default=None)
     parser.add_argument('--chromosome', '--chr',
-        help='Barcode chromosome name as indicated in .fasta file. '
-             'Default: Last chromosome in the BAM file',
+        help='Barcode chromosome name. Default: Last chromosome in the BAM file',
         default=None)
     parser.add_argument('--path', '-p',
         help='Path to cell ranger "outs" directory. Default: current directory',
@@ -41,10 +41,10 @@ def parse_arguments():
         help='name of the run and directory created by program. Default: %(default)s',
         default='lineage_run')
     parser.add_argument('--start', '-s',
-        help='Position of first barcode base. Default: Automatically detected',
+        help='Position of first barcode base. Default: Auto-detected',
         type=int, default=None)
     parser.add_argument('--end', '-e',
-        help='Position of last barcode base. Default: Automatically detected',
+        help='Position of last barcode base. Default: Auto-detected',
         type=int, default=None)
     parser.add_argument('--min-length', '-m',
         help='Minimum number of bases a barcode must have. Default: %(default)s', type=int, default=10)
