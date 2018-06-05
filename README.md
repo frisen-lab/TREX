@@ -29,4 +29,4 @@ Running the tool
 On the minimal test dataset:
 
     rm -r lineage_run/
-    python3 180425_lineage_loom.py -p mini --genome-name hg38_Tomato-N --chr chrTomato-N
+    braintrace -s 695 -e 724 mini/
