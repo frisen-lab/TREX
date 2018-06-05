@@ -34,9 +34,6 @@ def parse_arguments():
     parser.add_argument('--chromosome', '--chr',
         help='Barcode chromosome name. Default: Last chromosome in the BAM file',
         default=None)
-    parser.add_argument('--path', '-p',
-        help='Path to cell ranger "outs" directory. Default: current directory',
-        default=os.getcwd())
     parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY',
         help='name of the run and directory created by program. Default: %(default)s',
         default='lineage_run')
@@ -56,6 +53,8 @@ def parse_arguments():
         help='If given, create loom-file from cell ranger and barcode data. '
              'File will have the same name as the run',
         action='store_true')
+    parser.add_argument('path', metavar='DIRECTORY',
+        help='Path to cell ranger "outs" directory')
     return parser.parse_args()
 
 
