@@ -442,8 +442,12 @@ def main():
     # 2. extracts barcodes, UMIs and cellIDs from reads,
     # 3. outputs UMI-sorted reads with barcodes
 
+    matrices_path = os.path.join(args.path, 'filtered_gene_bc_matrices')
+    if not os.path.exists(matrices_path):
+        logger.error("Directory 'filtered_gene_bc_matrices/' must exist in the given path")
+        sys.exit(1)
     if args.genome_name is None:
-        genomes = glob(os.path.join(args.path, 'filtered_gene_bc_matrices', '*'))
+        genomes = glob(os.path.join(matrices_path, '*'))
         if len(genomes) != 1:
             logger.error('Exactly one genome folder expected in the '
                 "'outs/filtered_gene_bc_matrices/' folder, but found:")
