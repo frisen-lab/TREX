@@ -2,7 +2,6 @@
 Extract and filter random barcodes from single-cell sequencing data
 """
 import sys
-import os.path
 import argparse
 from collections import Counter
 from collections import defaultdict
@@ -10,6 +9,7 @@ from glob import glob
 import operator
 import warnings
 import logging
+from pathlib import Path
 from typing import Set, List, Dict, NamedTuple, Iterable
 
 import numpy as np
@@ -34,9 +34,9 @@ def parse_arguments():
     parser.add_argument('--chromosome', '--chr',
         help='Barcode chromosome name. Default: Last chromosome in the BAM file',
         default=None)
-    parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY',
+    parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
         help='name of the run and directory created by program. Default: %(default)s',
-        default='lineage_run')
+        default=Path('lineage_run'))
     parser.add_argument('--start', '-s',
         help='Position of first barcode base. Default: Auto-detected',
         type=int, default=None)
@@ -53,12 +53,12 @@ def parse_arguments():
         help='If given, create loom-file from cell ranger and barcode data. '
              'File will have the same name as the run',
         action='store_true')
-    parser.add_argument('path', metavar='DIRECTORY',
+    parser.add_argument('path', metavar='DIRECTORY', type=Path,
         help='Path to cell ranger "outs" directory')
     return parser.parse_args()
 
 
-def read_cellid_barcodes(path: str) -> Set[str]:
+def read_cellid_barcodes(path: Path) -> Set[str]:
     """
     Read barcodes.tsv, which contains a list of corrected and approved cellIDs like this:
 
@@ -129,7 +129,7 @@ def detect_barcode_location(alignment_file, reference_name):
     return (barcode_start, barcode_end)
 
 
-def read_bam(bam_path, output_dir, cell_ids, chr_name, barcode_start=None, barcode_end=None):
+def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start=None, barcode_end=None):
     """
     bam_path -- path to input BAM file
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
@@ -146,7 +146,7 @@ def read_bam(bam_path, output_dir, cell_ids, chr_name, barcode_start=None, barco
         logger.info(f'Reading barcode sequences from {chr_name}:{barcode_start+1}-{barcode_end}')
         if barcode_end - barcode_start < 10:
             raise ValueError('Detected barcode length too short, something is wrong')
-        output_bam_path = os.path.join(output_dir, chr_name + '_entries.bam')
+        output_bam_path = output_dir / (chr_name + '_entries.bam')
         with pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
             # Fetches those reads aligning to the artifical, barcode-containing chromosome
             reads = []
@@ -372,12 +372,12 @@ def write_loom(cells: List[Cell], cellranger_dir, output_dir, barcode_length, to
         counts = counts[:top_n]
         most_abundant[cell.cell_id] = counts
 
-    sample_dir = cellranger_dir[:-len('outs/')]
+    sample_dir = cellranger_dir.parent
     loompy.create_from_cellranger(sample_dir, outdir=output_dir)
     # create_from_cellranger() does not tell us the name of the created file,
     # so we need to re-derive it from the sample name.
-    sample_name = os.path.basename(sample_dir)
-    loom_path = os.path.join(output_dir, sample_name + '.loom')
+    sample_name = sample_dir.name
+    loom_path = output_dir / (sample_name + '.loom')
 
     with loompy.connect(loom_path) as ds:
         # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
@@ -442,12 +442,12 @@ def main():
     # 2. extracts barcodes, UMIs and cellIDs from reads,
     # 3. outputs UMI-sorted reads with barcodes
 
-    matrices_path = os.path.join(args.path, 'filtered_gene_bc_matrices')
-    if not os.path.exists(matrices_path):
+    matrices_path = input_dir / 'filtered_gene_bc_matrices'
+    if not matrices_path.exists():
         logger.error("Directory 'filtered_gene_bc_matrices/' must exist in the given path")
         sys.exit(1)
     if args.genome_name is None:
-        genomes = glob(os.path.join(matrices_path, '*'))
+        genomes = [p for p in matrices_path.iterdir() if p.is_dir()]
         if len(genomes) != 1:
             logger.error('Exactly one genome folder expected in the '
                 "'outs/filtered_gene_bc_matrices/' folder, but found:")
@@ -456,23 +456,23 @@ def main():
             sys.exit(1)
         genome_dir = genomes[0]
     else:
-        genome_dir = os.path.join(input_dir, 'filtered_gene_bc_matrices', args.genome_name)
-    cell_ids = read_cellid_barcodes(os.path.join(genome_dir, 'barcodes.tsv'))
+        genome_dir = matrices_path / args.genome_name
+    cell_ids = read_cellid_barcodes(genome_dir / 'barcodes.tsv')
     logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
     try:
-        os.makedirs(output_dir)
+        output_dir.mkdir()
     except FileExistsError:
         logger.error(f'Output directory {output_dir!r} already exists '
             '(use -o to specify a different one)')
         sys.exit(1)
 
     sorted_reads = read_bam(
-        os.path.join(input_dir, 'possorted_genome_bam.bam'), output_dir,
+        input_dir / 'possorted_genome_bam.bam', output_dir,
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
 
     logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode')
-    with open(os.path.join(output_dir, 'reads.txt'), 'w') as reads_file:
+    with open(output_dir / 'reads.txt', 'w') as reads_file:
         print(
             '#Each output line corresponds to one read and has the following style: '
             'CellID\tUMI\tBarcode\n'
@@ -489,7 +489,7 @@ def main():
 
     molecules = compute_molecules(sorted_reads)
     logger.info(f'Detected {len(molecules)} molecules')
-    with open(os.path.join(output_dir, 'molecules.txt'), 'w') as molecules_file:
+    with open(output_dir / 'molecules.txt', 'w') as molecules_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: '
             'CellID\tUMI\tBarcode\n'
@@ -511,7 +511,7 @@ def main():
 
     cells = compute_cells(molecules, args.min_length, minham)
     logger.info(f'Detected {len(cells)} cells')
-    with open(os.path.join(output_dir, 'cells.txt'), 'w') as cells_file:
+    with open(output_dir / 'cells.txt', 'w') as cells_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
             'CellID\tBarcode1\tCount1\tBarcode2\tCount2...\n'
@@ -527,7 +527,7 @@ def main():
     # Part V + VI: Barcodes filtering and grouping
 
     cells = filter_cells(cells, molecules)
-    with open(os.path.join(output_dir, 'cells_filtered.txt'), 'w') as filtered_cells_file:
+    with open(output_dir / 'cells_filtered.txt', 'w') as filtered_cells_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
             'CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...\n'
@@ -555,7 +555,7 @@ def main():
 
     logger.info(f'Detected {len(groups_dict)} unique cell groups')
     # in groups.txt all barcodes and their corresponding cellIDs can be found
-    with open(os.path.join(output_dir, 'groups.txt'), 'w') as groups_file:
+    with open(output_dir / 'groups.txt', 'w') as groups_file:
         print(
             '#Each output line corresponds to one barcode group (clone) and has '
             'the following style: Barcode\t:\tCellID1\tbarcode-count1\tCellID2\tbarcode-count2...\n'
