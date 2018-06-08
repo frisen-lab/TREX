@@ -3,9 +3,7 @@ Extract and filter random barcodes from single-cell sequencing data
 """
 import sys
 import argparse
-from collections import Counter
-from collections import defaultdict
-from glob import glob
+from collections import Counter, defaultdict, OrderedDict
 import operator
 import warnings
 import logging
@@ -45,10 +43,10 @@ def parse_arguments():
         type=int, default=None)
     parser.add_argument('--min-length', '-m',
         help='Minimum number of bases a barcode must have. Default: %(default)s', type=int, default=10)
-    parser.add_argument('--hamming',
-        help='Minimum hamming distance allowed for two barcodes to be called similar. '
+    parser.add_argument('--max-hamming',
+        help='Hamming distance allowed for two barcodes to be called similar. '
              'Default: %(default)s',
-        type=int, default=4)
+        type=int, default=5)
     parser.add_argument('-l', '--loom',
         help='If given, create loom-file from cell ranger and barcode data. '
              'File will have the same name as the run',
@@ -56,6 +54,102 @@ def parse_arguments():
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
         help='Path to cell ranger "outs" directory')
     return parser.parse_args()
+
+
+def hamming_distance(s, t):
+    """Return Hamming distance between s and t."""
+    # This explicit for loop is slightly faster than
+    # using the comprehension sum(1 for c, d in zip(s, t) if c != d)
+    n = 0
+    for c, d in zip(s, t):
+        if c != d:
+            n += 1
+    return n
+
+
+class Graph:
+    """Graph that can find connected components"""
+
+    def __init__(self, nodes):
+        # values are lists of adjacent nodes
+        self._nodes = OrderedDict()
+        for node in nodes:
+            self._nodes[node] = []
+
+    def add_edge(self, node1, node2):
+        self._nodes[node1].append(node2)
+        self._nodes[node2].append(node1)
+
+    def connected_components(self):
+        """Return a list of connected components."""
+        visited = set()
+        components = []
+        for node, neighbors in self._nodes.items():
+            if node in visited:
+                continue
+            # Start a new component
+            to_visit = [node]
+            component = []
+            while to_visit:
+                n = to_visit.pop()
+                if n in visited:
+                    continue
+                visited.add(n)
+                component.append(n)
+                for neighbor in self._nodes[n]:
+                    if neighbor not in visited:
+                        to_visit.append(neighbor)
+            components.append(component)
+        return components
+
+
+def kmers(s: str, k: int):
+    """
+    Yield all overlapping k-kmers of s.
+
+    >>> list(kmers('hello', 3))
+    ['hel', 'ell', 'llo']
+    """
+    for i in range(len(s) - k + 1):
+        yield s[i:i+k]
+
+
+def cluster_sequences(sequences: List[str], max_hamming: int=4, k: int=6) -> List[List[str]]:
+    """
+    Cluster sequences by Hamming distance.
+
+    If k > 0, a k-mer filter may be enabled for speedups. With the filter, a single barcode is not
+    compared to all others, but only to those others with which it shares a k-mer.
+
+    Speedups happen only at k >= 5, so for values lower than that, the filter is disabled.
+
+    The filter is a heuristic, so results may differ when it is enabled. This is relevant
+    starting at about k=8.
+
+    Each element of the returned list is a cluster.
+    """
+    graph = Graph(sequences)
+    if k >= 5:
+        shared_kmers = defaultdict(set)
+        for bc in sequences:
+            for kmer in kmers(bc, k):
+                shared_kmers[kmer].add(bc)
+
+        for bc in sequences:
+            others = set()
+            for kmer in kmers(bc, k):
+                others.update(shared_kmers[kmer])
+            for other in others:
+                if hamming_distance(bc, other) <= max_hamming and bc is not other:
+                    graph.add_edge(bc, other)
+    else:
+        for i, x in enumerate(sequences):
+            for j in range(i+1, len(sequences)):
+                y = sequences[j]
+                assert len(x) == len(y)
+                if hamming_distance(x, y) <= max_hamming:
+                    graph.add_edge(x, y)
+    return graph.connected_components()
 
 
 def read_cellid_barcodes(path: Path) -> Set[str]:
@@ -266,7 +360,37 @@ def compute_molecules(sorted_reads):
     return sorted_molecules
 
 
-def compute_cells(sorted_molecules, minimum_barcode_length, minham):
+def correct_barcodes(molecules: List[Molecule], max_hamming: int) -> List[Molecule]:
+    """
+    Attempt to correct sequencing errors in the barcode sequences of all molecules
+    """
+    # Count the full-length barcodes
+    barcodes = Counter(m.barcode for m in molecules if '-' not in m.barcode and '0' not in m.barcode)
+
+    # Cluster them by Hamming distance
+    clusters = cluster_sequences(list(barcodes), max_hamming=max_hamming, k=6)
+
+    # Map barcodes to a cluster representative
+    barcode_map = dict()
+    for cluster in clusters:
+        if len(cluster) > 1:
+            # Pick most frequent barcode as representative
+            representative = max(cluster, key=lambda bc: barcodes[bc])
+            for barcode in cluster:
+                barcode_map[barcode] = representative
+
+    # Create a new list of molecules in which the barcodes have been replaced
+    # by their representatives
+    new_molecules = []
+    for molecule in molecules:
+        barcode = barcode_map.get(molecule.barcode, molecule.barcode)
+        new_molecules.append(molecule._replace(barcode=barcode))
+    return new_molecules
+
+
+def compute_cells(sorted_molecules, minimum_barcode_length, minham) -> List[Cell]:
+    """
+    """
     # 1. Forms groups of molecules (with set barcode minimum length) that have identical cellIDs
     #    => belong to one cell,
     # 2. counts number of appearances of each barcode in each group,
@@ -274,7 +398,6 @@ def compute_cells(sorted_molecules, minimum_barcode_length, minham):
     #    the highest counts of a group and calculates hamming distance. If distance is below
     #    threshold, the two barcodes and counts are merged. Repetition until no barcodes with
     #    hamming distance below threshold can be found (note that this way of merging is greedy),
-    # 4. Outputs for each cells all its barcodes and corresponding counts
 
     cell_id_groups = defaultdict(list)
     for molecule in sorted_molecules:
@@ -438,7 +561,6 @@ def main():
 
     input_dir = args.path
     output_dir = args.output
-    minham = args.hamming + 1
 
     # PART I + II: Barcode extraction and reads construction
 
@@ -452,7 +574,10 @@ def main():
         sys.exit(1)
     if args.genome_name is None:
         genomes = [p for p in matrices_path.iterdir() if p.is_dir()]
-        if len(genomes) != 1:
+        if not genomes:
+            logger.error(f"No subfolders found in the 'outs/filtered_gene_bc_matrices/' folder")
+            sys.exit(1)
+        if len(genomes) > 1:
             logger.error('Exactly one genome folder expected in the '
                 "'outs/filtered_gene_bc_matrices/' folder, but found:")
             for g in genomes:
@@ -508,16 +633,11 @@ def main():
 
     # Part IV: Cell construction
 
-    # 1. Forms groups of molecules (with set barcode minimum length) that have identical cellIDs
-    #    => belong to one cell,
-    # 2. counts number of appearances of each barcode in each group,
-    # 3. starting from the barcode with the lowest count, compares to barcodes starting with
-    #    the highest counts of a group and calculates hamming distance. If distance is below
-    #    threshold, the two barcodes and counts are merged. Repetition until no barcodes with
-    #    hamming distance below threshold can be found (note that this way of merging is greedy),
-    # 4. Outputs for each cells all its barcodes and corresponding counts
+    corrected_molecules = correct_barcodes(molecules, args.max_hamming)
+    barcodes = [m.barcode for m in corrected_molecules if '-' not in m.barcode and '0' not in m.barcode]
+    logger.info(f'After barcode correction, {len(set(barcodes))} unique barcodes remain')
 
-    cells = compute_cells(molecules, args.min_length, minham)
+    cells = compute_cells(corrected_molecules, args.min_length, args.max_hamming)
     logger.info(f'Detected {len(cells)} cells')
     with open(output_dir / 'cells.txt', 'w') as cells_file:
         print(
@@ -534,7 +654,7 @@ def main():
 
     # Part V + VI: Barcodes filtering and grouping
 
-    cells = filter_cells(cells, molecules)
+    cells = filter_cells(cells, corrected_molecules)
     with open(output_dir / 'cells_filtered.txt', 'w') as filtered_cells_file:
         print(
             '#Each output line corresponds to one cell and has the following style: '
