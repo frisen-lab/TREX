@@ -471,7 +471,9 @@ def main():
         input_dir / 'possorted_genome_bam.bam', output_dir,
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
 
-    logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode')
+    barcodes = [r.barcode for r in sorted_reads if '-' not in r.barcode and '0' not in r.barcode]
+    logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode '
+        f'({len(barcodes)} full barcodes, {len(set(barcodes))} unique)')
     with open(output_dir / 'reads.txt', 'w') as reads_file:
         print(
             '#Each output line corresponds to one read and has the following style: '
@@ -488,7 +490,9 @@ def main():
     # 3. outputs molecules and corresponding CellIDs/UMIs
 
     molecules = compute_molecules(sorted_reads)
-    logger.info(f'Detected {len(molecules)} molecules')
+    barcodes = [m.barcode for m in molecules if '-' not in m.barcode and '0' not in m.barcode]
+    logger.info(f'Detected {len(molecules)} molecules ({len(barcodes)} full barcodes, '
+        f'{len(set(barcodes))} unique)')
     with open(output_dir / 'molecules.txt', 'w') as molecules_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: '
