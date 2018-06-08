@@ -150,13 +150,19 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start
         with pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
             # Fetches those reads aligning to the artifical, barcode-containing chromosome
             reads = []
+            unknown_ids = no_cell_id = no_umi = 0
             for read in alignment_file.fetch(chr_name):
                 # Skip reads without cellID or UMI
+                if not read.has_tag('CB'):
+                    no_cell_id += 1
+                if not read.has_tag('UB'):
+                    no_umi += 1
                 if not read.has_tag('CB') or not read.has_tag('UB'):
                     continue
                 # Filters out reads that have not approved cellIDs
                 cell_id = read.get_tag('CB')
                 if cell_id not in cell_ids:
+                    unknown_ids += 1
                     continue
 
                 # Write the passing alignments to a separate file
@@ -193,7 +199,8 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start
 
                 barcode = ''.join(barcode)
                 reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), barcode=barcode))
-
+            logger.info(f'Skipped {unknown_ids} reads with unrecognized cell ids '
+                        f'(and {no_umi+no_cell_id} without UMI or cell id)')
     sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.barcode))
     assert len(sorted_reads) == 0 or len(sorted_reads[0].barcode) == barcode_end - barcode_start
     return sorted_reads
