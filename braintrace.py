@@ -8,7 +8,7 @@ import operator
 import warnings
 import logging
 from pathlib import Path
-from typing import Set, List, Dict, NamedTuple, Iterable
+from typing import Set, List, Dict, NamedTuple, Iterable, Callable
 
 import numpy as np
 import pysam
@@ -114,7 +114,8 @@ def kmers(s: str, k: int):
         yield s[i:i+k]
 
 
-def cluster_sequences(sequences: List[str], max_hamming: int=4, k: int=6) -> List[List[str]]:
+def cluster_sequences(
+        sequences: List[str], is_similar: Callable[[str, str], bool], k: int=6) -> List[List[str]]:
     """
     Cluster sequences by Hamming distance.
 
@@ -136,18 +137,18 @@ def cluster_sequences(sequences: List[str], max_hamming: int=4, k: int=6) -> Lis
                 shared_kmers[kmer].add(bc)
 
         for bc in sequences:
-            others = set()
+            others: Set[str] = set()
             for kmer in kmers(bc, k):
                 others.update(shared_kmers[kmer])
             for other in others:
-                if hamming_distance(bc, other) <= max_hamming and bc is not other:
+                if is_similar(bc, other):
                     graph.add_edge(bc, other)
     else:
         for i, x in enumerate(sequences):
             for j in range(i+1, len(sequences)):
                 y = sequences[j]
                 assert len(x) == len(y)
-                if hamming_distance(x, y) <= max_hamming:
+                if is_similar(x, y):
                     graph.add_edge(x, y)
     return graph.connected_components()
 
@@ -364,18 +365,35 @@ def correct_barcodes(molecules: List[Molecule], max_hamming: int) -> List[Molecu
     """
     Attempt to correct sequencing errors in the barcode sequences of all molecules
     """
+    # Obtain all barcodes (including those with '-' and '0')
+    barcodes = [m.barcode for m in molecules]
+
     # Count the full-length barcodes
-    barcodes = Counter(m.barcode for m in molecules if '-' not in m.barcode and '0' not in m.barcode)
+    barcode_counts = Counter(bc for bc in barcodes if '-' not in bc and '0' not in bc)
 
     # Cluster them by Hamming distance
-    clusters = cluster_sequences(list(barcodes), max_hamming=max_hamming, k=6)
+    def is_similar(s, t, min_overlap=10):  # TODO min_overlap should be higher
+        # m = max_hamming
+        if '-' in s or '-' in t:
+            # Remove suffix and/or prefix where sequences do not overlap
+            s = s.lstrip('-')
+            t = t[-len(s):]
+            s = s.rstrip('-')
+            if len(s) < min_overlap:
+                return False
+            t = t[:len(s)]
+            # TODO allowed Hamming distance should be reduced relative to the overlap length
+            # m = max_hamming * len(s) / len(original_length_of_s)
+        return hamming_distance(s, t) <= max_hamming
 
-    # Map barcodes to a cluster representative
+    clusters = cluster_sequences(list(set(barcodes)), is_similar=is_similar, k=6)
+
+    # Map non-singleton barcodes to a cluster representative
     barcode_map = dict()
     for cluster in clusters:
         if len(cluster) > 1:
             # Pick most frequent barcode as representative
-            representative = max(cluster, key=lambda bc: barcodes[bc])
+            representative = max(cluster, key=lambda bc: barcode_counts.get(bc, 0))
             for barcode in cluster:
                 barcode_map[barcode] = representative
 
@@ -409,7 +427,8 @@ def compute_cells(sorted_molecules: List[Molecule], minimum_barcode_length: int)
 
     for cell_id, molecules in cell_id_groups.items():
         barcodes = [molecule.barcode for molecule in molecules]
-        barcode_counts = dict(Counter(barcodes))
+        barcode_counts = OrderedDict(sorted(Counter(barcodes).most_common(),
+            key=lambda x: x[0].count('-')))
         cells.append(Cell(cell_id=cell_id, barcode_counts=barcode_counts))
     return cells
 
