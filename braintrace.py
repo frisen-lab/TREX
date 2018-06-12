@@ -336,12 +336,12 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
     for cell in cells:
         overall_barcode_counts.update(cell.barcode_counts)
 
-    single_barcode_cell_ids = set()
+    single_read_barcodes = set()
     for molecule in molecules:
         if molecule.read_count == 1:
-            single_barcode_cell_ids.add(molecule.cell_id)
+            single_read_barcodes.add(molecule.barcode)
     # or:
-    # single_barcode_cell_ids = {m.cell_id for m in molecules if m.read_count == 1}
+    # single_read_barcodes = {m.barcode for m in molecules if m.read_count == 1}
 
     # filters out barcodes with a count of one that appear in another cell
     new_cells = []
@@ -354,10 +354,7 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
             if overall_barcode_counts[barcode] > 1:
                 # This barcode occurs also in other cells - remove it
                 del barcode_counts[barcode]
-            elif cell.cell_id in single_barcode_cell_ids:
-                # FIXME
-                # This is probably incorrect (too broad): The barcode is discarded if *any*
-                # barcode in this cell is based on a single read
+            elif barcode in single_read_barcodes:
                 del barcode_counts[barcode]
         new_cells.append(Cell(cell_id=cell.cell_id, barcode_counts=barcode_counts))
     return new_cells
