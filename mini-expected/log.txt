@@ -6,4 +6,6 @@ Detected 6843 molecules (2676 full barcodes, 71 unique)
 After barcode correction, 6 unique barcodes remain
 Detected 1921 cells
 Detected 4 lineages
+Lineage size histogram (size: count): 752: 1, 8: 1, 1: 1, 2: 1
+Detected 1 unique cell groups
 Run completed!

@@ -472,6 +472,49 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
     return new_cells
 
 
+def compute_lineages(cells: List[Cell]) -> Dict[str, List[Cell]]:
+    barcode_counts: Dict[str, int] = Counter()
+    for cell in cells:
+        barcode_counts.update(cell.barcode_counts)
+    all_barcodes = list(barcode_counts)
+
+    # Create a graph of barcodes; add an edge for barcodes occuring in the same cell
+    graph = Graph(all_barcodes)
+    for cell in cells:
+        barcodes = list(cell.barcode_counts)
+        for other in barcodes[1:]:
+            graph.add_edge(barcodes[0], other)
+    clusters = graph.connected_components()
+
+    cluster_sizes = Counter(len(c) for c in clusters)
+    # logger.info(f'Barcode cluster size histogram: {cluster_sizes}')
+
+    # TODO copied from correct_barcodes
+    # Map non-singleton barcodes to a cluster representative
+    barcode_map = dict()
+#    barcode_clusters = defaultdict(list)
+    for cluster in clusters:
+        # Pick most frequent barcode as representative
+        representative = max(cluster, key=lambda bc: barcode_counts.get(bc, 0))
+        for barcode in cluster:
+            barcode_map[barcode] = representative
+        # Needs to be immutable as it will be shared by Lineage instances
+#        barcode_clusters[representative] = tuple(cluster)
+
+    # Group cells by the representative barcode
+    cell_groups = defaultdict(list)
+    for cell in cells:
+        if not cell.barcode_counts:
+            continue
+        # Since a cell can only belong to one lineage, only the first barcode is used
+        first_barcode = next(iter(cell.barcode_counts))
+        representative = barcode_map[first_barcode]
+        cell_groups[representative].append(cell)
+
+    # TODO should we return List[Lineage]?
+    return cell_groups
+
+
 def write_loom(cells: List[Cell], cellranger_dir, output_dir, barcode_length, top_n=6):
     """
     Create a loom file from a Cell Ranger sample directory and augment it with information about
@@ -664,6 +707,25 @@ def main():
     cells = filter_cells(cells, corrected_molecules)
     write_cells(output_dir / 'cells_filtered.txt', cells)
 
+    lineages = compute_lineages(cells)
+    logger.info(f'Detected {len(lineages)} lineages')
+    lineage_sizes = Counter(len(cells) for cells in lineages.values())
+    logger.info('Lineage size histogram (size: count): %s',
+        ', '.join(f'{k}: {v}' for k, v in lineage_sizes.items()))
+    with open(output_dir / 'lineages.txt', 'w') as f:
+        print(
+            '#Each output line corresponds to one barcode group (clone) and has '
+            'the following style: Barcode\t:\tCellID1\tCellID2...\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=f)
+
+        for barcode in sorted(lineages):
+            cells = lineages[barcode]
+            row = [barcode, ':']
+            for cell in cells:
+                row.append(cell.cell_id)
+            print(*row, sep='\t', file=f)
+
     # 2. Groups cells with same barcodes that most likely stem from one clone. Outputs a file
     #    with all clones and cellIDs belonging to each clone
 
@@ -673,8 +735,9 @@ def main():
         for barcode, count in cell.barcode_counts.items():
             groups_dict[barcode].append((cell.cell_id, count))
 
-    logger.info(f'Detected {len(groups_dict)} lineages')
-    with open(output_dir / 'lineages.txt', 'w') as groups_file:
+    logger.info(f'Detected {len(groups_dict)} unique cell groups')
+    # in groups.txt all barcodes and their corresponding cellIDs can be found
+    with open(output_dir / 'groups.txt', 'w') as groups_file:
         print(
             '#Each output line corresponds to one barcode group (clone) and has '
             'the following style: Barcode\t:\tCellID1\tbarcode-count1\tCellID2\tbarcode-count2...\n'
