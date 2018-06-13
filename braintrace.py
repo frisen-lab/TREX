@@ -518,6 +518,24 @@ def write_loom(cells: List[Cell], cellranger_dir, output_dir, barcode_length, to
             ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
 
 
+def write_cells(path: Path, cells: List[Cell]) -> None:
+    """Write cells to a tab-separated file"""
+    with open(path, 'w') as f:
+        print(
+            '#Each output line corresponds to one cell and has the following style: '
+            'CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=f)
+        for cell in cells:
+            row = [cell.cell_id, ':']
+            sorted_barcodes = sorted(cell.barcode_counts, key=lambda x: cell.barcode_counts[x], reverse=True)
+            if not sorted_barcodes:
+                continue
+            for barcode in sorted_barcodes:
+                row.extend([barcode, cell.barcode_counts[barcode]])
+            print(*row, sep='\t', file=f)
+
+
 class NiceFormatter(logging.Formatter):
     """
     Do not prefix "INFO:" to info-level log messages (but do it for all other
@@ -631,38 +649,10 @@ def main():
 
     cells = compute_cells(corrected_molecules, args.min_length)
     logger.info(f'Detected {len(cells)} cells')
-    with open(output_dir / 'cells.txt', 'w') as cells_file:
-        print(
-            '#Each output line corresponds to one cell and has the following style: '
-            'CellID\tBarcode1\tCount1\tBarcode2\tCount2...\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=cells_file)
-        for cell in cells:
-            row = [cell.cell_id, ':']
-            sorted_barcodes = sorted(cell.barcode_counts, key=lambda x: cell.barcode_counts[x], reverse=True)
-            for barcode in sorted_barcodes:
-                row.extend([barcode, cell.barcode_counts[barcode]])
-            print(*row, sep='\t', file=cells_file)
-
-    # Part V + VI: Barcodes filtering and grouping
+    write_cells(output_dir / 'cells.txt', cells)
 
     cells = filter_cells(cells, corrected_molecules)
-    with open(output_dir / 'cells_filtered.txt', 'w') as filtered_cells_file:
-        print(
-            '#Each output line corresponds to one cell and has the following style: '
-            'CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=filtered_cells_file)
-
-        for cell in cells:
-            sort_d = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1), reverse=True)
-            if not sort_d:
-                continue
-            row = [cell.cell_id, ':']
-            for tup in sort_d:
-                row.extend(tup)
-            print(*row, sep='\t', file=filtered_cells_file)
-    # cellIDs and filtered barcodes can be found in cells_filtered.txt
+    write_cells(output_dir / 'cells_filtered.txt', cells)
 
     # 2. Groups cells with same barcodes that most likely stem from one clone. Outputs a file
     #    with all clones and cellIDs belonging to each clone
