@@ -624,6 +624,11 @@ def main():
     barcodes = [m.barcode for m in corrected_molecules if '-' not in m.barcode and '0' not in m.barcode]
     logger.info(f'After barcode correction, {len(set(barcodes))} unique barcodes remain')
 
+    with open(output_dir / 'molecules_corrected.txt', 'w') as molecules_file:
+        print('cell_id', 'umi', 'barcode', sep='\t', file=molecules_file)
+        for molecule in corrected_molecules:
+            print(molecule.cell_id, molecule.umi, molecule.barcode, sep='\t', file=molecules_file)
+
     cells = compute_cells(corrected_molecules, args.min_length)
     logger.info(f'Detected {len(cells)} cells')
     with open(output_dir / 'cells.txt', 'w') as cells_file:
