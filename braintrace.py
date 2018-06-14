@@ -372,7 +372,7 @@ def correct_barcodes(molecules: List[Molecule], max_hamming: int) -> List[Molecu
     barcode_counts = Counter(bc for bc in barcodes if '-' not in bc and '0' not in bc)
 
     # Cluster them by Hamming distance
-    def is_similar(s, t, min_overlap=10):  # TODO min_overlap should be higher
+    def is_similar(s, t, min_overlap=20):
         # m = max_hamming
         if '-' in s or '-' in t:
             # Remove suffix and/or prefix where sequences do not overlap
