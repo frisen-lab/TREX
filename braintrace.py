@@ -549,23 +549,30 @@ class NiceFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging(debug: bool):
+def setup_logging(debug: bool) -> None:
     """
     Set up logging. If debug is True, then DEBUG level messages are printed.
     """
     handler = logging.StreamHandler()
     handler.setFormatter(NiceFormatter())
+
     root = logging.getLogger()
     root.addHandler(handler)
     root.setLevel(logging.DEBUG if debug else logging.INFO)
 
 
+def add_file_logging(path: Path) -> None:
+    file_handler = logging.FileHandler(path)
+    file_handler.setFormatter(NiceFormatter())
+    root = logging.getLogger()
+    root.addHandler(file_handler)
+
+
 def main():
     args = parse_arguments()
-    setup_logging(debug=False)
-
     input_dir = args.path
     output_dir = args.output
+    setup_logging(debug=False)
 
     # PART I + II: Barcode extraction and reads construction
 
@@ -573,6 +580,14 @@ def main():
     # 2. extracts barcodes, UMIs and cellIDs from reads,
     # 3. outputs UMI-sorted reads with barcodes
 
+    try:
+        output_dir.mkdir()
+    except FileExistsError:
+        logger.error(f'Output directory {output_dir!r} already exists '
+            '(use -o to specify a different one)')
+        sys.exit(1)
+
+    add_file_logging(output_dir / 'log.txt')
     matrices_path = input_dir / 'filtered_gene_bc_matrices'
     if not matrices_path.exists():
         logger.error("Directory 'filtered_gene_bc_matrices/' must exist in the given path")
@@ -593,13 +608,6 @@ def main():
         genome_dir = matrices_path / args.genome_name
     cell_ids = read_cellid_barcodes(genome_dir / 'barcodes.tsv')
     logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
-
-    try:
-        output_dir.mkdir()
-    except FileExistsError:
-        logger.error(f'Output directory {output_dir!r} already exists '
-            '(use -o to specify a different one)')
-        sys.exit(1)
 
     sorted_reads = read_bam(
         input_dir / 'possorted_genome_bam.bam', output_dir,

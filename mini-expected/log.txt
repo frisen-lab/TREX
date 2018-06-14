@@ -1,0 +1,9 @@
+Found 4103 cell ids in the barcodes.tsv file
+Reading barcode sequences from chrTomato-N:695-724
+Skipped 2770 reads with unrecognized cell ids (and 207 without UMI or cell id)
+Read 7045 reads containing (parts of) the barcode (2703 full barcodes, 71 unique)
+Detected 6843 molecules (2676 full barcodes, 71 unique)
+After barcode correction, 4 unique barcodes remain
+Detected 2066 cells
+Detected 3 unique cell groups
+Run completed!
