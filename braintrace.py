@@ -42,7 +42,8 @@ def parse_arguments():
         help='Position of last barcode base. Default: Auto-detected',
         type=int, default=None)
     parser.add_argument('--min-length', '-m',
-        help='Minimum number of bases a barcode must have. Default: %(default)s', type=int, default=10)
+        help='Minimum number of bases a barcode must have. Default: %(default)s',
+        type=int, default=20)
     parser.add_argument('--max-hamming',
         help='Hamming distance allowed for two barcodes to be called similar. '
              'Default: %(default)s',
