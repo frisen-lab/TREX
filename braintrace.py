@@ -674,7 +674,7 @@ def main():
             groups_dict[barcode].append((cell.cell_id, count))
 
     logger.info(f'Detected {len(groups_dict)} lineages')
-    with open(output_dir / 'groups.txt', 'w') as groups_file:
+    with open(output_dir / 'lineages.txt', 'w') as groups_file:
         print(
             '#Each output line corresponds to one barcode group (clone) and has '
             'the following style: Barcode\t:\tCellID1\tbarcode-count1\tCellID2\tbarcode-count2...\n'
