@@ -362,7 +362,8 @@ def compute_molecules(sorted_reads):
     return sorted_molecules
 
 
-def correct_barcodes(molecules: List[Molecule], max_hamming: int) -> List[Molecule]:
+def correct_barcodes(
+        molecules: List[Molecule], max_hamming: int, min_overlap: int=20) -> List[Molecule]:
     """
     Attempt to correct sequencing errors in the barcode sequences of all molecules
     """
@@ -373,7 +374,7 @@ def correct_barcodes(molecules: List[Molecule], max_hamming: int) -> List[Molecu
     barcode_counts = Counter(bc for bc in barcodes if '-' not in bc and '0' not in bc)
 
     # Cluster them by Hamming distance
-    def is_similar(s, t, min_overlap=20):
+    def is_similar(s, t):
         # m = max_hamming
         if '-' in s or '-' in t:
             # Remove suffix and/or prefix where sequences do not overlap
@@ -647,7 +648,7 @@ def main():
 
     # Part IV: Cell construction
 
-    corrected_molecules = correct_barcodes(molecules, args.max_hamming)
+    corrected_molecules = correct_barcodes(molecules, args.max_hamming, args.min_length)
     barcodes = [m.barcode for m in corrected_molecules if '-' not in m.barcode and '0' not in m.barcode]
     logger.info(f'After barcode correction, {len(set(barcodes))} unique barcodes remain')
 
