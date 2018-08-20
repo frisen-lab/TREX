@@ -200,29 +200,32 @@ def detect_barcode_location(alignment_file, reference_name):
         clip_right = alignment.query_length - alignment.query_alignment_end
         if clip_right >= 5:
             starts[alignment.reference_end] += 1
-    # The most common reference position that is soft clipped could be the 3' end
-    # of the contig. If so, take the 2nd most common position as barcode start.
-    first, second = starts.most_common(2)
-    barcode_start = first[0] if first[0] < reference_length else second[0]
 
-    # Soft-clipping at the 5' end cannot be used to find the barcode end when
-    # the barcode region is too far at the 3' end of the contig. Instead,
-    # look at pileups and check base frequencies (over the barcode, bases should
-    # be roughly uniformly distributed).
-    barcode_end = barcode_start
-    for column in alignment_file.pileup(reference_name, start=barcode_start):
-        if column.reference_pos < barcode_start:
-            # See pileup() documentation
+    for barcode_start, freq in starts.most_common(5):
+        # Soft-clipping at the 5' end cannot be used to find the barcode end when
+        # the barcode region is too far at the 3' end of the contig. Instead,
+        # look at pileups and check base frequencies (over the barcode, bases should
+        # be roughly uniformly distributed).
+        if barcode_start >= reference_length:
+            # The most common reference position that is soft clipped is often the 3' end
+            # of the contig. Skip that.
             continue
-        bases = [p.alignment.query_sequence[p.query_position] for p in column.pileups if p.query_position is not None]
-        counter = Counter(bases)
-        # Test whether the bases occur at roughly uniform frequencies
-        if counter.most_common()[0][1] / len(bases) > 0.75:
-            # We appear to have found the end of the barcode
-            barcode_end = column.reference_pos
-            break
-
-    return (barcode_start, barcode_end)
+        barcode_end = barcode_start
+        for column in alignment_file.pileup(reference_name, start=barcode_start):
+            if column.reference_pos < barcode_start:
+                # See pileup() documentation
+                continue
+            bases = [p.alignment.query_sequence[p.query_position] for p in column.pileups if p.query_position is not None]
+            counter = Counter(bases)
+            # Test whether the bases occur at roughly uniform frequencies
+            if counter.most_common()[0][1] / len(bases) > 0.75:
+                # We appear to have found the end of the barcode
+                barcode_end = column.reference_pos
+                break
+        if barcode_end - barcode_start >= 5:
+            # Good enough
+            return (barcode_start, barcode_end)
+    raise ValueError(f'Could not detect barcode location on chromosome {reference_name}')
 
 
 def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start=None, barcode_end=None):
