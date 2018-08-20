@@ -46,11 +46,13 @@ def parse_arguments():
         type=int, default=20)
     parser.add_argument('--max-hamming',
         help='Hamming distance allowed for two barcodes to be called similar. '
-             'Default: %(default)s',
+            'Default: %(default)s',
         type=int, default=5)
+    parser.add_argument('--keep-single-reads', action='store_true', default=False,
+        help='Keep barcodes supported by only a single read. Default: Discard them')
     parser.add_argument('-l', '--loom',
         help='If given, create loom-file from cell ranger and barcode data. '
-             'File will have the same name as the run',
+            'File will have the same name as the run',
         action='store_true')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
         help='Path to cell ranger "outs" directory')
@@ -438,14 +440,16 @@ def compute_cells(sorted_molecules: List[Molecule], minimum_barcode_length: int)
     return cells
 
 
-def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[Cell]:
+def filter_cells(
+        cells: Iterable[Cell], molecules: Iterable[Molecule],
+        keep_single_reads: bool=False) -> List[Cell]:
     """
     Filter barcodes according to two criteria:
 
     - Barcodes that have only a count of one and can be found in another cell are most
       likely results of contamination and are removed,
-    - Barcodes that have only a count of one and are also only based on one read are
-      also removed
+    - If keep_single_reads is False, barcodes that have only a count of one and are also only based
+      on one read are also removed
     """
     overall_barcode_counts: Dict[str, int] = Counter()
     for cell in cells:
@@ -469,7 +473,7 @@ def filter_cells(cells: Iterable[Cell], molecules: Iterable[Molecule]) -> List[C
             if overall_barcode_counts[barcode] > 1:
                 # This barcode occurs also in other cells - remove it
                 del barcode_counts[barcode]
-            elif barcode in single_read_barcodes:
+            elif barcode in single_read_barcodes and not keep_single_reads:
                 del barcode_counts[barcode]
         new_cells.append(Cell(cell_id=cell.cell_id, barcode_counts=barcode_counts))
     return new_cells
@@ -707,7 +711,7 @@ def main():
     logger.info(f'Detected {len(cells)} cells')
     write_cells(output_dir / 'cells.txt', cells)
 
-    cells = filter_cells(cells, corrected_molecules)
+    cells = filter_cells(cells, corrected_molecules, args.keep_single_reads)
     write_cells(output_dir / 'cells_filtered.txt', cells)
 
     lineages = compute_lineages(cells)
