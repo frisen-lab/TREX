@@ -219,8 +219,8 @@ def detect_barcode_location(alignment_file, reference_name):
                 continue
             bases = [p.alignment.query_sequence[p.query_position] for p in column.pileups if p.query_position is not None]
             counter = Counter(bases)
-            # Test whether the bases occur at roughly uniform frequencies
-            if counter.most_common()[0][1] / len(bases) > 0.75:
+            # Check whether one base dominates
+            if counter.most_common()[0][1] / len(bases) > 0.95:
                 # We appear to have found the end of the barcode
                 barcode_end = column.reference_pos
                 break
