@@ -372,7 +372,7 @@ def compute_molecules(sorted_reads):
 
 
 def correct_barcodes(
-        molecules: List[Molecule], max_hamming: int, min_overlap: int=20) -> List[Molecule]:
+        molecules: List[Molecule], max_hamming: int, min_overlap: int = 20) -> List[Molecule]:
     """
     Attempt to correct sequencing errors in the barcode sequences of all molecules
     """
