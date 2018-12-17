@@ -266,15 +266,12 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start
                     unknown_ids += 1
                     continue
 
-                # Write the passing alignments to a separate file
-                # TODO write only the alignments that actually cover the barcode region
-                out_bam.write(read)
-
                 query_align_end = read.query_alignment_end
                 query_align_start = read.query_alignment_start
 
                 # Extract barcode
                 barcode = ['-'] * (barcode_end - barcode_start)
+                bases = 0
                 for query_pos, ref_pos in read.get_aligned_pairs():
                     # Replace soft-clipping with an ungapped alignment extending into the
                     # soft-clipped region, assuming the clipping occurred because the barcode
@@ -296,10 +293,17 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start
                         else:
                             # Match or mismatch
                             query_base = read.query_sequence[query_pos]
+                            bases += 1
                         barcode[ref_pos - barcode_start] = query_base
-
+                if bases == 0:
+                    # Skip if this read does not cover the barcode
+                    continue
                 barcode = ''.join(barcode)
                 reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), barcode=barcode))
+
+                # Write the passing alignments to a separate file
+                out_bam.write(read)
+
             logger.info(f'Skipped {unknown_ids} reads with unrecognized cell ids '
                         f'(and {no_umi+no_cell_id} without UMI or cell id)')
     sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.barcode))
