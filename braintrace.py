@@ -156,7 +156,7 @@ def cluster_sequences(
     return graph.connected_components()
 
 
-def read_cellid_barcodes(path: Path) -> Set[str]:
+def read_cellids(path: Path) -> Set[str]:
     """
     Read barcodes.tsv, which contains a list of corrected and approved cellIDs like this:
 
@@ -174,26 +174,26 @@ def read_cellid_barcodes(path: Path) -> Set[str]:
 class Read(NamedTuple):
     cell_id: str
     umi: str
-    barcode: str
+    lineage_id: str
 
 
 class Molecule(NamedTuple):
     cell_id: str
     umi: str
-    barcode: str
+    lineage_id: str
     read_count: int
 
 
 class Cell(NamedTuple):
     cell_id: str
-    barcode_counts: Dict[str, int]
+    lineage_id_counts: Dict[str, int]
 
 
-def detect_barcode_location(alignment_file, reference_name):
+def detect_lineage_id_location(alignment_file, reference_name):
     """
-    Detect where the barcode is located on the reference by inspecting the alignments.
+    Detect where the lineage id is located on the reference by inspecting the alignments.
 
-    Return (barcode_start, barcode_end)
+    Return (lineage_id_start, lineage_id_end)
     """
     # Look for reference positions at which reads are soft-clipped at their 3' end
     starts = Counter()
@@ -203,34 +203,34 @@ def detect_barcode_location(alignment_file, reference_name):
         if clip_right >= 5:
             starts[alignment.reference_end] += 1
 
-    for barcode_start, freq in starts.most_common(5):
-        # Soft-clipping at the 5' end cannot be used to find the barcode end when
-        # the barcode region is too far at the 3' end of the contig. Instead,
-        # look at pileups and check base frequencies (over the barcode, bases should
+    for lineage_id_start, freq in starts.most_common(5):
+        # Soft-clipping at the 5' end cannot be used to find the lineage id end when
+        # the lineage id region is too far at the 3' end of the contig. Instead,
+        # look at pileups and check base frequencies (over the lineage id, bases should
         # be roughly uniformly distributed).
-        if barcode_start >= reference_length:
+        if lineage_id_start >= reference_length:
             # The most common reference position that is soft clipped is often the 3' end
             # of the contig. Skip that.
             continue
-        barcode_end = barcode_start
-        for column in alignment_file.pileup(reference_name, start=barcode_start):
-            if column.reference_pos < barcode_start:
+        lineage_id_end = lineage_id_start
+        for column in alignment_file.pileup(reference_name, start=lineage_id_start):
+            if column.reference_pos < lineage_id_start:
                 # See pileup() documentation
                 continue
             bases = [p.alignment.query_sequence[p.query_position] for p in column.pileups if p.query_position is not None]
             counter = Counter(bases)
             # Check whether one base dominates
             if counter.most_common()[0][1] / len(bases) > 0.95:
-                # We appear to have found the end of the barcode
-                barcode_end = column.reference_pos
+                # We appear to have found the end of the lineage id
+                lineage_id_end = column.reference_pos
                 break
-        if barcode_end - barcode_start >= 5:
+        if lineage_id_end - lineage_id_start >= 5:
             # Good enough
-            return (barcode_start, barcode_end)
-    raise ValueError(f'Could not detect barcode location on chromosome {reference_name}')
+            return (lineage_id_start, lineage_id_end)
+    raise ValueError(f'Could not detect lineage id location on chromosome {reference_name}')
 
 
-def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start=None, barcode_end=None):
+def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None):
     """
     bam_path -- path to input BAM file
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
@@ -240,16 +240,16 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start
         if chr_name is None:
             chr_name = alignment_file.references[-1]
 
-        if barcode_start is None or barcode_end is None:
-            if barcode_start is not None or barcode_end is not None:
-                raise ValueError('Either both or none of barcode start and end must be provided')
-            barcode_start, barcode_end = detect_barcode_location(alignment_file, chr_name)
-        logger.info(f'Reading barcode sequences from {chr_name}:{barcode_start+1}-{barcode_end}')
-        if barcode_end - barcode_start < 10:
-            raise ValueError('Detected barcode length too short, something is wrong')
+        if lineage_id_start is None or lineage_id_end is None:
+            if lineage_id_start is not None or lineage_id_end is not None:
+                raise ValueError('Either both or none of lineage id start and end must be provided')
+            lineage_id_start, lineage_id_end = detect_lineage_id_location(alignment_file, chr_name)
+        logger.info(f'Reading lineage ids from {chr_name}:{lineage_id_start + 1}-{lineage_id_end}')
+        if lineage_id_end - lineage_id_start < 10:
+            raise ValueError('Auto-detected lineage id too short, something is wrong')
         output_bam_path = output_dir / (chr_name + '_entries.bam')
         with pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
-            # Fetches those reads aligning to the artifical, barcode-containing chromosome
+            # Fetches those reads aligning to the artifical, lineage-id-containing chromosome
             reads = []
             unknown_ids = no_cell_id = no_umi = 0
             for read in alignment_file.fetch(chr_name):
@@ -269,12 +269,12 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start
                 query_align_end = read.query_alignment_end
                 query_align_start = read.query_alignment_start
 
-                # Extract barcode
-                barcode = ['-'] * (barcode_end - barcode_start)
+                # Extract lineage id
+                lineage_id = ['-'] * (lineage_id_end - lineage_id_start)
                 bases = 0
                 for query_pos, ref_pos in read.get_aligned_pairs():
                     # Replace soft-clipping with an ungapped alignment extending into the
-                    # soft-clipped region, assuming the clipping occurred because the barcode
+                    # soft-clipped region, assuming the clipping occurred because the lineage id
                     # region was encountered.
                     if ref_pos is None:
                         # Soft clip or insertion
@@ -286,7 +286,7 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start
                             ref_pos = read.reference_start - (query_align_start - query_pos)
                         # ref_pos remains None if this is an insertion
 
-                    if ref_pos is not None and barcode_start <= ref_pos < barcode_end:
+                    if ref_pos is not None and lineage_id_start <= ref_pos < lineage_id_end:
                         if query_pos is None:
                             # Deletion or intron skip
                             query_base = '0'
@@ -294,20 +294,20 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, barcode_start
                             # Match or mismatch
                             query_base = read.query_sequence[query_pos]
                             bases += 1
-                        barcode[ref_pos - barcode_start] = query_base
+                        lineage_id[ref_pos - lineage_id_start] = query_base
                 if bases == 0:
-                    # Skip if this read does not cover the barcode
+                    # Skip if this read does not cover the lineage id
                     continue
-                barcode = ''.join(barcode)
-                reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), barcode=barcode))
+                lineage_id = ''.join(lineage_id)
+                reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), lineage_id=lineage_id))
 
                 # Write the passing alignments to a separate file
                 out_bam.write(read)
 
             logger.info(f'Skipped {unknown_ids} reads with unrecognized cell ids '
                         f'(and {no_umi+no_cell_id} without UMI or cell id)')
-    sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.barcode))
-    assert len(sorted_reads) == 0 or len(sorted_reads[0].barcode) == barcode_end - barcode_start
+    sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
+    assert len(sorted_reads) == 0 or len(sorted_reads[0].lineage_id) == lineage_id_end - lineage_id_start
     return sorted_reads
 
 
@@ -354,33 +354,34 @@ def compute_molecules(sorted_reads):
     """
     - Forms groups of reads with identical CellIDs and UMIs => belong to one molecule
 
-    - forms consensus sequence of all barcodes of one group,
+    - forms consensus sequence of all lineage ids of one group,
     """
     groups = defaultdict(list)
     for read in sorted_reads:
-        groups[(read.umi, read.cell_id)].append(read.barcode)
+        groups[(read.umi, read.cell_id)].append(read.lineage_id)
 
     molecules = []
-    for (umi, cell_id), barcodes in groups.items():
-        barcode_consensus = compute_consensus(barcodes)
+    for (umi, cell_id), lineage_ids in groups.items():
+        lineage_id_consensus = compute_consensus(lineage_ids)
         molecules.append(
-            Molecule(cell_id=cell_id, umi=umi, barcode=barcode_consensus, read_count=len(barcodes)))
+            Molecule(cell_id=cell_id, umi=umi, lineage_id=lineage_id_consensus,
+                read_count=len(lineage_ids)))
 
-    sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.barcode, mol.umi))
+    sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.lineage_id, mol.umi))
 
     return sorted_molecules
 
 
-def correct_barcodes(
+def correct_lineage_ids(
         molecules: List[Molecule], max_hamming: int, min_overlap: int = 20) -> List[Molecule]:
     """
-    Attempt to correct sequencing errors in the barcode sequences of all molecules
+    Attempt to correct sequencing errors in the lineage id sequences of all molecules
     """
-    # Obtain all barcodes (including those with '-' and '0')
-    barcodes = [m.barcode for m in molecules]
+    # Obtain all lineage ids (including those with '-' and '0')
+    lineage_ids = [m.lineage_id for m in molecules]
 
     # Count the full-length barcodes
-    barcode_counts = Counter(bc for bc in barcodes if '-' not in bc and '0' not in bc)
+    lineage_id_counts = Counter(li for li in lineage_ids if '-' not in li and '0' not in li)
 
     # Cluster them by Hamming distance
     def is_similar(s, t):
@@ -397,50 +398,49 @@ def correct_barcodes(
             # m = max_hamming * len(s) / len(original_length_of_s)
         return hamming_distance(s, t) <= max_hamming
 
-    clusters = cluster_sequences(list(set(barcodes)), is_similar=is_similar, k=6)
+    clusters = cluster_sequences(list(set(lineage_ids)), is_similar=is_similar, k=6)
 
     # Map non-singleton barcodes to a cluster representative
-    barcode_map = dict()
+    lineage_id_map = dict()
     for cluster in clusters:
         if len(cluster) > 1:
-            # Pick most frequent barcode as representative
-            representative = max(cluster, key=lambda bc: barcode_counts.get(bc, 0))
-            for barcode in cluster:
-                barcode_map[barcode] = representative
+            # Pick most frequent lineage id as representative
+            representative = max(cluster, key=lambda bc: lineage_id_counts.get(bc, 0))
+            for lineage_id in cluster:
+                lineage_id_map[lineage_id] = representative
 
-    # Create a new list of molecules in which the barcodes have been replaced
+    # Create a new list of molecules in which the lineage ids have been replaced
     # by their representatives
     new_molecules = []
     for molecule in molecules:
-        barcode = barcode_map.get(molecule.barcode, molecule.barcode)
-        new_molecules.append(molecule._replace(barcode=barcode))
+        lineage_id = lineage_id_map.get(molecule.lineage_id, molecule.lineage_id)
+        new_molecules.append(molecule._replace(lineage_id=lineage_id))
     return new_molecules
 
 
-def compute_cells(sorted_molecules: List[Molecule], minimum_barcode_length: int) -> List[Cell]:
+def compute_cells(sorted_molecules: List[Molecule], minimum_lineage_id_length: int) -> List[Cell]:
     """
     Group molecules into cells.
     """
-    # 1. Forms groups of molecules (with set barcode minimum length) that have identical cellIDs
+    # 1. Forms groups of molecules (with set lineage id minimum length) that have identical cellIDs
     #    => belong to one cell,
-    # 2. counts number of appearances of each barcode in each group,
+    # 2. counts number of appearances of each lineage id in each group,
 
     cell_id_groups = defaultdict(list)
     for molecule in sorted_molecules:
-        barcode = molecule.barcode
-        pure_bc = barcode.strip('-')
+        lineage_id = molecule.lineage_id
+        pure_li = lineage_id.strip('-')
         # TODO may not work as intended (strip only removes prefixes and suffixes)
-        pure_bc0 = barcode.strip('0')
-        if len(pure_bc) >= minimum_barcode_length and len(pure_bc0) >= minimum_barcode_length:
+        pure_bc0 = lineage_id.strip('0')
+        if len(pure_li) >= minimum_lineage_id_length and len(pure_bc0) >= minimum_lineage_id_length:
             cell_id_groups[molecule.cell_id].append(molecule)
 
     cells = []
-
     for cell_id, molecules in cell_id_groups.items():
-        barcodes = [molecule.barcode for molecule in molecules]
-        barcode_counts = OrderedDict(sorted(Counter(barcodes).most_common(),
+        lineage_ids = [molecule.lineage_id for molecule in molecules]
+        lineage_id_counts = OrderedDict(sorted(Counter(lineage_ids).most_common(),
             key=lambda x: x[0].count('-')))
-        cells.append(Cell(cell_id=cell_id, barcode_counts=barcode_counts))
+        cells.append(Cell(cell_id=cell_id, lineage_id_counts=lineage_id_counts))
     return cells
 
 
@@ -448,96 +448,96 @@ def filter_cells(
         cells: Iterable[Cell], molecules: Iterable[Molecule],
         keep_single_reads: bool=False) -> List[Cell]:
     """
-    Filter barcodes according to two criteria:
+    Filter lineage ids according to two criteria:
 
-    - Barcodes that have only a count of one and can be found in another cell are most
+    - Lineage ids that have only a count of one and can be found in another cell are most
       likely results of contamination and are removed,
-    - If keep_single_reads is False, barcodes that have only a count of one and are also only based
+    - If keep_single_reads is False, lineage ids that have only a count of one and are also only based
       on one read are also removed
     """
-    overall_barcode_counts: Dict[str, int] = Counter()
+    overall_lineage_id_counts: Dict[str, int] = Counter()
     for cell in cells:
-        overall_barcode_counts.update(cell.barcode_counts)
+        overall_lineage_id_counts.update(cell.lineage_id_counts)
 
-    single_read_barcodes = set()
+    single_read_lineage_ids = set()
     for molecule in molecules:
         if molecule.read_count == 1:
-            single_read_barcodes.add(molecule.barcode)
+            single_read_lineage_ids.add(molecule.lineage_id)
     # or:
-    # single_read_barcodes = {m.barcode for m in molecules if m.read_count == 1}
+    # single_read_barcodes = {m.lineage_id for m in molecules if m.read_count == 1}
 
-    # filters out barcodes with a count of one that appear in another cell
+    # filters out lineage ids with a count of one that appear in another cell
     new_cells = []
     for cell in cells:
-        barcode_counts = cell.barcode_counts.copy()
-        for barcode, count in cell.barcode_counts.items():
+        lineage_id_counts = cell.lineage_id_counts.copy()
+        for lineage_id, count in cell.lineage_id_counts.items():
             if count > 1:
-                # This barcode occurs more than once in this cell - keep it
+                # This lineage id occurs more than once in this cell - keep it
                 continue
-            if overall_barcode_counts[barcode] > 1:
-                # This barcode occurs also in other cells - remove it
-                del barcode_counts[barcode]
-            elif barcode in single_read_barcodes and not keep_single_reads:
-                del barcode_counts[barcode]
-        new_cells.append(Cell(cell_id=cell.cell_id, barcode_counts=barcode_counts))
+            if overall_lineage_id_counts[lineage_id] > 1:
+                # This lineage id occurs also in other cells - remove it
+                del lineage_id_counts[lineage_id]
+            elif lineage_id in single_read_lineage_ids and not keep_single_reads:
+                del lineage_id_counts[lineage_id]
+        new_cells.append(Cell(cell_id=cell.cell_id, lineage_id_counts=lineage_id_counts))
     return new_cells
 
 
 def compute_lineages(cells: List[Cell]) -> Dict[str, List[Cell]]:
-    barcode_counts: Dict[str, int] = Counter()
+    lineage_id_counts: Dict[str, int] = Counter()
     for cell in cells:
-        barcode_counts.update(cell.barcode_counts)
-    all_barcodes = list(barcode_counts)
+        lineage_id_counts.update(cell.lineage_id_counts)
+    all_lineage_ids = list(lineage_id_counts)
 
     # Create a graph of barcodes; add an edge for barcodes occuring in the same cell
-    graph = Graph(all_barcodes)
+    graph = Graph(all_lineage_ids)
     for cell in cells:
-        barcodes = list(cell.barcode_counts)
+        barcodes = list(cell.lineage_id_counts)
         for other in barcodes[1:]:
             graph.add_edge(barcodes[0], other)
     clusters = graph.connected_components()
 
     cluster_sizes = Counter(len(c) for c in clusters)
-    # logger.info(f'Barcode cluster size histogram: {cluster_sizes}')
+    # logger.info(f'Lineage id cluster size histogram: {cluster_sizes}')
 
-    # TODO copied from correct_barcodes
+    # TODO copied from correct_lineage_ids
     # Map non-singleton barcodes to a cluster representative
-    barcode_map = dict()
-#    barcode_clusters = defaultdict(list)
+    lineage_id_map = dict()
+#    lineage_id_clusters = defaultdict(list)
     for cluster in clusters:
-        # Pick most frequent barcode as representative
-        representative = max(cluster, key=lambda bc: barcode_counts.get(bc, 0))
-        for barcode in cluster:
-            barcode_map[barcode] = representative
+        # Pick most frequent lineage id as representative
+        representative = max(cluster, key=lambda li: lineage_id_counts.get(li, 0))
+        for lineage_id in cluster:
+            lineage_id_map[lineage_id] = representative
         # Needs to be immutable as it will be shared by Lineage instances
-#        barcode_clusters[representative] = tuple(cluster)
+#        lineage_id_clusters[representative] = tuple(cluster)
 
-    # Group cells by the representative barcode
+    # Group cells by the representative lineage id
     cell_groups = defaultdict(list)
     for cell in cells:
-        if not cell.barcode_counts:
+        if not cell.lineage_id_counts:
             continue
-        # Since a cell can only belong to one lineage, only the first barcode is used
-        first_barcode = next(iter(cell.barcode_counts))
-        representative = barcode_map[first_barcode]
+        # Since a cell can only belong to one lineage, only the first lineage id is used
+        first_lineage_id = next(iter(cell.lineage_id_counts))
+        representative = lineage_id_map[first_lineage_id]
         cell_groups[representative].append(cell)
 
     # TODO should we return List[Lineage]?
     return cell_groups
 
 
-def write_loom(cells: List[Cell], cellranger_dir, output_dir, barcode_length, top_n=6):
+def write_loom(cells: List[Cell], cellranger_dir, output_dir, lineage_id_length, top_n=6):
     """
     Create a loom file from a Cell Ranger sample directory and augment it with information about
-    the most abundant barcodes and their counts.
+    the most abundant lineage id and their counts.
     """
-    # For each cell, collect the most abundant barcodes and their counts
-    # Maps cell_id to a list of (barcode, count) pairs that represent the most abundant barcodes.
+    # For each cell, collect the most abundant lineage ids and their counts
+    # Maps cell_id to a list of (lineage_id, count) pairs that represent the most abundant lineage ids.
     most_abundant = dict()
     for cell in cells:
-        if not cell.barcode_counts:
+        if not cell.lineage_id_counts:
             continue
-        counts = sorted(cell.barcode_counts.items(), key=operator.itemgetter(1))
+        counts = sorted(cell.lineage_id_counts.items(), key=operator.itemgetter(1))
         counts.reverse()
         counts = counts[:top_n]
         most_abundant[cell.cell_id] = counts
@@ -553,24 +553,24 @@ def write_loom(cells: List[Cell], cellranger_dir, output_dir, barcode_length, to
         # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
         loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
 
-        # Transform barcode and count data
-        # brings barcode data into correct format for loom file.
+        # Transform lineage ids and count data
+        # brings lineage id data into correct format for loom file.
         # Array must have same shape as all_cellIDs
-        barcode_lists = [[] for _ in range(top_n)]
+        lineage_id_lists = [[] for _ in range(top_n)]
         count_lists = [[] for _ in range(top_n)]
         for cell_id in loom_cell_ids:
-            barcode_counts = most_abundant.get(cell_id, [])
+            lineage_id_counts = most_abundant.get(cell_id, [])
             # Fill up to a constant length
-            while len(barcode_counts) < top_n:
-                barcode_counts.append(('-', 0))
+            while len(lineage_id_counts) < top_n:
+                lineage_id_counts.append(('-', 0))
 
-            for i, (barcode, count) in enumerate(barcode_counts):
-                barcode_lists[i].append(barcode)
+            for i, (lineage_id, count) in enumerate(lineage_id_counts):
+                lineage_id_lists[i].append(lineage_id)
                 count_lists[i].append(count)
 
-        # Add barcode and count information to loom file
+        # Add lineage id and count information to loom file
         for i in range(top_n):
-            ds.ca[f'linBarcode_{i+1}'] = np.array(barcode_lists[i], dtype='S%r' % barcode_length)
+            ds.ca[f'linBarcode_{i+1}'] = np.array(lineage_id_lists[i], dtype='S%r' % lineage_id_length)
             ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
 
 
@@ -584,11 +584,11 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
             '0 = deletion in barcode sequence (position unknown)', file=f)
         for cell in cells:
             row = [cell.cell_id, ':']
-            sorted_barcodes = sorted(cell.barcode_counts, key=lambda x: cell.barcode_counts[x], reverse=True)
-            if not sorted_barcodes:
+            sorted_lineage_ids = sorted(cell.lineage_id_counts, key=lambda x: cell.lineage_id_counts[x], reverse=True)
+            if not sorted_lineage_ids:
                 continue
-            for barcode in sorted_barcodes:
-                row.extend([barcode, cell.barcode_counts[barcode]])
+            for lineage_id in sorted_lineage_ids:
+                row.extend([lineage_id, cell.lineage_id_counts[lineage_id]])
             print(*row, sep='\t', file=f)
 
 
@@ -630,10 +630,10 @@ def main():
     output_dir = args.output
     setup_logging(debug=False)
 
-    # PART I + II: Barcode extraction and reads construction
+    # PART I + II: Lineage id extraction and reads construction
 
-    # 1. Extracts reads aligning to barcode-chromosome,
-    # 2. extracts barcodes, UMIs and cellIDs from reads,
+    # 1. Extracts reads aligning to lineage id chromosome,
+    # 2. extracts lineage ids, UMIs and cellIDs from reads,
     # 3. outputs UMI-sorted reads with barcodes
 
     try:
@@ -662,16 +662,17 @@ def main():
         genome_dir = genomes[0]
     else:
         genome_dir = matrices_path / args.genome_name
-    cell_ids = read_cellid_barcodes(genome_dir / 'barcodes.tsv')
+    cell_ids = read_cellids(genome_dir / 'barcodes.tsv')
     logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
     sorted_reads = read_bam(
         input_dir / 'possorted_genome_bam.bam', output_dir,
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
 
-    barcodes = [r.barcode for r in sorted_reads if '-' not in r.barcode and '0' not in r.barcode]
+    lineage_ids = [
+        r.lineage_id for r in sorted_reads if '-' not in r.lineage_id and '0' not in r.lineage_id]
     logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode '
-        f'({len(barcodes)} full barcodes, {len(set(barcodes))} unique)')
+        f'({len(lineage_ids)} full barcodes, {len(set(lineage_ids))} unique)')
     with open(output_dir / 'reads.txt', 'w') as reads_file:
         print(
             '#Each output line corresponds to one read and has the following style: '
@@ -679,18 +680,19 @@ def main():
             '# dash (-) = barcode base outside of read, '
             '0 = deletion in barcode sequence (position unknown)', file=reads_file)
         for read in sorted_reads:
-            print(read.cell_id, read.umi, read.barcode, sep='\t', file=reads_file)
+            print(read.cell_id, read.umi, read.lineage_id, sep='\t', file=reads_file)
 
     # Part III: Molecule construction
 
     # 1. Forms groups of reads with identical CellIDs and UMIs => belong to one molecule,
-    # 2. forms consensus sequence of all barcodes of one group,
+    # 2. forms consensus sequence of all lineage ids of one group,
     # 3. outputs molecules and corresponding CellIDs/UMIs
 
     molecules = compute_molecules(sorted_reads)
-    barcodes = [m.barcode for m in molecules if '-' not in m.barcode and '0' not in m.barcode]
-    logger.info(f'Detected {len(molecules)} molecules ({len(barcodes)} full barcodes, '
-        f'{len(set(barcodes))} unique)')
+    lineage_ids = [
+        m.lineage_id for m in molecules if '-' not in m.lineage_id and '0' not in m.lineage_id]
+    logger.info(f'Detected {len(molecules)} molecules ({len(lineage_ids)} full lineage ids, '
+        f'{len(set(lineage_ids))} unique)')
     with open(output_dir / 'molecules.txt', 'w') as molecules_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: '
@@ -698,18 +700,19 @@ def main():
             '# dash (-) = barcode base outside of read, '
             '0 = deletion in barcode sequence (position unknown)', file=molecules_file)
         for molecule in molecules:
-            print(molecule.cell_id, molecule.umi, molecule.barcode, sep='\t', file=molecules_file)
+            print(molecule.cell_id, molecule.umi, molecule.lineage_id, sep='\t', file=molecules_file)
 
     # Part IV: Cell construction
 
-    corrected_molecules = correct_barcodes(molecules, args.max_hamming, args.min_length)
-    barcodes = [m.barcode for m in corrected_molecules if '-' not in m.barcode and '0' not in m.barcode]
-    logger.info(f'After barcode correction, {len(set(barcodes))} unique barcodes remain')
+    corrected_molecules = correct_lineage_ids(molecules, args.max_hamming, args.min_length)
+    lineage_ids = [m.lineage_id for m in corrected_molecules
+        if '-' not in m.lineage_id and '0' not in m.lineage_id]
+    logger.info(f'After lineage id correction, {len(set(lineage_ids))} unique lineage ids remain')
 
     with open(output_dir / 'molecules_corrected.txt', 'w') as molecules_file:
-        print('cell_id', 'umi', 'barcode', sep='\t', file=molecules_file)
+        print('cell_id', 'umi', 'lineage_id', sep='\t', file=molecules_file)
         for molecule in corrected_molecules:
-            print(molecule.cell_id, molecule.umi, molecule.barcode, sep='\t', file=molecules_file)
+            print(molecule.cell_id, molecule.umi, molecule.lineage_id, sep='\t', file=molecules_file)
 
     cells = compute_cells(corrected_molecules, args.min_length)
     logger.info(f'Detected {len(cells)} cells')
@@ -730,9 +733,9 @@ def main():
             '# dash (-) = barcode base outside of read, '
             '0 = deletion in barcode sequence (position unknown)', file=f)
 
-        for barcode in sorted(lineages):
-            cells = lineages[barcode]
-            row = [barcode, ':']
+        for lineage_id in sorted(lineages):
+            cells = lineages[lineage_id]
+            row = [lineage_id, ':']
             for cell in cells:
                 row.append(cell.cell_id)
             print(*row, sep='\t', file=f)
@@ -742,9 +745,9 @@ def main():
 
     groups_dict = defaultdict(list)
     for cell in cells:
-        # forms groups of cells with same barcode
-        for barcode, count in cell.barcode_counts.items():
-            groups_dict[barcode].append((cell.cell_id, count))
+        # forms groups of cells with same lineage_id
+        for lineage_id, count in cell.lineage_id_counts.items():
+            groups_dict[lineage_id].append((cell.cell_id, count))
 
     logger.info(f'Detected {len(groups_dict)} unique cell groups')
     # in groups.txt all barcodes and their corresponding cellIDs can be found
@@ -755,15 +758,15 @@ def main():
             '# dash (-) = barcode base outside of read, '
             '0 = deletion in barcode sequence (position unknown)', file=groups_file)
 
-        for barcode in sorted(groups_dict):
-            row = [barcode, ':']
-            for cell_id, barcode_count in groups_dict[barcode]:
+        for lineage_id in sorted(groups_dict):
+            row = [lineage_id, ':']
+            for cell_id, barcode_count in groups_dict[lineage_id]:
                 row.extend([cell_id, barcode_count])
             print(*row, sep='\t', file=groups_file)
 
     # Create a loom file if requested
     if args.loom:
-        write_loom(cells, input_dir, output_dir, barcode_length=args.end - args.start + 1)
+        write_loom(cells, input_dir, output_dir, lineage_id_length=args.end - args.start + 1)
 
     logger.info('Run completed!')
 
