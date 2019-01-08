@@ -381,7 +381,7 @@ def correct_lineage_ids(
     lineage_ids = [m.lineage_id for m in molecules]
 
     # Count the full-length barcodes
-    lineage_id_counts = Counter(li for li in lineage_ids if '-' not in li and '0' not in li)
+    lineage_id_counts = Counter(lineage_ids)
 
     # Cluster them by Hamming distance
     def is_similar(s, t):
@@ -405,7 +405,7 @@ def correct_lineage_ids(
     for cluster in clusters:
         if len(cluster) > 1:
             # Pick most frequent lineage id as representative
-            representative = max(cluster, key=lambda bc: lineage_id_counts.get(bc, 0))
+            representative = max(cluster, key=lambda bc: (lineage_id_counts[bc], bc))
             for lineage_id in cluster:
                 lineage_id_map[lineage_id] = representative
 
