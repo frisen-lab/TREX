@@ -768,7 +768,7 @@ def main():
         print('# Lineage graph components (only incomplete/density<1)', file=components_file)
         n_complete = 0
         for subgraph in lineage_graph.graph.connected_components():
-            cells = list(subgraph.nodes())
+            cells = sorted(subgraph.nodes(), key=lambda c: c.cell_id)
             n_nodes = len(cells)
             n_edges = len(list(subgraph.edges()))
             possible_edges = n_nodes * (n_nodes - 1) // 2
@@ -779,7 +779,7 @@ def main():
             print(f'## {n_nodes} nodes, {n_edges} edges, density {density:.3f}', file=components_file)
             counter = Counter()
             for cell in cells:
-                print(cell.cell_id, *cell.lineage_id_counts.keys(), sep='\t', file=components_file)
+                print(cell.cell_id, *sorted(cell.lineage_id_counts.keys()), sep='\t', file=components_file)
                 counter.update(cell.lineage_id_counts.keys())
             # TODO debug
             print(counter)
