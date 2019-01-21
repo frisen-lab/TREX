@@ -764,18 +764,26 @@ def main():
     write_cells(output_dir / 'cells_filtered.txt', cells)
 
     lineage_graph = LineageGraph(cells)
-    logger.info('Lineage graph components:')
-    n_complete = 0
-    for subgraph in lineage_graph.graph.connected_components():
-        n_nodes = len(list(subgraph.nodes()))
-        n_edges = len(list(subgraph.edges()))
-        possible_edges = n_nodes * (n_nodes - 1) // 2
-        if n_edges == possible_edges:
-            n_complete += 1
-            continue
-        density = n_edges / possible_edges
-        logger.info(f'  Nodes: {n_nodes} Edges: {n_edges} Density {density:.3f}')
-    logger.info(f'  {n_complete} complete components')
+    with open(output_dir / 'components.txt', 'w') as components_file:
+        print('# Lineage graph components (only incomplete/density<1)', file=components_file)
+        n_complete = 0
+        for subgraph in lineage_graph.graph.connected_components():
+            cells = list(subgraph.nodes())
+            n_nodes = len(cells)
+            n_edges = len(list(subgraph.edges()))
+            possible_edges = n_nodes * (n_nodes - 1) // 2
+            if n_edges == possible_edges:
+                n_complete += 1
+                continue
+            density = n_edges / possible_edges
+            print(f'## {n_nodes} nodes, {n_edges} edges, density {density:.3f}', file=components_file)
+            counter = Counter()
+            for cell in cells:
+                print(cell.cell_id, *cell.lineage_id_counts.keys(), sep='\t', file=components_file)
+                counter.update(cell.lineage_id_counts.keys())
+            # TODO debug
+            print(counter)
+        print(f'# {n_complete} complete components', file=components_file)
     if args.graph:
         logger.info('Writing lineage graph')
         with open(output_dir / 'graph.gv', 'w') as f:
