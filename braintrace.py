@@ -3,11 +3,12 @@ Extract and filter random barcodes from single-cell sequencing data
 """
 import sys
 import argparse
-from collections import Counter, defaultdict, OrderedDict
 import operator
 import warnings
 import logging
+from io import StringIO
 from pathlib import Path
+from collections import Counter, defaultdict, OrderedDict
 from typing import Set, List, Dict, NamedTuple, Iterable, Callable
 
 import numpy as np
@@ -54,6 +55,8 @@ def parse_arguments():
         help='If given, create loom-file from cell ranger and barcode data. '
             'File will have the same name as the run',
         action='store_true')
+    parser.add_argument('--graph', action='store_true', default=False,
+        help='Write the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
         help='Path to cell ranger "outs" directory')
     return parser.parse_args()
@@ -104,6 +107,16 @@ class Graph:
                         to_visit.append(neighbor)
             components.append(component)
         return components
+
+    def edges(self):
+        """Yield all edges as pair (node1, node2)"""
+        seen = set()
+        for node1 in self._nodes:
+            seen.add(node1)
+            for node2 in self._nodes[node1]:
+                if node2 in seen:
+                    continue
+                yield node1, node2
 
 
 def kmers(s: str, k: int):
@@ -533,6 +546,14 @@ class LineageGraph:
 
         return {most_abundant_lineage_id(cells): cells for cells in clusters}
 
+    def dot(self):
+        s = StringIO()
+        print('graph g {', file=s)
+        for node1, node2 in self._graph.edges():
+            print(f'"{node1.cell_id}" -- "{node2.cell_id}"', file=s)
+        print('}', file=s)
+        return s.getvalue()
+
 
 def write_loom(cells: List[Cell], cellranger_dir, output_dir, lineage_id_length, top_n=6):
     """
@@ -730,6 +751,10 @@ def main():
     write_cells(output_dir / 'cells_filtered.txt', cells)
 
     lineage_graph = LineageGraph(cells)
+    if args.graph:
+        logger.info('Writing lineage graph')
+        with open(output_dir / 'graph.gv', 'w') as f:
+            print(lineage_graph.dot(), file=f)
     lineages = lineage_graph.lineages()
     logger.info(f'Detected {len(lineages)} lineages')
     lineage_sizes = Counter(len(cells) for cells in lineages.values())
