@@ -483,47 +483,51 @@ def filter_cells(
     return new_cells
 
 
-def compute_lineages(cells: List[Cell]) -> Dict[str, List[Cell]]:
-    lineage_id_counts: Dict[str, int] = Counter()
-    for cell in cells:
-        lineage_id_counts.update(cell.lineage_id_counts)
-    all_lineage_ids = list(lineage_id_counts)
+class LineageGraph:
+    def __init__(self, cells: List[Cell]):
+        self._cells = cells
 
-    # Create a graph of barcodes; add an edge for barcodes occuring in the same cell
-    graph = Graph(all_lineage_ids)
-    for cell in cells:
-        barcodes = list(cell.lineage_id_counts)
-        for other in barcodes[1:]:
-            graph.add_edge(barcodes[0], other)
-    clusters = graph.connected_components()
+    def lineages(self) -> Dict[str, List[Cell]]:
+        lineage_id_counts: Dict[str, int] = Counter()
+        for cell in self._cells:
+            lineage_id_counts.update(cell.lineage_id_counts)
+        all_lineage_ids = list(lineage_id_counts)
 
-    cluster_sizes = Counter(len(c) for c in clusters)
-    # logger.info(f'Lineage id cluster size histogram: {cluster_sizes}')
+        # Create a graph of barcodes; add an edge for barcodes occuring in the same cell
+        graph = Graph(all_lineage_ids)
+        for cell in self._cells:
+            barcodes = list(cell.lineage_id_counts)
+            for other in barcodes[1:]:
+                graph.add_edge(barcodes[0], other)
+        clusters = graph.connected_components()
 
-    # TODO copied from correct_lineage_ids
-    # Map non-singleton barcodes to a cluster representative
-    lineage_id_map = dict()
-#    lineage_id_clusters = defaultdict(list)
-    for cluster in clusters:
-        # Pick most frequent lineage id as representative
-        representative = max(cluster, key=lambda li: lineage_id_counts.get(li, 0))
-        for lineage_id in cluster:
-            lineage_id_map[lineage_id] = representative
-        # Needs to be immutable as it will be shared by Lineage instances
-#        lineage_id_clusters[representative] = tuple(cluster)
+        cluster_sizes = Counter(len(c) for c in clusters)
+        # logger.info(f'Lineage id cluster size histogram: {cluster_sizes}')
 
-    # Group cells by the representative lineage id
-    cell_groups = defaultdict(list)
-    for cell in cells:
-        if not cell.lineage_id_counts:
-            continue
-        # Since a cell can only belong to one lineage, only the first lineage id is used
-        first_lineage_id = next(iter(cell.lineage_id_counts))
-        representative = lineage_id_map[first_lineage_id]
-        cell_groups[representative].append(cell)
+        # TODO copied from correct_lineage_ids
+        # Map non-singleton barcodes to a cluster representative
+        lineage_id_map = dict()
+    #    lineage_id_clusters = defaultdict(list)
+        for cluster in clusters:
+            # Pick most frequent lineage id as representative
+            representative = max(cluster, key=lambda li: lineage_id_counts.get(li, 0))
+            for lineage_id in cluster:
+                lineage_id_map[lineage_id] = representative
+            # Needs to be immutable as it will be shared by Lineage instances
+    #        lineage_id_clusters[representative] = tuple(cluster)
 
-    # TODO should we return List[Lineage]?
-    return cell_groups
+        # Group cells by the representative lineage id
+        cell_groups = defaultdict(list)
+        for cell in self._cells:
+            if not cell.lineage_id_counts:
+                continue
+            # Since a cell can only belong to one lineage, only the first lineage id is used
+            first_lineage_id = next(iter(cell.lineage_id_counts))
+            representative = lineage_id_map[first_lineage_id]
+            cell_groups[representative].append(cell)
+
+        # TODO should we return List[Lineage]?
+        return cell_groups
 
 
 def write_loom(cells: List[Cell], cellranger_dir, output_dir, lineage_id_length, top_n=6):
@@ -721,7 +725,8 @@ def main():
     cells = filter_cells(cells, corrected_molecules, args.keep_single_reads)
     write_cells(output_dir / 'cells_filtered.txt', cells)
 
-    lineages = compute_lineages(cells)
+    lineage_graph = LineageGraph(cells)
+    lineages = lineage_graph.lineages()
     logger.info(f'Detected {len(lineages)} lineages')
     lineage_sizes = Counter(len(cells) for cells in lineages.values())
     logger.info('Lineage size histogram (size: count): %s',
