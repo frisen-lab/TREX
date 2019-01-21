@@ -6,6 +6,7 @@ import argparse
 import operator
 import warnings
 import logging
+import subprocess
 from io import StringIO
 from pathlib import Path
 from collections import Counter, defaultdict, OrderedDict
@@ -755,6 +756,9 @@ def main():
         logger.info('Writing lineage graph')
         with open(output_dir / 'graph.gv', 'w') as f:
             print(lineage_graph.dot(), file=f)
+        logger.info('Plotting lineage graph')
+        subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph.pdf'), str(output_dir / 'graph.gv')])
+
     lineages = lineage_graph.lineages()
     logger.info(f'Detected {len(lineages)} lineages')
     lineage_sizes = Counter(len(cells) for cells in lineages.values())
