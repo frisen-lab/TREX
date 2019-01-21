@@ -5,6 +5,8 @@ Read 3857 reads containing (parts of) the barcode (2703 full barcodes, 71 unique
 Detected 3800 molecules (2676 full lineage ids, 71 unique)
 After lineage id correction, 6 unique lineage ids remain
 Detected 1921 cells
+Lineage graph components:
+  4 complete components
 Detected 4 lineages
 Lineage size histogram (size: count): 752: 1, 8: 1, 1: 1, 2: 1
 Detected 1 unique cell groups

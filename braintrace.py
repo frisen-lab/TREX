@@ -75,7 +75,7 @@ def hamming_distance(s, t):
 
 
 class Graph:
-    """Graph that can find connected components"""
+    """Undirected graph that can find connected components"""
 
     def __init__(self, nodes):
         # values are lists of adjacent nodes
@@ -106,8 +106,16 @@ class Graph:
                 for neighbor in self._nodes[n]:
                     if neighbor not in visited:
                         to_visit.append(neighbor)
-            components.append(component)
+
+            subgraph = Graph(component)
+            for n in component:
+                subgraph._nodes[n] = self._nodes[n].copy()
+            components.append(subgraph)
         return components
+
+    def nodes(self):
+        """Return all nodes as a list"""
+        return list(self._nodes)
 
     def edges(self):
         """Yield all edges as pair (node1, node2)"""
@@ -167,7 +175,7 @@ def cluster_sequences(
                 assert len(x) == len(y)
                 if is_similar(x, y):
                     graph.add_edge(x, y)
-    return graph.connected_components()
+    return [g.nodes() for g in graph.connected_components()]
 
 
 def read_cellids(path: Path) -> Set[str]:
@@ -537,7 +545,7 @@ class LineageGraph:
         """
         Compute lineages. Return a dict that maps a representative lineage id to a list of cells.
         """
-        clusters = self._graph.connected_components()
+        clusters = [g.nodes() for g in self._graph.connected_components()]
 
         def most_abundant_lineage_id(cells: List[Cell]):
             counts = Counter()
@@ -554,6 +562,10 @@ class LineageGraph:
             print(f'"{node1.cell_id}" -- "{node2.cell_id}"', file=s)
         print('}', file=s)
         return s.getvalue()
+
+    @property
+    def graph(self):
+        return self._graph
 
 
 def write_loom(cells: List[Cell], cellranger_dir, output_dir, lineage_id_length, top_n=6):
@@ -752,6 +764,18 @@ def main():
     write_cells(output_dir / 'cells_filtered.txt', cells)
 
     lineage_graph = LineageGraph(cells)
+    logger.info('Lineage graph components:')
+    n_complete = 0
+    for subgraph in lineage_graph.graph.connected_components():
+        n_nodes = len(list(subgraph.nodes()))
+        n_edges = len(list(subgraph.edges()))
+        possible_edges = n_nodes * (n_nodes - 1) // 2
+        if n_edges == possible_edges:
+            n_complete += 1
+            continue
+        density = n_edges / possible_edges
+        logger.info(f'  Nodes: {n_nodes} Edges: {n_edges} Density {density:.3f}')
+    logger.info(f'  {n_complete} complete components')
     if args.graph:
         logger.info('Writing lineage graph')
         with open(output_dir / 'graph.gv', 'w') as f:
