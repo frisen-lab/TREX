@@ -214,6 +214,20 @@ class Cell(NamedTuple):
         return hash(self.cell_id)
 
 
+class CellSet(NamedTuple):
+    cell_ids: frozenset
+    n: int
+    lineage_id_counts: Dict[str, int]
+
+    # TODO this is re-computed on every access
+    @property
+    def cell_id(self):
+        return min(self.cell_ids)
+
+    def __hash__(self):
+        return hash(self.cell_ids)
+
+
 def detect_lineage_id_location(alignment_file, reference_name):
     """
     Detect where the lineage id is located on the reference by inspecting the alignments.
@@ -568,6 +582,70 @@ class LineageGraph:
         return self._graph
 
 
+class CompressedLineageGraph:
+    def __init__(self, cells: List[Cell]):
+        self._cells = self._compress_cells(cells)
+        self._graph = self._make_cell_graph()
+
+    @staticmethod
+    def _compress_cells(cells):
+        cell_lists = defaultdict(list)
+        for cell in cells:
+            barcodes = tuple(cell.lineage_id_counts)
+            cell_lists[barcodes].append(cell)
+
+        cell_sets = []
+        for barcodes, cells in cell_lists.items():
+            cell_ids = tuple(sorted(c.cell_id for c in cells))
+            lineage_id_counts = sum((Counter(c.lineage_id_counts) for c in cells), Counter())
+            cell_set = CellSet(cell_ids=cell_ids, n=len(cells), lineage_id_counts=lineage_id_counts)
+            cell_sets.append(cell_set)
+        return cell_sets
+
+    def _make_cell_graph(self):
+        """
+        Create graph of cells; add edges between cells that
+        share at least one barcode. Return created graph.
+        """
+        cells = [cell for cell in self._cells if cell.lineage_id_counts]
+        graph = Graph(cells)
+        for i in range(len(cells)):
+            for j in range(i + 1, len(cells)):
+                if set(cells[i].lineage_id_counts) & set(cells[j].lineage_id_counts):
+                    # Cell i and j share a lineage id
+                    graph.add_edge(cells[i], cells[j])
+        return graph
+
+    def lineages(self) -> Dict[str, List[Cell]]:
+        """
+        Compute lineages. Return a dict that maps a representative lineage id to a list of cells.
+        """
+        clusters = [g.nodes() for g in self._graph.connected_components()]
+
+        def most_abundant_lineage_id(cells: List[Cell]):
+            counts = Counter()
+            for cell in cells:
+                counts.update(cell.lineage_id_counts)
+            return max(counts, key=lambda k: (counts[k], k))
+
+        return {most_abundant_lineage_id(cells): cells for cells in clusters}
+
+    def dot(self):
+        s = StringIO()
+        print('graph g {', file=s)
+        print('  graph [outputorder=edgesfirst, overlap=false];', file=s)
+        print('  edge [color=blue];', file=s)
+        print('  node [style=filled, fillcolor=white, fontname="Roboto"];', file=s)
+        for node1, node2 in self._graph.edges():
+            print(f'"{node1.n} {node1.cell_id}" -- "{node2.n} {node2.cell_id}"', file=s)
+        print('}', file=s)
+        return s.getvalue()
+
+    @property
+    def graph(self):
+        return self._graph
+
+
 def write_loom(cells: List[Cell], cellranger_dir, output_dir, lineage_id_length, top_n=6):
     """
     Create a loom file from a Cell Ranger sample directory and augment it with information about
@@ -763,7 +841,7 @@ def main():
     cells = filter_cells(cells, corrected_molecules, args.keep_single_reads)
     write_cells(output_dir / 'cells_filtered.txt', cells)
 
-    lineage_graph = LineageGraph(cells)
+    lineage_graph = CompressedLineageGraph(cells)
     with open(output_dir / 'components.txt', 'w') as components_file:
         print('# Lineage graph components (only incomplete/density<1)', file=components_file)
         n_complete = 0
