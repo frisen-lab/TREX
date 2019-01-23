@@ -2,6 +2,7 @@
 Extract and filter random barcodes from single-cell sequencing data
 """
 import sys
+import math
 import argparse
 import operator
 import warnings
@@ -126,6 +127,10 @@ class Graph:
                 if node2 in seen:
                     continue
                 yield node1, node2
+
+    def neighbors(self, node):
+        """Return a list of all neighbors of a node"""
+        return self._nodes[node]
 
 
 def kmers(s: str, k: int):
@@ -631,13 +636,22 @@ class CompressedLineageGraph:
         return {most_abundant_lineage_id(cells): cells for cells in clusters}
 
     def dot(self):
+        max_width = 10
+        edge_scaling = (max_width - 1) / math.log(
+            max(node1.n * node2.n for node1, node2 in self._graph.edges()))
+        node_scaling = (max_width - 1) / math.log(max(node.n for node in self._graph.nodes()))
         s = StringIO()
         print('graph g {', file=s)
         print('  graph [outputorder=edgesfirst, overlap=false];', file=s)
         print('  edge [color=blue];', file=s)
         print('  node [style=filled, fillcolor=white, fontname="Roboto"];', file=s)
+        for node in self._graph.nodes():
+            if self._graph.neighbors(node):
+                width = int(1 + node_scaling * math.log(node.n))
+                print(f'  "{node.cell_id}" [penwidth={width},label="{node.cell_id}\\n{node.n}"];', file=s)
         for node1, node2 in self._graph.edges():
-            print(f'"{node1.n} {node1.cell_id}" -- "{node2.n} {node2.cell_id}"', file=s)
+            width = int(1 + edge_scaling * math.log(node1.n * node2.n))
+            print(f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}];', file=s)
         print('}', file=s)
         return s.getvalue()
 
