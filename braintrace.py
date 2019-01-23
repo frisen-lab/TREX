@@ -57,8 +57,8 @@ def parse_arguments():
         help='If given, create loom-file from cell ranger and barcode data. '
             'File will have the same name as the run',
         action='store_true')
-    parser.add_argument('--graph', action='store_true', default=False,
-        help='Write the lineage graph')
+    parser.add_argument('--highlight',
+        help='Cell IDs to highlight in lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
         help='Path to cell ranger "outs" directory')
     return parser.parse_args()
@@ -635,7 +635,9 @@ class CompressedLineageGraph:
 
         return {most_abundant_lineage_id(cells): cells for cells in clusters}
 
-    def dot(self):
+    def dot(self, highlight=None):
+        if highlight is not None:
+            highlight = set(highlight)
         max_width = 10
         edge_scaling = (max_width - 1) / math.log(
             max(node1.n * node2.n for node1, node2 in self._graph.edges()))
@@ -648,7 +650,12 @@ class CompressedLineageGraph:
         for node in self._graph.nodes():
             if self._graph.neighbors(node):
                 width = int(1 + node_scaling * math.log(node.n))
-                print(f'  "{node.cell_id}" [penwidth={width},label="{node.cell_id}\\n{node.n}"];', file=s)
+                intersection = set(node.cell_ids) & highlight
+                hl = ',fillcolor=yellow' if intersection else ''
+                hl_label = f' ({len(intersection)})' if intersection else ''
+                print(
+                    f'  "{node.cell_id}" [penwidth={width}{hl},label="{node.cell_id}\\n{node.n}{hl_label}"];',
+                    file=s)
         for node1, node2 in self._graph.edges():
             width = int(1 + edge_scaling * math.log(node1.n * node2.n))
             print(f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}];', file=s)
@@ -799,6 +806,11 @@ def main():
     cell_ids = read_cellids(genome_dir / 'barcodes.tsv')
     logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
+    highlight_cell_ids = []
+    if args.highlight:
+        with open(args.highlight) as f:
+            highlight_cell_ids = [line.strip() for line in f]
+
     sorted_reads = read_bam(
         input_dir / 'possorted_genome_bam.bam', output_dir,
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
@@ -876,12 +888,12 @@ def main():
             # TODO debug
             print(counter)
         print(f'# {n_complete} complete components', file=components_file)
-    if args.graph:
-        logger.info('Writing lineage graph')
-        with open(output_dir / 'graph.gv', 'w') as f:
-            print(lineage_graph.dot(), file=f)
-        logger.info('Plotting lineage graph')
-        subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph.pdf'), str(output_dir / 'graph.gv')])
+    logger.info('Writing compressed lineage graph')
+    with open(output_dir / 'graph.gv', 'w') as f:
+        print(lineage_graph.dot(highlight_cell_ids), file=f)
+    logger.info('Plotting compressed lineage graph')
+    subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph.pdf'),
+        str(output_dir / 'graph.gv')])
 
     lineages = lineage_graph.lineages()
     logger.info(f'Detected {len(lineages)} lineages')
