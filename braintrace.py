@@ -640,7 +640,7 @@ class CompressedLineageGraph:
             highlight = set(highlight)
         max_width = 10
         edge_scaling = (max_width - 1) / math.log(
-            max(node1.n * node2.n for node1, node2 in self._graph.edges()))
+            max((node1.n * node2.n for node1, node2 in self._graph.edges()), default=math.exp(1)))
         node_scaling = (max_width - 1) / math.log(max(node.n for node in self._graph.nodes()))
         s = StringIO()
         print('graph g {', file=s)
