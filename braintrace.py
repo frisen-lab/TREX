@@ -57,8 +57,10 @@ def parse_arguments():
         help='If given, create loom-file from cell ranger and barcode data. '
             'File will have the same name as the run',
         action='store_true')
+    parser.add_argument('--restrict', metavar='FILE',
+        help='Restrict analysis to the cell IDs listed in FILE')
     parser.add_argument('--highlight',
-        help='Cell IDs to highlight in lineage graph')
+        help='Highlight cell IDs listed in FILE in the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
         help='Path to cell ranger "outs" directory')
     return parser.parse_args()
@@ -811,6 +813,11 @@ def main():
         with open(args.highlight) as f:
             highlight_cell_ids = [line.strip() for line in f]
 
+    restrict_cell_ids = None
+    if args.restrict:
+        with open(args.restrict) as f:
+            restrict_cell_ids = [line.strip() for line in f]
+
     sorted_reads = read_bam(
         input_dir / 'possorted_genome_bam.bam', output_dir,
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
@@ -865,7 +872,13 @@ def main():
     write_cells(output_dir / 'cells.txt', cells)
 
     cells = filter_cells(cells, corrected_molecules, args.keep_single_reads)
+    logger.info(f'{len(cells)} filtered cells remain')
     write_cells(output_dir / 'cells_filtered.txt', cells)
+
+    if restrict_cell_ids is not None:
+        restrict_cell_ids = set(restrict_cell_ids)
+        cells = [cell for cell in cells if cell.cell_id in restrict_cell_ids]
+        logger.info(f'Restricting to {len(cells)} cells')
 
     lineage_graph = CompressedLineageGraph(cells)
     with open(output_dir / 'components.txt', 'w') as components_file:
