@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.6.1
+      - image: circleci/python:3.6
 
     working_directory: ~/repo
 
@@ -18,7 +18,8 @@ jobs:
           name: install dependencies
           command: |
             python3 -m venv venv
-            venv/bin/pip install .
+            venv/bin/pip install --upgrade pip setuptools
+            venv/bin/pip install --upgrade .
 
       - save_cache:
           paths:
