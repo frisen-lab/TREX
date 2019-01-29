@@ -947,7 +947,7 @@ def main():
 
     lineage_graph = CompressedLineageGraph(cells)
     with open(output_dir / 'components.txt', 'w') as components_file:
-        print(lineage_graph.components_txt(), file=components_file)
+        print(lineage_graph.components_txt(), file=components_file, end='')
     with open(output_dir / 'graph.gv', 'w') as f:
         print(lineage_graph.dot(highlight_cell_ids), file=f)
     if args.plot:
