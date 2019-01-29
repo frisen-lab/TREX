@@ -647,18 +647,21 @@ class CompressedLineageGraph:
         for node1, node2 in edges:
             self._graph.remove_edge(node1, node2)
 
+    @staticmethod
+    def _expand_cell_sets(cell_sets: List[CellSet]) -> List[Cell]:
+        """Expand a list of CellSets into a list of Cells"""
+        cells = []
+        for cell_set in cell_sets:
+            cells.extend(cell_set.cells)
+        return cells
+
     def lineages(self) -> Dict[str, List[Cell]]:
         """
         Compute lineages. Return a dict that maps a representative lineage id to a list of cells.
         """
         compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
         # Expand the CellSet instances into cells
-        clusters = []
-        for compressed_cluster in compressed_clusters:
-            cluster = []
-            for cell_set in compressed_cluster:
-                cluster.extend(cell_set.cells)
-            clusters.append(cluster)
+        clusters = [self._expand_cell_sets(cluster) for cluster in compressed_clusters]
 
         def most_abundant_lineage_id(cells: List[Cell]):
             counts = Counter()
