@@ -966,14 +966,14 @@ def main():
     bridges = lineage_graph.bridges()
     logger.info(f'Removing {len(bridges)} bridges from the graph')
     lineage_graph.remove_edges(bridges)
-    with open(output_dir / 'corrected-components.txt', 'w') as components_file:
+    with open(output_dir / 'components_corrected.txt', 'w') as components_file:
         print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
-    with open(output_dir / 'corrected-graph.gv', 'w') as f:
+    with open(output_dir / 'graph_corrected.gv', 'w') as f:
         print(lineage_graph.dot(highlight_cell_ids), file=f)
     if args.plot:
         logger.info('Plotting corrected lineage graph')
-        subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'corrected-graph.pdf'),
-            str(output_dir / 'corrected-graph.gv')])
+        subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph_corrected.pdf'),
+            str(output_dir / 'graph_corrected.gv')])
     lineages = lineage_graph.lineages()
     logger.info(f'Detected {len(lineages)} lineages')
     lineage_sizes = Counter(len(cells) for cells in lineages.values())
