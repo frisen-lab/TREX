@@ -5,6 +5,7 @@ import sys
 import math
 import argparse
 import operator
+import shutil
 import warnings
 import logging
 import subprocess
@@ -38,6 +39,7 @@ def parse_arguments():
     parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
         help='name of the run and directory created by program. Default: %(default)s',
         default=Path('lineage_run'))
+    parser.add_argument('--delete', action='store_true', help='Delete output directory if it exists')
     parser.add_argument('--start', '-s',
         help='Position of first barcode base. Default: Auto-detected',
         type=int, default=None)
@@ -782,9 +784,14 @@ def main():
     try:
         output_dir.mkdir()
     except FileExistsError:
-        logger.error(f'Output directory {output_dir!r} already exists '
-            '(use -o to specify a different one)')
-        sys.exit(1)
+        if args.delete:
+            logger.info(f'Re-creating folder "{output_dir}"')
+            shutil.rmtree(output_dir)
+            output_dir.mkdir()
+        else:
+            logger.error(f'Output directory "{output_dir}" already exists '
+                '(use --delete to force deleting existing directories)')
+            sys.exit(1)
 
     add_file_logging(output_dir / 'log.txt')
     matrices_path = input_dir / 'filtered_gene_bc_matrices'
