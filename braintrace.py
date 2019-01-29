@@ -711,9 +711,10 @@ class CompressedLineageGraph:
         print('# Lineage graph components (only incomplete/density<1)', file=s)
         n_complete = 0
         for subgraph in self.graph.connected_components():
-            cells = sorted(subgraph.nodes(), key=lambda c: c.cell_id)
+            cells = sorted(self._expand_cell_sets(subgraph.nodes()), key=lambda c: c.cell_id)
             n_nodes = len(cells)
-            n_edges = len(list(subgraph.edges()))
+            n_edges = sum(n1.n * n2.n for n1, n2 in subgraph.edges())
+            n_edges += sum(node.n * (node.n - 1) // 2 for node in subgraph.nodes())
             possible_edges = n_nodes * (n_nodes - 1) // 2
             if n_edges == possible_edges:
                 n_complete += 1
