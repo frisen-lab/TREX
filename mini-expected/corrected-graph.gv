@@ -1,0 +1,6 @@
+graph g {
+  graph [outputorder=edgesfirst, overlap=false];
+  edge [color=blue];
+  node [style=filled, fillcolor=white, fontname="Roboto"];
+}
+
