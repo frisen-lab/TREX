@@ -94,6 +94,10 @@ class Graph:
         self._nodes[node1].append(node2)
         self._nodes[node2].append(node1)
 
+    def remove_edge(self, node1, node2):
+        self._nodes[node1].remove(node2)
+        self._nodes[node2].remove(node1)
+
     def connected_components(self):
         """Return a list of connected components."""
         visited = set()
@@ -581,7 +585,7 @@ class LineageGraph:
 
         return {most_abundant_lineage_id(cells): cells for cells in clusters}
 
-    def dot(self):
+    def dot(self, highlight=None):
         s = StringIO()
         print('graph g {', file=s)
         for node1, node2 in self._graph.edges():
@@ -624,6 +628,24 @@ class CompressedLineageGraph:
                     # Cell i and j share a lineage id
                     graph.add_edge(cells[i], cells[j])
         return graph
+
+    def bridges(self):
+        """Find edges that appear to incorrectly bridge two unrelated subclusters."""
+        # A bridge as defined here is simply an edge between two nodes that
+        # have a non-empty set of common neighbors. We do not check for actual
+        # connectivity at the moment.
+        bridges = []
+        for node1, node2 in self._graph.edges():
+            neighbors1 = self._graph.neighbors(node1)
+            neighbors2 = self._graph.neighbors(node2)
+            common_neighbors = set(neighbors1) & set(neighbors2)
+            if not common_neighbors and (len(neighbors1) > 1 or len(neighbors2) > 1):
+                bridges.append((node1, node2))
+        return bridges
+
+    def remove_edges(self, edges):
+        for node1, node2 in edges:
+            self._graph.remove_edge(node1, node2)
 
     def lineages(self) -> Dict[str, List[Cell]]:
         """
@@ -679,6 +701,27 @@ class CompressedLineageGraph:
             print(f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}{bridge}];', file=s)
 
         print('}', file=s)
+        return s.getvalue()
+
+    def components_txt(self):
+        s = StringIO()
+        print('# Lineage graph components (only incomplete/density<1)', file=s)
+        n_complete = 0
+        for subgraph in self.graph.connected_components():
+            cells = sorted(subgraph.nodes(), key=lambda c: c.cell_id)
+            n_nodes = len(cells)
+            n_edges = len(list(subgraph.edges()))
+            possible_edges = n_nodes * (n_nodes - 1) // 2
+            if n_edges == possible_edges:
+                n_complete += 1
+                continue
+            density = n_edges / possible_edges
+            print(f'## {n_nodes} nodes, {n_edges} edges, density {density:.3f}', file=s)
+            counter = Counter()
+            for cell in cells:
+                print(cell.cell_id, *sorted(cell.lineage_id_counts.keys()), sep='\t', file=s)
+                counter.update(cell.lineage_id_counts.keys())
+        print(f'# {n_complete} complete components', file=s)
         return s.getvalue()
 
     @property
@@ -904,23 +947,7 @@ def main():
 
     lineage_graph = CompressedLineageGraph(cells)
     with open(output_dir / 'components.txt', 'w') as components_file:
-        print('# Lineage graph components (only incomplete/density<1)', file=components_file)
-        n_complete = 0
-        for subgraph in lineage_graph.graph.connected_components():
-            cells = sorted(subgraph.nodes(), key=lambda c: c.cell_id)
-            n_nodes = len(cells)
-            n_edges = len(list(subgraph.edges()))
-            possible_edges = n_nodes * (n_nodes - 1) // 2
-            if n_edges == possible_edges:
-                n_complete += 1
-                continue
-            density = n_edges / possible_edges
-            print(f'## {n_nodes} nodes, {n_edges} edges, density {density:.3f}', file=components_file)
-            counter = Counter()
-            for cell in cells:
-                print(cell.cell_id, *sorted(cell.lineage_id_counts.keys()), sep='\t', file=components_file)
-                counter.update(cell.lineage_id_counts.keys())
-        print(f'# {n_complete} complete components', file=components_file)
+        print(lineage_graph.components_txt(), file=components_file)
     with open(output_dir / 'graph.gv', 'w') as f:
         print(lineage_graph.dot(highlight_cell_ids), file=f)
     if args.plot:
@@ -928,6 +955,11 @@ def main():
         subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph.pdf'),
             str(output_dir / 'graph.gv')])
 
+    bridges = lineage_graph.bridges()
+    logger.info(f'Removing {len(bridges)} bridges from the graph')
+    lineage_graph.remove_edges(bridges)
+    with open(output_dir / 'corrected-components.txt', 'w') as components_file:
+        print(lineage_graph.components_txt(), file=components_file)
     lineages = lineage_graph.lineages()
     logger.info(f'Detected {len(lineages)} lineages')
     lineage_sizes = Counter(len(cells) for cells in lineages.values())
