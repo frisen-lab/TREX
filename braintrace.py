@@ -706,7 +706,7 @@ class CompressedLineageGraph:
         print('}', file=s)
         return s.getvalue()
 
-    def components_txt(self):
+    def components_txt(self, highlight=None):
         s = StringIO()
         print('# Lineage graph components (only incomplete/density<1)', file=s)
         n_complete = 0
@@ -723,7 +723,11 @@ class CompressedLineageGraph:
             print(f'## {n_nodes} nodes, {n_edges} edges, density {density:.3f}', file=s)
             counter = Counter()
             for cell in cells:
-                print(cell.cell_id, *sorted(cell.lineage_id_counts.keys()), sep='\t', file=s)
+                if highlight is not None and cell.cell_id in highlight:
+                    highlighting = '+'
+                else:
+                    highlighting = ''
+                print(cell.cell_id, highlighting, *sorted(cell.lineage_id_counts.keys()), sep='\t', file=s)
                 counter.update(cell.lineage_id_counts.keys())
         print(f'# {n_complete} complete components', file=s)
         return s.getvalue()
@@ -951,7 +955,7 @@ def main():
 
     lineage_graph = CompressedLineageGraph(cells)
     with open(output_dir / 'components.txt', 'w') as components_file:
-        print(lineage_graph.components_txt(), file=components_file, end='')
+        print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
     with open(output_dir / 'graph.gv', 'w') as f:
         print(lineage_graph.dot(highlight_cell_ids), file=f)
     if args.plot:
@@ -963,7 +967,7 @@ def main():
     logger.info(f'Removing {len(bridges)} bridges from the graph')
     lineage_graph.remove_edges(bridges)
     with open(output_dir / 'corrected-components.txt', 'w') as components_file:
-        print(lineage_graph.components_txt(), file=components_file, end='')
+        print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
     with open(output_dir / 'corrected-graph.gv', 'w') as f:
         print(lineage_graph.dot(highlight_cell_ids), file=f)
     if args.plot:
