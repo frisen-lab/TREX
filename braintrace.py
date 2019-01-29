@@ -229,7 +229,7 @@ class CellSet(NamedTuple):
     # TODO this is re-computed on every access
     @property
     def cell_id(self):
-        return min(self.cell_ids)
+        return 'M-' + min(self.cell_ids)
 
     def __hash__(self):
         return hash(self.cell_ids)
