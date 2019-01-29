@@ -627,7 +627,14 @@ class CompressedLineageGraph:
         """
         Compute lineages. Return a dict that maps a representative lineage id to a list of cells.
         """
-        clusters = [g.nodes() for g in self._graph.connected_components()]
+        compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
+        # Expand the CellSet instances into cells
+        clusters = []
+        for compressed_cluster in compressed_clusters:
+            cluster = []
+            for cell_set in compressed_cluster:
+                cluster.extend(cell_set.cells)
+            clusters.append(cluster)
 
         def most_abundant_lineage_id(cells: List[Cell]):
             counts = Counter()
@@ -906,7 +913,6 @@ def main():
             # TODO debug
             print(counter)
         print(f'# {n_complete} complete components', file=components_file)
-    logger.info('Writing compressed lineage graph')
     with open(output_dir / 'graph.gv', 'w') as f:
         print(lineage_graph.dot(highlight_cell_ids), file=f)
     logger.info('Plotting compressed lineage graph')
