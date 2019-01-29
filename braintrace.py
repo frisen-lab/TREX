@@ -920,8 +920,6 @@ def main():
             for cell in cells:
                 print(cell.cell_id, *sorted(cell.lineage_id_counts.keys()), sep='\t', file=components_file)
                 counter.update(cell.lineage_id_counts.keys())
-            # TODO debug
-            print(counter)
         print(f'# {n_complete} complete components', file=components_file)
     with open(output_dir / 'graph.gv', 'w') as f:
         print(lineage_graph.dot(highlight_cell_ids), file=f)
