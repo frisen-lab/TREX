@@ -669,7 +669,15 @@ class CompressedLineageGraph:
                     file=s)
         for node1, node2 in self._graph.edges():
             width = int(1 + edge_scaling * math.log(node1.n * node2.n))
-            print(f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}];', file=s)
+            neighbors1 = self._graph.neighbors(node1)
+            neighbors2 = self._graph.neighbors(node2)
+            common_neighbors = set(neighbors1) & set(neighbors2)
+            bridge = ''
+            if (len(neighbors1) > 1 or len(neighbors2) > 1) and not common_neighbors:
+                bridge = ', style=dashed, color=red'
+                width = 2
+            print(f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}{bridge}];', file=s)
+
         print('}', file=s)
         return s.getvalue()
 
