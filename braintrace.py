@@ -63,6 +63,8 @@ def parse_arguments():
         help='Restrict analysis to the cell IDs listed in FILE')
     parser.add_argument('--highlight',
         help='Highlight cell IDs listed in FILE in the lineage graph')
+    parser.add_argument('--no-plot', dest='plot', default=True, action='store_false',
+        help='Do not plot the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
         help='Path to cell ranger "outs" directory')
     return parser.parse_args()
@@ -915,9 +917,10 @@ def main():
         print(f'# {n_complete} complete components', file=components_file)
     with open(output_dir / 'graph.gv', 'w') as f:
         print(lineage_graph.dot(highlight_cell_ids), file=f)
-    logger.info('Plotting compressed lineage graph')
-    subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph.pdf'),
-        str(output_dir / 'graph.gv')])
+    if args.plot:
+        logger.info('Plotting compressed lineage graph')
+        subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph.pdf'),
+            str(output_dir / 'graph.gv')])
 
     lineages = lineage_graph.lineages()
     logger.info(f'Detected {len(lineages)} lineages')

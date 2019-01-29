@@ -10,12 +10,6 @@ jobs:
     steps:
       - checkout
 
-      - run:
-          name: install graphviz
-          command: |
-            apt update
-            apt install -y graphviz
-
       - restore_cache:
           keys:
           - v2-dependencies-{{ checksum "setup.py" }}
