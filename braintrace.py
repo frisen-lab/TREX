@@ -223,15 +223,16 @@ class Cell(NamedTuple):
         return hash(self.cell_id)
 
 
-class CellSet(NamedTuple):
-    cell_ids: frozenset
-    n: int
-    lineage_id_counts: Dict[str, int]
+class CellSet:
+    def __init__(self, cells: List[Cell]):
+        self.cells = cells
+        self.cell_ids = tuple(sorted(c.cell_id for c in cells))
+        self.lineage_id_counts = sum((Counter(c.lineage_id_counts) for c in cells), Counter())
+        self.n = len(cells)
+        self.cell_id = 'M-' + min(self.cell_ids)
 
-    # TODO this is re-computed on every access
-    @property
-    def cell_id(self):
-        return 'M-' + min(self.cell_ids)
+    def __repr__(self):
+        return f'CellSet(cells={self.cells!r})'
 
     def __hash__(self):
         return hash(self.cell_ids)
@@ -600,21 +601,18 @@ class CompressedLineageGraph:
     def _compress_cells(cells):
         cell_lists = defaultdict(list)
         for cell in cells:
-            barcodes = tuple(cell.lineage_id_counts)
-            cell_lists[barcodes].append(cell)
+            lineage_ids = tuple(cell.lineage_id_counts)
+            cell_lists[lineage_ids].append(cell)
 
         cell_sets = []
-        for barcodes, cells in cell_lists.items():
-            cell_ids = tuple(sorted(c.cell_id for c in cells))
-            lineage_id_counts = sum((Counter(c.lineage_id_counts) for c in cells), Counter())
-            cell_set = CellSet(cell_ids=cell_ids, n=len(cells), lineage_id_counts=lineage_id_counts)
-            cell_sets.append(cell_set)
+        for cells in cell_lists.values():
+            cell_sets.append(CellSet(cells))
         return cell_sets
 
     def _make_cell_graph(self):
         """
         Create graph of cells; add edges between cells that
-        share at least one barcode. Return created graph.
+        share at least one lineage id. Return created graph.
         """
         cells = [cell for cell in self._cells if cell.lineage_id_counts]
         graph = Graph(cells)
