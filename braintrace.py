@@ -985,30 +985,6 @@ def main():
                 row.append(cell.cell_id)
             print(*row, sep='\t', file=f)
 
-    # 2. Groups cells with same barcodes that most likely stem from one clone. Outputs a file
-    #    with all clones and cellIDs belonging to each clone
-
-    groups_dict = defaultdict(list)
-    for cell in cells:
-        # forms groups of cells with same lineage_id
-        for lineage_id, count in cell.lineage_id_counts.items():
-            groups_dict[lineage_id].append((cell.cell_id, count))
-
-    logger.info(f'Detected {len(groups_dict)} unique cell groups')
-    # in groups.txt all barcodes and their corresponding cellIDs can be found
-    with open(output_dir / 'groups.txt', 'w') as groups_file:
-        print(
-            '#Each output line corresponds to one barcode group (clone) and has '
-            'the following style: Barcode\t:\tCellID1\tbarcode-count1\tCellID2\tbarcode-count2...\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=groups_file)
-
-        for lineage_id in sorted(groups_dict):
-            row = [lineage_id, ':']
-            for cell_id, barcode_count in groups_dict[lineage_id]:
-                row.extend([cell_id, barcode_count])
-            print(*row, sep='\t', file=groups_file)
-
     # Create a loom file if requested
     if args.loom:
         write_loom(cells, input_dir, output_dir, lineage_id_length=args.end - args.start + 1)

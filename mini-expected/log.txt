@@ -9,5 +9,4 @@ Detected 1921 cells
 Removing 0 bridges from the graph
 Detected 4 lineages
 Lineage size histogram (size: count): 752: 1, 8: 1, 1: 1, 2: 1
-Detected 1 unique cell groups
 Run completed!
