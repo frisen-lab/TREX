@@ -14,6 +14,7 @@ from pathlib import Path
 from collections import Counter, defaultdict, OrderedDict
 from typing import Set, List, Dict, NamedTuple, Iterable, Callable
 
+from xopen import xopen
 import numpy as np
 import pysam
 with warnings.catch_warnings():
@@ -191,21 +192,6 @@ def cluster_sequences(
                 if is_similar(x, y):
                     graph.add_edge(x, y)
     return [g.nodes() for g in graph.connected_components()]
-
-
-def read_cellids(path: Path) -> Set[str]:
-    """
-    Read barcodes.tsv, which contains a list of corrected and approved cellIDs like this:
-
-    AAACCTGAGCGACGTA-1
-    AAACCTGCATACTCTT-1
-    """
-    with open(path) as f:
-        ids = []
-        for line in f:
-            line = line.strip('\n')
-            ids.append(line)
-    return set(ids)
 
 
 class Read(NamedTuple):
@@ -824,6 +810,7 @@ class CellRangerOuts:
             self.genome_dir = self._detect_genome_dir()
         else:
             self.genome_dir = self.matrices_path / genome_name
+        self.barcodes_path = self.genome_dir / 'barcodes.tsv'
 
     def _detect_genome_dir(self):
         genomes = [p for p in self.matrices_path.iterdir() if p.is_dir()]
@@ -837,6 +824,20 @@ class CellRangerOuts:
                 message += f'\n  {g!r}'
             raise CellRangerError(message)
         return genomes[0]
+
+    def cellids(self) -> Set[str]:
+        """
+        Read barcodes.tsv, which contains a list of corrected and approved cellIDs like this:
+
+        AAACCTGAGCGACGTA-1
+        AAACCTGCATACTCTT-1
+        """
+        with xopen(self.barcodes_path) as f:
+            ids = []
+            for line in f:
+                line = line.strip('\n')
+                ids.append(line)
+        return set(ids)
 
 
 class NiceFormatter(logging.Formatter):
@@ -891,7 +892,7 @@ def main():
             output_dir.mkdir()
         else:
             logger.error(f'Output directory "{output_dir}" already exists '
-                '(use --delete to force deleting existing directories)')
+                '(use --delete to force deleting an existing output directory)')
             sys.exit(1)
 
     add_file_logging(output_dir / 'log.txt')
@@ -901,7 +902,7 @@ def main():
         logger.error("%s", e)
         sys.exit(1)
 
-    cell_ids = read_cellids(outs_dir.genome_dir / 'barcodes.tsv')
+    cell_ids = outs_dir.cellids()
     logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
     highlight_cell_ids = []
