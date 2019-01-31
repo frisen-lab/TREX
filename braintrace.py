@@ -793,24 +793,28 @@ class CellRangerError(Exception):
     pass
 
 
-class CellRangerOuts:
+class CellRangerOuts1:
     """Version 1 of CellRanger "outs/" directory structure"""
+    MATRICES = 'filtered_gene_bc_matrices'
+    BARCODES = 'barcodes.tsv'
+    BAM = 'possorted_genome_bam.bam'
+
 
     def __init__(self, path: Path, genome_name: str = None):
         self.path = path
-        matrices_path = path / 'filtered_gene_bc_matrices'
+        matrices_path = path / self.MATRICES
         if not matrices_path.exists():
             raise CellRangerError(
-                "Directory 'filtered_gene_bc_matrices/' must exist in the given outs/ directory")
+                f"Directory '{self.MATRICES}/' must exist in the given outs/ directory")
         self.matrices_path: Path = matrices_path
-        self.bam = path / 'possorted_genome_bam.bam'
+        self.bam = path / self.BAM
         self.sample_dir = path.parent
 
         if genome_name is None:
             self.genome_dir = self._detect_genome_dir()
         else:
             self.genome_dir = self.matrices_path / genome_name
-        self.barcodes_path = self.genome_dir / 'barcodes.tsv'
+        self.barcodes_path = self.genome_dir / self.BARCODES
 
     def _detect_genome_dir(self):
         genomes = [p for p in self.matrices_path.iterdir() if p.is_dir()]
@@ -838,6 +842,23 @@ class CellRangerOuts:
                 line = line.strip('\n')
                 ids.append(line)
         return set(ids)
+
+
+class CellRangerOuts2(CellRangerOuts1):
+    MATRICES = 'filtered_feature_bc_matrix'
+    BARCODES = 'barcodes.tsv.gz'
+
+    def _detect_genome_dir(self):
+        return self.matrices_path
+
+
+def create_cellranger_outs(outs_path: Path, *args, **kwargs):
+    """Detect CellRanger outs/ format and return an appropritae instance of CellRangerOuts1/2"""
+
+    if (outs_path / 'filtered_gene_bc_matrices').exists():
+        return CellRangerOuts1(outs_path, *args, **kwargs)
+    else:
+        return CellRangerOuts2(outs_path, *args, **kwargs)
 
 
 class NiceFormatter(logging.Formatter):
@@ -897,7 +918,7 @@ def main():
 
     add_file_logging(output_dir / 'log.txt')
     try:
-        outs_dir = CellRangerOuts(args.path, args.genome_name)
+        outs_dir = create_cellranger_outs(args.path, args.genome_name)
     except CellRangerError as e:
         logger.error("%s", e)
         sys.exit(1)
