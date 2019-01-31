@@ -793,12 +793,11 @@ class CellRangerError(Exception):
     pass
 
 
-class CellRangerOuts1:
-    """Version 1 of CellRanger "outs/" directory structure"""
+class CellRangerOuts2:
+    """CellRanger 2 "outs/" directory structure"""
     MATRICES = 'filtered_gene_bc_matrices'
     BARCODES = 'barcodes.tsv'
     BAM = 'possorted_genome_bam.bam'
-
 
     def __init__(self, path: Path, genome_name: str = None):
         self.path = path
@@ -844,7 +843,7 @@ class CellRangerOuts1:
         return set(ids)
 
 
-class CellRangerOuts2(CellRangerOuts1):
+class CellRangerOuts3(CellRangerOuts2):
     MATRICES = 'filtered_feature_bc_matrix'
     BARCODES = 'barcodes.tsv.gz'
 
@@ -853,12 +852,12 @@ class CellRangerOuts2(CellRangerOuts1):
 
 
 def create_cellranger_outs(outs_path: Path, *args, **kwargs):
-    """Detect CellRanger outs/ format and return an appropritae instance of CellRangerOuts1/2"""
+    """Detect CellRanger outs/ format and return an appropritae instance of CellRangerOuts2/3"""
 
     if (outs_path / 'filtered_gene_bc_matrices').exists():
-        return CellRangerOuts1(outs_path, *args, **kwargs)
-    else:
         return CellRangerOuts2(outs_path, *args, **kwargs)
+    else:
+        return CellRangerOuts3(outs_path, *args, **kwargs)
 
 
 class NiceFormatter(logging.Formatter):
