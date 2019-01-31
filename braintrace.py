@@ -295,6 +295,7 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
         if chr_name is None:
             chr_name = alignment_file.references[-1]
 
+        # TODO move out of here
         if lineage_id_start is None or lineage_id_end is None:
             if lineage_id_start is not None or lineage_id_end is not None:
                 raise ValueError('Either both or none of lineage id start and end must be provided')
@@ -737,7 +738,7 @@ class CompressedLineageGraph:
         return self._graph
 
 
-def write_loom(cells: List[Cell], cellranger_dir, output_dir, lineage_id_length, top_n=6):
+def write_loom(cells: List[Cell], cellranger_outs, output_dir, lineage_id_length, top_n=6):
     """
     Create a loom file from a Cell Ranger sample directory and augment it with information about
     the most abundant lineage id and their counts.
@@ -753,11 +754,10 @@ def write_loom(cells: List[Cell], cellranger_dir, output_dir, lineage_id_length,
         counts = counts[:top_n]
         most_abundant[cell.cell_id] = counts
 
-    sample_dir = cellranger_dir.parent
-    loompy.create_from_cellranger(sample_dir, outdir=output_dir)
+    loompy.create_from_cellranger(cellranger_outs.sample_dir, outdir=output_dir)
     # create_from_cellranger() does not tell us the name of the created file,
     # so we need to re-derive it from the sample name.
-    sample_name = sample_dir.name
+    sample_name = cellranger_outs.sample_dir.name
     loom_path = output_dir / (sample_name + '.loom')
 
     with loompy.connect(loom_path) as ds:
@@ -803,6 +803,42 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
             print(*row, sep='\t', file=f)
 
 
+class CellRangerError(Exception):
+    pass
+
+
+class CellRangerOuts:
+    """Version 1 of CellRanger "outs/" directory structure"""
+
+    def __init__(self, path: Path, genome_name: str = None):
+        self.path = path
+        matrices_path = path / 'filtered_gene_bc_matrices'
+        if not matrices_path.exists():
+            raise CellRangerError(
+                "Directory 'filtered_gene_bc_matrices/' must exist in the given outs/ directory")
+        self.matrices_path: Path = matrices_path
+        self.bam = path / 'possorted_genome_bam.bam'
+        self.sample_dir = path.parent
+
+        if genome_name is None:
+            self.genome_dir = self._detect_genome_dir()
+        else:
+            self.genome_dir = self.matrices_path / genome_name
+
+    def _detect_genome_dir(self):
+        genomes = [p for p in self.matrices_path.iterdir() if p.is_dir()]
+        if not genomes:
+            raise CellRangerError(
+                f"No subfolders found in the '{self.matrices_path}' folder")
+        if len(genomes) > 1:
+            message = "Exactly one genome folder expected in the " \
+                f"'{self.matrices_path}' folder, but found:"
+            for g in genomes:
+                message += f'\n  {g!r}'
+            raise CellRangerError(message)
+        return genomes[0]
+
+
 class NiceFormatter(logging.Formatter):
     """
     Do not prefix "INFO:" to info-level log messages (but do it for all other
@@ -837,7 +873,6 @@ def add_file_logging(path: Path) -> None:
 
 def main():
     args = parse_arguments()
-    input_dir = args.path
     output_dir = args.output
     setup_logging(debug=False)
 
@@ -860,25 +895,13 @@ def main():
             sys.exit(1)
 
     add_file_logging(output_dir / 'log.txt')
-    matrices_path = input_dir / 'filtered_gene_bc_matrices'
-    if not matrices_path.exists():
-        logger.error("Directory 'filtered_gene_bc_matrices/' must exist in the given path")
+    try:
+        outs_dir = CellRangerOuts(args.path, args.genome_name)
+    except CellRangerError as e:
+        logger.error("%s", e)
         sys.exit(1)
-    if args.genome_name is None:
-        genomes = [p for p in matrices_path.iterdir() if p.is_dir()]
-        if not genomes:
-            logger.error(f"No subfolders found in the 'outs/filtered_gene_bc_matrices/' folder")
-            sys.exit(1)
-        if len(genomes) > 1:
-            logger.error('Exactly one genome folder expected in the '
-                "'outs/filtered_gene_bc_matrices/' folder, but found:")
-            for g in genomes:
-                logger.error(f'  {g!r}')
-            sys.exit(1)
-        genome_dir = genomes[0]
-    else:
-        genome_dir = matrices_path / args.genome_name
-    cell_ids = read_cellids(genome_dir / 'barcodes.tsv')
+
+    cell_ids = read_cellids(outs_dir.genome_dir / 'barcodes.tsv')
     logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
     highlight_cell_ids = []
@@ -892,7 +915,7 @@ def main():
             restrict_cell_ids = [line.strip() for line in f]
 
     sorted_reads = read_bam(
-        input_dir / 'possorted_genome_bam.bam', output_dir,
+        outs_dir.bam, output_dir,
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
 
     lineage_ids = [
@@ -995,7 +1018,7 @@ def main():
 
     # Create a loom file if requested
     if args.loom:
-        write_loom(cells, input_dir, output_dir, lineage_id_length=args.end - args.start + 1)
+        write_loom(cells, outs_dir, output_dir, lineage_id_length=args.end - args.start + 1)
 
     logger.info('Run completed!')
 
