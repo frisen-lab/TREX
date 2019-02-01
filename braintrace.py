@@ -814,14 +814,13 @@ class CellRangerOuts2:
         self.matrices_path: Path = matrices_path
         self.bam = path / self.BAM
         self.sample_dir = path.parent
-
-        if genome_name is None:
-            self.genome_dir = self._detect_genome_dir()
-        else:
-            self.genome_dir = self.matrices_path / genome_name
+        self.genome_dir = self._detect_genome_dir(genome_name)
         self.barcodes_path = self.genome_dir / self.BARCODES
 
-    def _detect_genome_dir(self):
+    def _detect_genome_dir(self, genome_name):
+        if genome_name is not None:
+            return self.matrices_path / genome_name
+
         genomes = [p for p in self.matrices_path.iterdir() if p.is_dir()]
         if not genomes:
             raise CellRangerError(
@@ -853,7 +852,7 @@ class CellRangerOuts3(CellRangerOuts2):
     MATRICES = 'filtered_feature_bc_matrix'
     BARCODES = 'barcodes.tsv.gz'
 
-    def _detect_genome_dir(self):
+    def _detect_genome_dir(self, _genome_name):
         return self.matrices_path
 
 
