@@ -7,7 +7,8 @@ if sys.version_info[:2] < (3, 6):
 
 setup(
     name='braintrace',
-    version='0.1',
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],  # Support pip versions that don't know about pyproject.toml
     author='',
     author_email='',
     url='',

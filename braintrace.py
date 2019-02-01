@@ -13,6 +13,7 @@ from io import StringIO
 from pathlib import Path
 from collections import Counter, defaultdict, OrderedDict
 from typing import Set, List, Dict, NamedTuple, Iterable, Callable
+from pkg_resources import get_distribution, DistributionNotFound
 
 from xopen import xopen
 import numpy as np
@@ -21,7 +22,12 @@ with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
 
-__version__ = '0.1'
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    pass
+
 __author__ = 'leonie.von.berlin@stud.ki.se'
 
 logger = logging.getLogger(__name__)
