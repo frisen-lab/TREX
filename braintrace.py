@@ -673,7 +673,8 @@ class CompressedLineageGraph:
         node_scaling = (max_width - 1) / math.log(max(node.n for node in self._graph.nodes()))
         s = StringIO()
         print('graph g {', file=s)
-        print('  graph [outputorder=edgesfirst, overlap=false];', file=s)
+        # Using overlap=false would be nice here, but that does not work with some Graphviz builds
+        print('  graph [outputorder=edgesfirst];', file=s)
         print('  edge [color=blue];', file=s)
         print('  node [style=filled, fillcolor=white, fontname="Roboto"];', file=s)
         for node in self._graph.nodes():
