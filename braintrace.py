@@ -28,7 +28,7 @@ except DistributionNotFound:
     # package is not installed
     pass
 
-__author__ = 'leonie.von.berlin@stud.ki.se'
+__author__ = 'leonie.von.berlin@ki.se'
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,9 @@ def parse_arguments():
         help='Hamming distance allowed for two barcodes to be called similar. '
             'Default: %(default)s',
         type=int, default=5)
+    parser.add_argument('--amplicon', '-a', metavar='DIRECTORY', type=Path,
+        help='Path to cellranger "outs" directory containing sequencing of the EGFP-barcode amplicon library',
+        default=Path('lineage_run'))
     parser.add_argument('--keep-single-reads', action='store_true', default=False,
         help='Keep barcodes supported by only a single read. Default: Discard them')
     parser.add_argument('-l', '--loom',
@@ -73,7 +76,7 @@ def parse_arguments():
     parser.add_argument('--no-plot', dest='plot', default=True, action='store_false',
         help='Do not plot the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
-        help='Path to cell ranger "outs" directory')
+        help='Path to cellranger "outs" directory')
     return parser.parse_args()
 
 
