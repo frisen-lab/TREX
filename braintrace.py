@@ -280,7 +280,7 @@ def detect_lineage_id_location(alignment_file, reference_name):
     raise ValueError(f'Could not detect lineage id location on chromosome {reference_name}')
 
 
-def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None):
+def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None, amp=False):
     """
     bam_path -- path to input BAM file
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
@@ -298,7 +298,10 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
         logger.info(f'Reading lineage ids from {chr_name}:{lineage_id_start + 1}-{lineage_id_end}')
         if lineage_id_end - lineage_id_start < 10:
             raise ValueError('Auto-detected lineage id too short, something is wrong')
-        output_bam_path = output_dir / (chr_name + '_entries.bam')
+        if amp == True:
+            output_bam_path = output_dir / (chr_name + 'amp_entries.bam')
+        else:
+            output_bam_path = output_dir / (chr_name + '_entries.bam')
         with pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
             # Fetches those reads aligning to the artifical, lineage-id-containing chromosome
             reads = []
@@ -934,6 +937,7 @@ def main():
     cell_ids = outs_dir.cellids()
     logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
+
     highlight_cell_ids = []
     if args.highlight:
         with open(args.highlight) as f:
@@ -944,10 +948,29 @@ def main():
         with open(args.restrict) as f:
             restrict_cell_ids = [line.strip() for line in f]
 
-    sorted_reads = read_bam(
+    sorted_reads_trans = read_bam(
         outs_dir.bam, output_dir,
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
 
+    if args.amplicon:
+        try:
+            amp_dir = create_cellranger_outs(args.amplicon, args.genome_name)
+            print(amp_dir)
+        except CellRangerError as e:
+            logger.error("%s", e)
+            sys.exit(1)
+        cell_ids_amp = outs_dir.cellids()
+        logger.info(f'Found {len(cell_ids_amp)} cell ids in the amplicon barcodes.tsv file')
+
+        sorted_reads_amp = read_bam(
+        amp_dir.bam, output_dir,
+        cell_ids_amp, args.chromosome, args.start - 1 if args.start is not None else None, args.end, amp = True)
+
+        sorted_reads = sorted_reads_trans + sorted_reads_amp
+        #sorted(reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
+    else: 
+        sorted_reads = sorted_reads_trans
+    
     lineage_ids = [
         r.lineage_id for r in sorted_reads if '-' not in r.lineage_id and '0' not in r.lineage_id]
     logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode '
