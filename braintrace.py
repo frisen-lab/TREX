@@ -966,8 +966,8 @@ def main():
         amp_dir.bam, output_dir,
         cell_ids_amp, args.chromosome, args.start - 1 if args.start is not None else None, args.end, amp = True)
 
-        sorted_reads = sorted_reads_trans + sorted_reads_amp
-        #sorted(reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
+        joint_reads = sorted_reads_trans + sorted_reads_amp
+        sorted_reads = sorted(joint_reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
     else: 
         sorted_reads = sorted_reads_trans
     
