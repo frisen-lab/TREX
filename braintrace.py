@@ -14,9 +14,11 @@ from pathlib import Path
 from collections import Counter, defaultdict, OrderedDict
 from typing import Set, List, Dict, NamedTuple, Iterable, Callable
 from pkg_resources import get_distribution, DistributionNotFound
+import csv
 
 from xopen import xopen
 import numpy as np
+import pandas as pd
 import pysam
 with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
@@ -62,7 +64,10 @@ def parse_arguments():
         type=int, default=5)
     parser.add_argument('--amplicon', '-a', metavar='DIRECTORY', type=Path,
         help='Path to cellranger "outs" directory containing sequencing of the EGFP-barcode amplicon library',
-        default=Path('lineage_run'))
+        default=None)
+    parser.add_argument('--filtCells', '-f', metavar='DIRECTORY', type=Path,
+        help='Path to a .csv file containing cellids to keep in the analysis. This flag enables to remove cells e.g. doublets',
+        default=None)
     parser.add_argument('--keep-single-reads', action='store_true', default=False,
         help='Keep barcodes supported by only a single read. Default: Discard them')
     parser.add_argument('-l', '--loom',
@@ -847,11 +852,25 @@ class CellRangerOuts2:
         AAACCTGAGCGACGTA-1
         AAACCTGCATACTCTT-1
         """
+        args = parse_arguments()
+
+        if args.filtCells:
+            allowed_ids = []
+            filt = pd.read_csv(Path(args.filtCells) , sep = ",", index_col=0)
+            for line in filt.iloc[:,0]:
+                allowed_ids.append(line.split("_")[0])
+
         with xopen(self.barcodes_path) as f:
             ids = []
             for line in f:
                 line = line.strip('\n')
-                ids.append(line)
+                if args.filtCells:
+                    if line.split("-")[0] in allowed_ids:
+                        ids.append(line)
+                else:
+                    ids.append(line)
+        if args.filtCells:
+            logger.info(f'Restricting analysis to {len(ids)} allowed cells')
         return set(ids)
 
 
