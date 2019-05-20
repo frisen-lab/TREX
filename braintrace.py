@@ -368,13 +368,15 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
     assert len(sorted_reads) == 0 or len(sorted_reads[0].lineage_id) == lineage_id_end - lineage_id_start
     return sorted_reads
 
+
 def filter_cellids(cellids_filtered):
     allowed_ids = []
-    filtered_df = pd.read_csv(Path(cellids_filtered) , sep = ",", index_col=0)
+    filtered_df = pd.read_csv(Path(cellids_filtered) , sep=",", index_col=0)
     for line in filtered_df.iloc[:,0]:
         allowed_ids.append(line.split("_")[0])
     logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
     return allowed_ids
+
 
 def compute_consensus(sequences):
     """
@@ -946,11 +948,10 @@ def main():
         sys.exit(1)
 
     cell_ids = outs_dir.cellids()
-
+    logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
+    
     if args.filter_cellids:
         cell_ids = filter_cellids(args.filter_cellids)
-
-    logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
     highlight_cell_ids = []
     if args.highlight:
