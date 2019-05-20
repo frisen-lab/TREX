@@ -967,7 +967,7 @@ def main():
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
     
     #Extracts reads aligning to lineage id chromosome from amplicon sequencing data
-    # Combines reads from amplicon dataset with reads from transcriptome data set for 
+    # Combines reads from amplicon dataset with reads from transcriptome dataset for 
     # lineage id, cellID and UMI extraction
     if args.amplicon:
         try:
