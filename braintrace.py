@@ -14,7 +14,6 @@ from pathlib import Path
 from collections import Counter, defaultdict, OrderedDict
 from typing import Set, List, Dict, NamedTuple, Iterable, Callable
 from pkg_resources import get_distribution, DistributionNotFound
-import csv
 
 from xopen import xopen
 import numpy as np
@@ -39,7 +38,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument('--genome-name', metavar='NAME',
-        help='Name of the genome as indicated in cell ranger count run with the flag --genome. '
+        help='Name of the genome as indicated in Cell Ranger count run with the flag --genome. '
              'Default: Auto-detected',
         default=None)
     parser.add_argument('--chromosome', '--chr',
@@ -63,15 +62,15 @@ def parse_arguments():
             'Default: %(default)s',
         type=int, default=5)
     parser.add_argument('--amplicon', '-a', metavar='DIRECTORY', type=Path,
-        help='Path to cellranger "outs" directory containing sequencing of the EGFP-barcode amplicon library',
+        help='Path to Cell Ranger "outs" directory containing sequencing of the EGFP-barcode amplicon library',
         default=None)
-    parser.add_argument('--filtCells', '-f', metavar='DIRECTORY', type=Path,
+    parser.add_argument('--filter-cellids', '-f', metavar='DIRECTORY', type=Path,
         help='Path to a .csv file containing cellids to keep in the analysis. This flag enables to remove cells e.g. doublets',
         default=None)
     parser.add_argument('--keep-single-reads', action='store_true', default=False,
         help='Keep barcodes supported by only a single read. Default: Discard them')
     parser.add_argument('-l', '--loom',
-        help='If given, create loom-file from cell ranger and barcode data. '
+        help='If given, create loom-file from Cell Ranger and barcode data. '
             'File will have the same name as the run',
         action='store_true')
     parser.add_argument('--restrict', metavar='FILE',
@@ -81,7 +80,7 @@ def parse_arguments():
     parser.add_argument('--no-plot', dest='plot', default=True, action='store_false',
         help='Do not plot the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
-        help='Path to cellranger "outs" directory')
+        help='Path to Cell Ranger "outs" directory')
     return parser.parse_args()
 
 
@@ -285,7 +284,7 @@ def detect_lineage_id_location(alignment_file, reference_name):
     raise ValueError(f'Could not detect lineage id location on chromosome {reference_name}')
 
 
-def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None, amp=False):
+def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None, amplicon=False):
     """
     bam_path -- path to input BAM file
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
@@ -303,7 +302,7 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
         logger.info(f'Reading lineage ids from {chr_name}:{lineage_id_start + 1}-{lineage_id_end}')
         if lineage_id_end - lineage_id_start < 10:
             raise ValueError('Auto-detected lineage id too short, something is wrong')
-        if amp == True:
+        if amplicon:
             output_bam_path = output_dir / (chr_name + 'amp_entries.bam')
         else:
             output_bam_path = output_dir / (chr_name + '_entries.bam')
@@ -369,6 +368,13 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
     assert len(sorted_reads) == 0 or len(sorted_reads[0].lineage_id) == lineage_id_end - lineage_id_start
     return sorted_reads
 
+def filter_cellids(cellids_filtered):
+    allowed_ids = []
+    filtered_df = pd.read_csv(Path(cellids_filtered) , sep = ",", index_col=0)
+    for line in filtered_df.iloc[:,0]:
+        allowed_ids.append(line.split("_")[0])
+    logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
+    return allowed_ids
 
 def compute_consensus(sequences):
     """
@@ -852,25 +858,11 @@ class CellRangerOuts2:
         AAACCTGAGCGACGTA-1
         AAACCTGCATACTCTT-1
         """
-        args = parse_arguments()
-
-        if args.filtCells:
-            allowed_ids = []
-            filt = pd.read_csv(Path(args.filtCells) , sep = ",", index_col=0)
-            for line in filt.iloc[:,0]:
-                allowed_ids.append(line.split("_")[0])
-
         with xopen(self.barcodes_path) as f:
             ids = []
             for line in f:
                 line = line.strip('\n')
-                if args.filtCells:
-                    if line.split("-")[0] in allowed_ids:
-                        ids.append(line)
-                else:
-                    ids.append(line)
-        if args.filtCells:
-            logger.info(f'Restricting analysis to {len(ids)} allowed cells')
+                ids.append(line)
         return set(ids)
 
 
@@ -954,8 +946,11 @@ def main():
         sys.exit(1)
 
     cell_ids = outs_dir.cellids()
-    logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
+    if args.filter_cellids:
+        cell_ids = filter_cellids(args.filter_cellids)
+
+    logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
     highlight_cell_ids = []
     if args.highlight:
@@ -967,14 +962,16 @@ def main():
         with open(args.restrict) as f:
             restrict_cell_ids = [line.strip() for line in f]
 
-    sorted_reads_trans = read_bam(
+    sorted_reads = read_bam(
         outs_dir.bam, output_dir,
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
-
+    
+    #Extracts reads aligning to lineage id chromosome from amplicon sequencing data
+    # Combines reads from amplicon dataset with reads from transcriptome data set for 
+    # lineage id, cellID and UMI extraction
     if args.amplicon:
         try:
             amp_dir = create_cellranger_outs(args.amplicon, args.genome_name)
-            print(amp_dir)
         except CellRangerError as e:
             logger.error("%s", e)
             sys.exit(1)
@@ -982,13 +979,11 @@ def main():
         logger.info(f'Found {len(cell_ids_amp)} cell ids in the amplicon barcodes.tsv file')
 
         sorted_reads_amp = read_bam(
-        amp_dir.bam, output_dir,
-        cell_ids_amp, args.chromosome, args.start - 1 if args.start is not None else None, args.end, amp = True)
+            amp_dir.bam, output_dir,
+            cell_ids_amp, args.chromosome, args.start - 1 if args.start is not None else None, args.end, amplicon = True)
 
-        joint_reads = sorted_reads_amp + sorted_reads_trans
+        joint_reads = sorted_reads_amp + sorted_reads
         sorted_reads = sorted(joint_reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
-    else: 
-        sorted_reads = sorted_reads_trans
     
     lineage_ids = [
         r.lineage_id for r in sorted_reads if '-' not in r.lineage_id and '0' not in r.lineage_id]
