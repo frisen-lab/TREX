@@ -368,6 +368,15 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
 
 
 def filter_cellids(cellids_filtered):
+    """
+        Reads a user-provided list of allowed cellIDs from Seurat like this:
+
+        AAACCTGAGCGACGTA
+
+        OR:
+
+        AAACCTGCATACTCTT_1
+        """
     allowed_ids = []
     filtered_df = pd.read_csv(Path(cellids_filtered) , sep=",", index_col=0)
     for line in filtered_df.iloc[:,0]:
@@ -975,6 +984,11 @@ def main():
             logger.error("%s", e)
             sys.exit(1)
         cell_ids_amp = outs_dir.cellids()
+        
+        if args.filter_cellids:
+            cell_ids_amp_raw = cell_ids_amp
+            cell_ids_amp = [cell for cell in cell_ids_amp_raw if cell in cell_ids]
+                
         logger.info(f'Found {len(cell_ids_amp)} cell ids in the amplicon barcodes.tsv file')
 
         sorted_reads_amp = read_bam(
