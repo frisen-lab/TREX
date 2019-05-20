@@ -371,9 +371,9 @@ def filter_cellids(cellids_filtered):
     allowed_ids = []
     filtered_df = pd.read_csv(Path(cellids_filtered) , sep=",", index_col=0)
     for line in filtered_df.iloc[:,0]:
-        allowed_ids.append(line.split("_")[0])
+        allowed_ids.append(line.split("_")[0] + "-1")
     logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
-    return allowed_ids
+    return set(allowed_ids)
 
 
 def compute_consensus(sequences):
