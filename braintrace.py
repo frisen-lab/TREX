@@ -17,6 +17,7 @@ from pkg_resources import get_distribution, DistributionNotFound
 
 from xopen import xopen
 import numpy as np
+import pandas as pd
 import pysam
 with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
@@ -28,7 +29,7 @@ except DistributionNotFound:
     # package is not installed
     pass
 
-__author__ = 'leonie.von.berlin@stud.ki.se'
+__author__ = 'leonie.von.berlin@ki.se'
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument('--genome-name', metavar='NAME',
-        help='Name of the genome as indicated in cell ranger count run with the flag --genome. '
+        help='Name of the genome as indicated in Cell Ranger count run with the flag --genome. '
              'Default: Auto-detected',
         default=None)
     parser.add_argument('--chromosome', '--chr',
@@ -60,10 +61,16 @@ def parse_arguments():
         help='Hamming distance allowed for two barcodes to be called similar. '
             'Default: %(default)s',
         type=int, default=5)
+    parser.add_argument('--amplicon', '-a', metavar='DIRECTORY', type=Path,
+        help='Path to Cell Ranger "outs" directory containing sequencing of the EGFP-barcode amplicon library',
+        default=None)
+    parser.add_argument('--filter-cellids', '-f', metavar='DIRECTORY', type=Path,
+        help='Path to a .csv file containing cellids to keep in the analysis. This flag enables to remove cells e.g. doublets',
+        default=None)
     parser.add_argument('--keep-single-reads', action='store_true', default=False,
         help='Keep barcodes supported by only a single read. Default: Discard them')
     parser.add_argument('-l', '--loom',
-        help='If given, create loom-file from cell ranger and barcode data. '
+        help='If given, create loom-file from Cell Ranger and barcode data. '
             'File will have the same name as the run',
         action='store_true')
     parser.add_argument('--restrict', metavar='FILE',
@@ -73,7 +80,7 @@ def parse_arguments():
     parser.add_argument('--no-plot', dest='plot', default=True, action='store_false',
         help='Do not plot the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
-        help='Path to cell ranger "outs" directory')
+        help='Path to Cell Ranger "outs" directory')
     return parser.parse_args()
 
 
@@ -277,7 +284,7 @@ def detect_lineage_id_location(alignment_file, reference_name):
     raise ValueError(f'Could not detect lineage id location on chromosome {reference_name}')
 
 
-def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None):
+def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None, file_name_suffix="_entries"):
     """
     bam_path -- path to input BAM file
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
@@ -295,7 +302,8 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
         logger.info(f'Reading lineage ids from {chr_name}:{lineage_id_start + 1}-{lineage_id_end}')
         if lineage_id_end - lineage_id_start < 10:
             raise ValueError('Auto-detected lineage id too short, something is wrong')
-        output_bam_path = output_dir / (chr_name + '_entries.bam')
+        output_bam_path = output_dir / (chr_name + file_name_suffix + '.bam')
+
         with pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
             # Fetches those reads aligning to the artifical, lineage-id-containing chromosome
             reads = []
@@ -357,6 +365,15 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
     sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
     assert len(sorted_reads) == 0 or len(sorted_reads[0].lineage_id) == lineage_id_end - lineage_id_start
     return sorted_reads
+
+
+def filter_cellids(cellids_filtered):
+    allowed_ids = []
+    filtered_df = pd.read_csv(Path(cellids_filtered) , sep=",", index_col=0)
+    for line in filtered_df.iloc[:,0]:
+        allowed_ids.append(line.split("_")[0])
+    logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
+    return allowed_ids
 
 
 def compute_consensus(sequences):
@@ -931,6 +948,9 @@ def main():
     cell_ids = outs_dir.cellids()
     logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
+    if args.filter_cellids:
+        cell_ids = filter_cellids(args.filter_cellids)
+
     highlight_cell_ids = []
     if args.highlight:
         with open(args.highlight) as f:
@@ -944,7 +964,26 @@ def main():
     sorted_reads = read_bam(
         outs_dir.bam, output_dir,
         cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
+    
+    #Extracts reads aligning to lineage id chromosome from amplicon sequencing data
+    # Combines reads from amplicon dataset with reads from transcriptome dataset for 
+    # lineage id, cellID and UMI extraction
+    if args.amplicon:
+        try:
+            amp_dir = create_cellranger_outs(args.amplicon, args.genome_name)
+        except CellRangerError as e:
+            logger.error("%s", e)
+            sys.exit(1)
+        cell_ids_amp = outs_dir.cellids()
+        logger.info(f'Found {len(cell_ids_amp)} cell ids in the amplicon barcodes.tsv file')
 
+        sorted_reads_amp = read_bam(
+            amp_dir.bam, output_dir,
+            cell_ids_amp, args.chromosome, args.start - 1 if args.start is not None else None, args.end, file_name_suffix="_amp_entries")
+
+        joint_reads = sorted_reads_amp + sorted_reads
+        sorted_reads = sorted(joint_reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
+    
     lineage_ids = [
         r.lineage_id for r in sorted_reads if '-' not in r.lineage_id and '0' not in r.lineage_id]
     logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode '
