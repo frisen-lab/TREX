@@ -62,10 +62,11 @@ def parse_arguments():
             'Default: %(default)s',
         type=int, default=5)
     parser.add_argument('--amplicon', '-a', metavar='DIRECTORY', type=Path,
-        help='Path to Cell Ranger "outs" directory containing sequencing of the EGFP-barcode amplicon library',
+        help='Path to Cell Ranger "outs" directory containing sequencing of the EGFP-barcode amplicon library. When combining' 
+        'Cell Ranger runs indicate paths separated by comma and in same order as paths for transcriptome data. Example "path1,path2,path3"',
         default=None)
     parser.add_argument('--filter-cellids', '-f', metavar='DIRECTORY', type=Path,
-        help='Path to a .csv file containing cellids to keep in the analysis. This flag enables to remove cells e.g. doublets',
+        help='Path to a .csv file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
         default=None)
     parser.add_argument('--keep-single-reads', action='store_true', default=False,
         help='Keep barcodes supported by only a single read. Default: Discard them')
@@ -77,10 +78,15 @@ def parse_arguments():
         help='Restrict analysis to the cell IDs listed in FILE')
     parser.add_argument('--highlight',
         help='Highlight cell IDs listed in FILE in the lineage graph')
+    parser.add_argument('--cellid-suffix', '-su',
+        help='Add suffixes to cell IDs to merge different Cell Ranger runs. Suffixes should be separated by comma and have the same order'
+        'as the given Cell Ranger directory paths. Example: "_1,_2,_3"',
+        default=None)
     parser.add_argument('--no-plot', dest='plot', default=True, action='store_false',
         help='Do not plot the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
-        help='Path to Cell Ranger "outs" directory')
+        help='Path to Cell Ranger "outs" directory. To combine several runs, please separate paths by comma. Example: "path1,path2,path3".'
+        'Do not forget to indicate cell IDs suffixes to separate cell IDs from differen runs with the --cellid-suffix flag')
     return parser.parse_args()
 
 
@@ -284,7 +290,7 @@ def detect_lineage_id_location(alignment_file, reference_name):
     raise ValueError(f'Could not detect lineage id location on chromosome {reference_name}')
 
 
-def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None, file_name_suffix="_entries"):
+def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None, file_name_suffix="_entries", cellid_suffix = None):
     """
     bam_path -- path to input BAM file
     output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
@@ -321,6 +327,9 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
                 if cell_id not in cell_ids:
                     unknown_ids += 1
                     continue
+                #Gives cellIDs an experiment specific suffix
+                if cellid_suffix is not None:
+                    cell_id = cell_id.strip("-1") + cellid_suffix
 
                 query_align_end = read.query_alignment_end
                 query_align_start = read.query_alignment_start
@@ -885,7 +894,7 @@ class CellRangerOuts3(CellRangerOuts2):
 
 def create_cellranger_outs(outs_path: Path, *args, **kwargs):
     """Detect CellRanger outs/ format and return an appropritae instance of CellRangerOuts2/3"""
-
+    outs_path = Path(outs_path)
     if (outs_path / 'filtered_gene_bc_matrices').exists():
         return CellRangerOuts2(outs_path, *args, **kwargs)
     else:
@@ -948,52 +957,78 @@ def main():
             sys.exit(1)
 
     add_file_logging(output_dir / 'log.txt')
-    try:
-        outs_dir = create_cellranger_outs(args.path, args.genome_name)
-    except CellRangerError as e:
-        logger.error("%s", e)
-        sys.exit(1)
 
-    cell_ids = outs_dir.cellids()
-    logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
+    if args.cellid_suffix:
+            cellid_suffixes = args.cellid_suffix.split(",")
 
-    if args.filter_cellids:
-        cell_ids = filter_cellids(args.filter_cellids)
+    transcriptome_input = str(args.path).split(",")
+    sorted_reads = list()
+    for i in range(len(transcriptome_input)):
+        try:
+            outs_dir = create_cellranger_outs(transcriptome_input[i], args.genome_name)
+        except CellRangerError as e:
+            logger.error("%s", e)
+            sys.exit(1)
 
-    highlight_cell_ids = []
-    if args.highlight:
-        with open(args.highlight) as f:
-            highlight_cell_ids = [line.strip() for line in f]
+        cell_ids = outs_dir.cellids()
+        if args.cellid_suffix: 
+            suffix = cellid_suffixes[i]
+            logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file with suffix {suffix}')
+        else:
+            logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
-    restrict_cell_ids = None
-    if args.restrict:
-        with open(args.restrict) as f:
-            restrict_cell_ids = [line.strip() for line in f]
+        if args.filter_cellids:
+            cell_ids = filter_cellids(args.filter_cellids)
 
-    sorted_reads = read_bam(
-        outs_dir.bam, output_dir,
-        cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end)
+        highlight_cell_ids = []
+        if args.highlight:
+            with open(args.highlight) as f:
+                highlight_cell_ids = [line.strip() for line in f]
+
+        restrict_cell_ids = None
+        if args.restrict:
+            with open(args.restrict) as f:
+                restrict_cell_ids = [line.strip() for line in f]
+
+        suffix = None
+        if args.cellid_suffix:
+            suffix = cellid_suffixes[i]
+        
+        sorted_reads.extend(read_bam(
+            outs_dir.bam, output_dir,
+            cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end, cellid_suffix = suffix))
     
     #Extracts reads aligning to lineage id chromosome from amplicon sequencing data
     # Combines reads from amplicon dataset with reads from transcriptome dataset for 
     # lineage id, cellID and UMI extraction
     if args.amplicon:
-        try:
-            amp_dir = create_cellranger_outs(args.amplicon, args.genome_name)
-        except CellRangerError as e:
-            logger.error("%s", e)
-            sys.exit(1)
-        cell_ids_amp = outs_dir.cellids()
-        
-        if args.filter_cellids:
-            cell_ids_amp_raw = cell_ids_amp
-            cell_ids_amp = [cell for cell in cell_ids_amp_raw if cell in cell_ids]
-                
-        logger.info(f'Found {len(cell_ids_amp)} cell ids in the amplicon barcodes.tsv file')
+        amp_inputs = args.amplicon.split(",")
+        sorted_reads_amp = list()
+        for i in range(len(amp_inputs)):
+            try:
+                amp_dir = create_cellranger_outs(amp_inputs[i], args.genome_name)
+            except CellRangerError as e:
+                logger.error("%s", e)
+                sys.exit(1)
+            cell_ids_amp = outs_dir.cellids()
 
-        sorted_reads_amp = read_bam(
-            amp_dir.bam, output_dir,
-            cell_ids_amp, args.chromosome, args.start - 1 if args.start is not None else None, args.end, file_name_suffix="_amp_entries")
+    
+            
+            if args.filter_cellids:
+                cell_ids_amp_raw = cell_ids_amp
+                cell_ids_amp = [cell for cell in cell_ids_amp_raw if cell in cell_ids]
+
+            suffix = None
+            if args.cellid_suffix:   
+                suffix = cellid_suffixes[i]    
+                logger.info(f'Found {len(cell_ids_amp)} cell ids in the amplicon barcodes.tsv file with suffix {suffix}')
+            else:
+                logger.info(f'Found {len(cell_ids_amp)} cell ids in the amplicon barcodes.tsv file')
+
+            sorted_reads_amp.extend(read_bam(
+                amp_dir.bam, output_dir,
+                cell_ids_amp, args.chromosome, args.start - 1 if args.start is not None else None, args.end, 
+                file_name_suffix="_amp_entries", cellid_suffix = suffix))
 
         joint_reads = sorted_reads_amp + sorted_reads
         sorted_reads = sorted(joint_reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
