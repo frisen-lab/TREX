@@ -82,6 +82,8 @@ def parse_arguments():
         help='Add suffixes to cell IDs to merge different Cell Ranger runs. Suffixes should be separated by comma and have the same order'
         'as the given Cell Ranger directory paths. Example: "_1,_2,_3"',
         default=None)
+    parser.add_argument('--umi-matrix', "-umi", default=True, action='store_true',
+        help='Creates a umi count matrix with cells as columns and lineage IDs as rows')
     parser.add_argument('--no-plot', dest='plot', default=True, action='store_false',
         help='Do not plot the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
@@ -831,6 +833,24 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
             print(*row, sep='\t', file=f)
 
 
+def write_umimatrix(output_dir: Path, cells: List[Cell]):
+    """Create a UMI-count matrix with cells as columns and cloneids as rows"""
+    cell_dict = dict()
+    for cell in cells:
+        cellid = cell.cell_id
+        sorted_lineage_ids = sorted(cell.lineage_id_counts, key=lambda x: cell.lineage_id_counts[x], reverse=True)
+        if not sorted_lineage_ids:
+            continue
+        linid_dict = dict()
+        for lineage_id in sorted_lineage_ids:
+            linid_dict[lineage_id] = cell.lineage_id_counts[lineage_id]
+        cell_dict[cellid] = linid_dict
+
+    umi_matrix = pd.DataFrame(cell_dict).fillna(0)
+    umi_matrix = umi_matrix.astype(int)
+    umi_matrix.to_csv(output_dir / "umi_count_matrix.csv", sep = ",")
+
+
 class CellRangerError(Exception):
     pass
 
@@ -1085,6 +1105,9 @@ def main():
     cells = filter_cells(cells, corrected_molecules, args.keep_single_reads)
     logger.info(f'{len(cells)} filtered cells remain')
     write_cells(output_dir / 'cells_filtered.txt', cells)
+
+    if args.umi_matrix:
+        write_umimatrix(output_dir, cells)
 
     if restrict_cell_ids is not None:
         restrict_cell_ids = set(restrict_cell_ids)
