@@ -977,9 +977,10 @@ def main():
             sys.exit(1)
 
     add_file_logging(output_dir / 'log.txt')
+    logger.info('Command line arguments: %s', ' '.join(sys.argv[1:]))
 
     if args.cellid_suffix:
-            cellid_suffixes = args.cellid_suffix.split(",")
+        cellid_suffixes = args.cellid_suffix.split(",")
 
     transcriptome_input = str(args.path).split(",")
     sorted_reads = list()

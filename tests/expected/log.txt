@@ -1,3 +1,4 @@
+Command line arguments: --delete --loom --no-plot -s 695 -e 724 tests/data/outs
 Found 4103 cell ids in the barcodes.tsv file
 Reading lineage ids from chrTomato-N:695-724
 Skipped 2770 reads with unrecognized cell ids (and 207 without UMI or cell id)
