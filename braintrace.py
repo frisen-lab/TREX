@@ -1033,8 +1033,6 @@ def main():
                 sys.exit(1)
             cell_ids_amp = outs_dir.cellids()
 
-    
-            
             if args.filter_cellids:
                 cell_ids_amp_raw = cell_ids_amp
                 cell_ids_amp = [cell for cell in cell_ids_amp_raw if cell in cell_ids]
