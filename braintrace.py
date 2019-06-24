@@ -61,7 +61,7 @@ def parse_arguments():
         help='Hamming distance allowed for two barcodes to be called similar. '
             'Default: %(default)s',
         type=int, default=5)
-    parser.add_argument('--amplicon', '-a', metavar='DIRECTORY', type=Path,
+    parser.add_argument('--amplicon', '-a', metavar='DIRECTORY',
         help='Path to Cell Ranger "outs" directory containing sequencing of the EGFP-barcode amplicon library. When combining' 
         'Cell Ranger runs indicate paths separated by comma and in same order as paths for transcriptome data. Example "path1,path2,path3"',
         default=None)
@@ -990,7 +990,7 @@ def main():
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
     transcriptome_inputs = str(args.path).split(",")
     if args.amplicon:
-        amplicon_inputs = args.amplicon.split(",")
+        amplicon_inputs = [Path(a) for a in args.amplicon.split(",")]
         if len(transcriptome_inputs) != len(amplicon_inputs):
             logger.error("As many amplicon as transcriptome datasets must be provided")
             sys.exit(1)
