@@ -1140,6 +1140,9 @@ def main():
 
     # Create a loom file if requested
     if args.loom:
+        if len(transcriptome_inputs) > 1:
+            logger.warning("Writing a loom file only for the first transcriptome dataset")
+        outs_dir = create_cellranger_outs(transcriptome_inputs[0])
         write_loom(cells, outs_dir, output_dir, lineage_id_length=args.end - args.start + 1)
 
     logger.info('Run completed!')
