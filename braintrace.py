@@ -177,7 +177,7 @@ def kmers(s: str, k: int):
 
 
 def cluster_sequences(
-        sequences: List[str], is_similar: Callable[[str, str], bool], k: int=6) -> List[List[str]]:
+        sequences: List[str], is_similar: Callable[[str, str], bool], k: int = 6) -> List[List[str]]:
     """
     Cluster sequences by Hamming distance.
 
@@ -292,11 +292,11 @@ def detect_lineage_id_location(alignment_file, reference_name):
     raise ValueError(f'Could not detect lineage id location on chromosome {reference_name}')
 
 
-def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None, file_name_suffix="_entries", cellid_suffix = None):
+def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None, file_name_suffix="_entries", cellid_suffix=None):
     """
     bam_path -- path to input BAM file
-    output_bam_path -- path to an output BAM file. All reads on the chromosome that have the
-        required tags are written to this file
+    output_dir -- path to an output directory into which a BAM file is written that contais all
+        reads on the chromosome that have the required tags.
     """
     with pysam.AlignmentFile(bam_path) as alignment_file:
         if chr_name is None:
@@ -329,9 +329,11 @@ def read_bam(bam_path: Path, output_dir: Path, cell_ids, chr_name, lineage_id_st
                 if cell_id not in cell_ids:
                     unknown_ids += 1
                     continue
-                #Gives cellIDs an experiment specific suffix
+                # Gives cellIDs an experiment-specific suffix
                 if cellid_suffix is not None:
-                    cell_id = cell_id.strip("-1") + cellid_suffix
+                    if cell_id.endswith("-1"):
+                        cell_id = cell_id[:-2]
+                    cell_id += cellid_suffix
 
                 query_align_end = read.query_alignment_end
                 query_align_start = read.query_alignment_start
@@ -531,7 +533,7 @@ def compute_cells(sorted_molecules: List[Molecule], minimum_lineage_id_length: i
 
 def filter_cells(
         cells: Iterable[Cell], molecules: Iterable[Molecule],
-        keep_single_reads: bool=False) -> List[Cell]:
+        keep_single_reads: bool = False) -> List[Cell]:
     """
     Filter lineage ids according to two criteria:
 
@@ -979,8 +981,13 @@ def main():
     add_file_logging(output_dir / 'log.txt')
     logger.info('Command line arguments: %s', ' '.join(sys.argv[1:]))
 
+    cellid_suffixes = None
     if args.cellid_suffix:
         cellid_suffixes = args.cellid_suffix.split(",")
+    restrict_cell_ids = None
+    if args.restrict:
+        with open(args.restrict) as f:
+            restrict_cell_ids = [line.strip() for line in f]
 
     transcriptome_input = str(args.path).split(",")
     sorted_reads = list()
@@ -992,35 +999,24 @@ def main():
             sys.exit(1)
 
         cell_ids = outs_dir.cellids()
-        if args.cellid_suffix: 
+        if args.filter_cellids:
+            cell_ids = filter_cellids(args.filter_cellids)
+        if cellid_suffixes:
             suffix = cellid_suffixes[i]
             logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file with suffix {suffix}')
         else:
+            suffix = None
             logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
         if args.filter_cellids:
             cell_ids = filter_cellids(args.filter_cellids)
 
-        highlight_cell_ids = []
-        if args.highlight:
-            with open(args.highlight) as f:
-                highlight_cell_ids = [line.strip() for line in f]
-
-        restrict_cell_ids = None
-        if args.restrict:
-            with open(args.restrict) as f:
-                restrict_cell_ids = [line.strip() for line in f]
-
-        suffix = None
-        if args.cellid_suffix:
-            suffix = cellid_suffixes[i]
-        
         sorted_reads.extend(read_bam(
             outs_dir.bam, output_dir,
-            cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end, cellid_suffix = suffix))
-    
-    #Extracts reads aligning to lineage id chromosome from amplicon sequencing data
-    # Combines reads from amplicon dataset with reads from transcriptome dataset for 
+            cell_ids, args.chromosome, args.start - 1 if args.start is not None else None, args.end, cellid_suffix=suffix))
+
+    # Extracts reads aligning to lineage id chromosome from amplicon sequencing data
+    # Combines reads from amplicon dataset with reads from transcriptome dataset for
     # lineage id, cellID and UMI extraction
     if args.amplicon:
         amp_inputs = args.amplicon.split(",")
@@ -1038,20 +1034,20 @@ def main():
                 cell_ids_amp = [cell for cell in cell_ids_amp_raw if cell in cell_ids]
 
             suffix = None
-            if args.cellid_suffix:   
-                suffix = cellid_suffixes[i]    
+            if args.cellid_suffix:
+                suffix = cellid_suffixes[i]
                 logger.info(f'Found {len(cell_ids_amp)} cell ids in the amplicon barcodes.tsv file with suffix {suffix}')
             else:
                 logger.info(f'Found {len(cell_ids_amp)} cell ids in the amplicon barcodes.tsv file')
 
             sorted_reads_amp.extend(read_bam(
                 amp_dir.bam, output_dir,
-                cell_ids_amp, args.chromosome, args.start - 1 if args.start is not None else None, args.end, 
+                cell_ids_amp, args.chromosome, args.start - 1 if args.start is not None else None, args.end,
                 file_name_suffix="_amp_entries", cellid_suffix = suffix))
 
         joint_reads = sorted_reads_amp + sorted_reads
         sorted_reads = sorted(joint_reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
-    
+
     lineage_ids = [
         r.lineage_id for r in sorted_reads if '-' not in r.lineage_id and '0' not in r.lineage_id]
     logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode '
@@ -1114,6 +1110,11 @@ def main():
         logger.info(f'Restricting to {len(cells)} cells')
 
     lineage_graph = CompressedLineageGraph(cells)
+    highlight_cell_ids = []
+    if args.highlight:
+        with open(args.highlight) as f:
+            highlight_cell_ids = [line.strip() for line in f]
+
     with open(output_dir / 'components.txt', 'w') as components_file:
         print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
     with open(output_dir / 'graph.gv', 'w') as f:
