@@ -298,6 +298,7 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
     output_dir -- path to an output directory into which a BAM file is written that contais all
         reads on the chromosome that have the required tags.
     """
+
     with pysam.AlignmentFile(bam_path) as alignment_file:
         if chr_name is None:
             chr_name = alignment_file.references[-1]
@@ -307,7 +308,8 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
             if lineage_id_start is not None or lineage_id_end is not None:
                 raise ValueError('Either both or none of lineage id start and end must be provided')
             lineage_id_start, lineage_id_end = detect_lineage_id_location(alignment_file, chr_name)
-        logger.info(f'Reading lineage ids from {chr_name}:{lineage_id_start + 1}-{lineage_id_end}')
+        logger.info(f"Reading lineage ids from {chr_name}:{lineage_id_start + 1}-{lineage_id_end} "
+            f"in {bam_path}")
         if lineage_id_end - lineage_id_start < 10:
             raise ValueError('Auto-detected lineage id too short, something is wrong')
         output_bam_path = output_dir / (chr_name + file_name_suffix + '.bam')
@@ -318,6 +320,7 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
             unknown_ids = no_cell_id = no_umi = 0
             for read in alignment_file.fetch(chr_name):
                 # Skip reads without cellID or UMI
+
                 if not read.has_tag('CB'):
                     no_cell_id += 1
                 if not read.has_tag('UB'):
