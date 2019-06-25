@@ -543,6 +543,7 @@ def filter_cells(
     for molecule in molecules:
         if molecule.read_count == 1:
             single_read_lineage_ids.add(molecule.lineage_id)
+    logger.info(f"Found {len(single_read_lineage_ids)} single-read lineage ids")
     # or:
     # single_read_barcodes = {m.lineage_id for m in molecules if m.read_count == 1}
 
@@ -559,7 +560,8 @@ def filter_cells(
                 del lineage_id_counts[lineage_id]
             elif lineage_id in single_read_lineage_ids and not keep_single_reads:
                 del lineage_id_counts[lineage_id]
-        new_cells.append(Cell(cell_id=cell.cell_id, lineage_id_counts=lineage_id_counts))
+        if lineage_id_counts:
+            new_cells.append(Cell(cell_id=cell.cell_id, lineage_id_counts=lineage_id_counts))
     return new_cells
 
 
