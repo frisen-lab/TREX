@@ -85,8 +85,8 @@ def parse_arguments():
         default=None)
     parser.add_argument('--umi-matrix', "-umi", default=True, action='store_true',
         help='Creates a umi count matrix with cells as columns and lineage IDs as rows')
-    parser.add_argument('--no-plot', dest='plot', default=True, action='store_false',
-        help='Do not plot the lineage graph')
+    parser.add_argument('--plot', dest='plot', default=False, action='store_true',
+        help='Plot the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
         help='Path to Cell Ranger "outs" directory. To combine several runs, please separate paths by comma. Example: "path1,path2,path3".'
         'Do not forget to indicate cell IDs suffixes to separate cell IDs from differen runs with the --cellid-suffix flag')
