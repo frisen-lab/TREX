@@ -16,6 +16,7 @@ from typing import Set, List, Dict, NamedTuple, Iterable, Callable
 from pkg_resources import get_distribution, DistributionNotFound
 
 from xopen import xopen
+from alignlib import hamming_distance
 import numpy as np
 import pandas as pd
 import pysam
@@ -90,17 +91,6 @@ def parse_arguments():
         help='Path to Cell Ranger "outs" directory. To combine several runs, please separate paths by comma. Example: "path1,path2,path3".'
         'Do not forget to indicate cell IDs suffixes to separate cell IDs from differen runs with the --cellid-suffix flag')
     return parser.parse_args()
-
-
-def hamming_distance(s, t):
-    """Return Hamming distance between s and t."""
-    # This explicit for loop is slightly faster than
-    # using the comprehension sum(1 for c, d in zip(s, t) if c != d)
-    n = 0
-    for c, d in zip(s, t):
-        if c != d:
-            n += 1
-    return n
 
 
 class Graph:
