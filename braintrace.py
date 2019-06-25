@@ -24,7 +24,7 @@ with warnings.catch_warnings():
     import loompy
 
 try:
-    __version__ = get_distribution(__name__).version
+    __version__ = get_distribution('braintrace').version
 except DistributionNotFound:
     # package is not installed
     pass
