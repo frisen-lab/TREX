@@ -478,7 +478,7 @@ def correct_lineage_ids(
             # m = max_hamming * len(s) / len(original_length_of_s)
         return hamming_distance(s, t) <= max_hamming
 
-    clusters = cluster_sequences(list(set(lineage_ids)), is_similar=is_similar, k=6)
+    clusters = cluster_sequences(list(set(lineage_ids)), is_similar=is_similar, k=7)
 
     # Map non-singleton barcodes to a cluster representative
     lineage_id_map = dict()
