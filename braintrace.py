@@ -1096,10 +1096,10 @@ def main():
 
     with open(output_dir / 'components.txt', 'w') as components_file:
         print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
-    with open(output_dir / 'graph.gv', 'w') as f:
-        print(lineage_graph.dot(highlight_cell_ids), file=f)
     if args.plot:
         logger.info('Plotting compressed lineage graph')
+        with open(output_dir / 'graph.gv', 'w') as f:
+            print(lineage_graph.dot(highlight_cell_ids), file=f)
         subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph.pdf'),
             str(output_dir / 'graph.gv')])
 
@@ -1108,10 +1108,10 @@ def main():
     lineage_graph.remove_edges(bridges)
     with open(output_dir / 'components_corrected.txt', 'w') as components_file:
         print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
-    with open(output_dir / 'graph_corrected.gv', 'w') as f:
-        print(lineage_graph.dot(highlight_cell_ids), file=f)
     if args.plot:
         logger.info('Plotting corrected lineage graph')
+        with open(output_dir / 'graph_corrected.gv', 'w') as f:
+            print(lineage_graph.dot(highlight_cell_ids), file=f)
         subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph_corrected.pdf'),
             str(output_dir / 'graph_corrected.gv')])
     lineages = lineage_graph.lineages()

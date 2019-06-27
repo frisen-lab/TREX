@@ -1,6 +1,0 @@
-graph g {
-  graph [outputorder=edgesfirst];
-  edge [color=blue];
-  node [style=filled, fillcolor=white, fontname="Roboto"];
-}
-
