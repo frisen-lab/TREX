@@ -1,4 +1,4 @@
-Command line arguments: --delete --loom -s 695 -e 724 tests/data/outs
+Command line arguments: --delete --loom --umi-matrix -s 695 -e 724 tests/data/outs
 Found 4103 cell ids in the barcodes.tsv file
 Reading lineage ids from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
 Skipped 1628 reads with unrecognized cell ids (and 67 without UMI or cell id)
@@ -9,6 +9,7 @@ After lineage id correction, 6 unique lineage ids remain
 Detected 1921 cells
 Found 41 single-read lineage ids
 763 filtered cells remain
+Writing UMI matrix
 Removing 0 bridges from the graph
 Detected 4 lineages
 Lineage size histogram (size: count): 752: 1, 8: 1, 1: 1, 2: 1

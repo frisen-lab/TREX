@@ -79,11 +79,11 @@ def parse_arguments():
         help='Restrict analysis to the cell IDs listed in FILE')
     parser.add_argument('--highlight',
         help='Highlight cell IDs listed in FILE in the lineage graph')
-    parser.add_argument('--cellid-suffix', '-su',
+    parser.add_argument('--cellid-suffix',
         help='Add suffixes to cell IDs to merge different Cell Ranger runs. Suffixes should be separated by comma and have the same order'
         'as the given Cell Ranger directory paths. Example: "_1,_2,_3"',
         default=None)
-    parser.add_argument('--umi-matrix', "-umi", default=True, action='store_true',
+    parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and lineage IDs as rows')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the lineage graph')
@@ -1103,6 +1103,7 @@ def main():
     write_cells(output_dir / 'cells_filtered.txt', cells)
 
     if args.umi_matrix:
+        logger.info(f"Writing UMI matrix")
         write_umimatrix(output_dir, cells)
 
     if restrict_cell_ids is not None:
