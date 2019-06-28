@@ -1007,7 +1007,20 @@ def main():
     allowed_cell_ids = None
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
+    cellid_suffixes = [None]
     transcriptome_inputs = str(args.path).split(",")
+    if args.cellid_suffix:
+        cellid_suffixes = args.cellid_suffix.split(",")
+    else:
+        if len(transcriptome_inputs) == 1:
+            cellid_suffixes = [None]  # Do not modify suffixes
+        else:
+            cellid_suffixes = ["_{}".format(i) for i in range(1, len(transcriptome_inputs) + 1)]
+            logger.info("Using these cellid suffixes: %s", ", ".join(cellid_suffixes))
+    if len(cellid_suffixes) != len(transcriptome_inputs):
+        logger.error("The number of cellid suffixs (--cellid-suffix) must match the number of "
+            "provided transcriptome datasets")
+        sys.exit(1)
     if args.amplicon:
         amplicon_inputs = [Path(a) for a in args.amplicon.split(",")]
         if len(transcriptome_inputs) != len(amplicon_inputs):
@@ -1015,14 +1028,6 @@ def main():
             sys.exit(1)
     else:
         amplicon_inputs = []
-    if args.cellid_suffix:
-        cellid_suffixes = args.cellid_suffix.split(",")
-        if len(cellid_suffixes) != len(transcriptome_inputs):
-            logger.error("As many cell id suffixes as there are transcriptome datasets must be "
-                "provided")
-            sys.exit(1)
-    else:
-        cellid_suffixes = [None] * len(transcriptome_inputs)
 
     def read_one_dataset(path, suffix, file_name_suffix):
         outs_dir = create_cellranger_outs(path, args.genome_name)
