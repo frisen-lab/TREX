@@ -233,12 +233,13 @@ class CellSet:
         self.lineage_id_counts = sum((Counter(c.lineage_id_counts) for c in cells), Counter())
         self.n = len(cells)
         self.cell_id = 'M-' + min(self.cell_ids)
+        self._hash = hash(self.cell_ids)
 
     def __repr__(self):
         return f'CellSet(cells={self.cells!r})'
 
     def __hash__(self):
-        return hash(self.cell_ids)
+        return self._hash
 
 
 def detect_lineage_id_location(alignment_file, reference_name):
