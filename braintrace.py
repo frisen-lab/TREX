@@ -308,14 +308,14 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
             # Fetches those reads aligning to the artifical, lineage-id-containing chromosome
             reads = []
             unknown_ids = no_cell_id = no_umi = 0
-            for read in alignment_file.fetch(chr_name):
+            for read in alignment_file.fetch(chr_name, max(0, lineage_id_start - 10), lineage_id_end + 10):
                 # Skip reads without cellID or UMI
 
-                if not read.has_tag('CB'):
-                    no_cell_id += 1
-                if not read.has_tag('UB'):
-                    no_umi += 1
                 if not read.has_tag('CB') or not read.has_tag('UB'):
+                    if not read.has_tag('CB'):
+                        no_cell_id += 1
+                    if not read.has_tag('UB'):
+                        no_umi += 1
                     continue
                 # Filters out reads that have not approved cellIDs
                 cell_id = read.get_tag('CB')
