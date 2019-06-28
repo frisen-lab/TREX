@@ -1,7 +1,8 @@
 Command line arguments: --delete --loom -s 695 -e 724 tests/data/outs
 Found 4103 cell ids in the barcodes.tsv file
 Reading lineage ids from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
-Skipped 2770 reads with unrecognized cell ids (and 207 without UMI or cell id)
+Skipped 1628 reads with unrecognized cell ids (and 67 without UMI or cell id)
+Cache hits: 3271. Cache misses: 937
 Read 3857 reads containing (parts of) the barcode (2703 full barcodes, 71 unique)
 Detected 3800 molecules (2676 full lineage ids, 71 unique)
 After lineage id correction, 6 unique lineage ids remain
