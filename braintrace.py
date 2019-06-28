@@ -288,7 +288,7 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
     output_dir -- path to an output directory into which a BAM file is written that contais all
         reads on the chromosome that have the required tags.
     """
-
+    cache_hit = cache_miss = 0
     with pysam.AlignmentFile(bam_path) as alignment_file:
         if chr_name is None:
             chr_name = alignment_file.references[-1]
@@ -308,9 +308,9 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
             # Fetches those reads aligning to the artifical, lineage-id-containing chromosome
             reads = []
             unknown_ids = no_cell_id = no_umi = 0
+            prev_start = None
             for read in alignment_file.fetch(chr_name, max(0, lineage_id_start - 10), lineage_id_end + 10):
                 # Skip reads without cellID or UMI
-
                 if not read.has_tag('CB') or not read.has_tag('UB'):
                     if not read.has_tag('CB'):
                         no_cell_id += 1
@@ -328,39 +328,22 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
                         cell_id = cell_id[:-2]
                     cell_id += cellid_suffix
 
-                query_align_end = read.query_alignment_end
-                query_align_start = read.query_alignment_start
-
-                # Extract lineage id
-                lineage_id = ['-'] * (lineage_id_end - lineage_id_start)
-                bases = 0
-                for query_pos, ref_pos in read.get_aligned_pairs():
-                    # Replace soft-clipping with an ungapped alignment extending into the
-                    # soft-clipped region, assuming the clipping occurred because the lineage id
-                    # region was encountered.
-                    if ref_pos is None:
-                        # Soft clip or insertion
-                        if query_align_end <= query_pos:
-                            # We are in a soft-clipped region at the 3' end of the read
-                            ref_pos = read.reference_end + (query_pos - query_align_end)
-                        elif query_align_start > query_pos:
-                            # We are in a soft-clipped region at the 5' end of the read
-                            ref_pos = read.reference_start - (query_align_start - query_pos)
-                        # ref_pos remains None if this is an insertion
-
-                    if ref_pos is not None and lineage_id_start <= ref_pos < lineage_id_end:
-                        if query_pos is None:
-                            # Deletion or intron skip
-                            query_base = '0'
-                        else:
-                            # Match or mismatch
-                            query_base = read.query_sequence[query_pos]
-                            bases += 1
-                        lineage_id[ref_pos - lineage_id_start] = query_base
-                if bases == 0:
-                    # Skip if this read does not cover the lineage id
+                # Use a cache of lineage id extraction results. This helps when there are
+                # many identical reads (amplicon data)
+                if prev_start != read.reference_start:
+                    lineage_id_cache = dict()
+                    prev_start = read.reference_start
+                cache_key = (read.reference_start, read.query_sequence)
+                try:
+                    lineage_id = lineage_id_cache[cache_key]
+                    cache_hit += 1
+                except KeyError:
+                    cache_miss += 1
+                    lineage_id = extract_lineage_id(lineage_id_start, lineage_id_end, read)
+                    lineage_id_cache[cache_key] = lineage_id
+                if lineage_id is None:
+                    # Read does not cover the lineage id
                     continue
-                lineage_id = ''.join(lineage_id)
                 reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), lineage_id=lineage_id))
 
                 # Write the passing alignments to a separate file
@@ -368,9 +351,47 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
 
             logger.info(f'Skipped {unknown_ids} reads with unrecognized cell ids '
                         f'(and {no_umi+no_cell_id} without UMI or cell id)')
+    logger.info(f"Cache hits: {cache_hit}. Cache misses: {cache_miss}")
     sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
     assert len(sorted_reads) == 0 or len(sorted_reads[0].lineage_id) == lineage_id_end - lineage_id_start
     return sorted_reads
+
+
+def extract_lineage_id(lineage_id_start, lineage_id_end, read):
+    query_align_end = read.query_alignment_end
+    query_align_start = read.query_alignment_start
+    query_sequence = read.query_sequence
+    # Extract lineage id
+    lineage_id = ['-'] * (lineage_id_end - lineage_id_start)
+    bases = 0
+    for query_pos, ref_pos in read.get_aligned_pairs():
+        # Replace soft-clipping with an ungapped alignment extending into the
+        # soft-clipped region, assuming the clipping occurred because the lineage id
+        # region was encountered.
+        if ref_pos is None:
+            # Soft clip or insertion
+            if query_align_end <= query_pos:
+                # We are in a soft-clipped region at the 3' end of the read
+                ref_pos = read.reference_end + (query_pos - query_align_end)
+            elif query_align_start > query_pos:
+                # We are in a soft-clipped region at the 5' end of the read
+                ref_pos = read.reference_start - (query_align_start - query_pos)
+            # ref_pos remains None if this is an insertion
+
+        if ref_pos is not None and lineage_id_start <= ref_pos < lineage_id_end:
+            if query_pos is None:
+                # Deletion or intron skip
+                query_base = '0'
+            else:
+                # Match or mismatch
+                query_base = query_sequence[query_pos]
+                bases += 1
+            lineage_id[ref_pos - lineage_id_start] = query_base
+
+    if bases == 0:
+        return None
+    else:
+        return "".join(lineage_id)
 
 
 def read_allowed_cellids(cellids_filtered):
