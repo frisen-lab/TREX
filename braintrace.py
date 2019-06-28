@@ -854,20 +854,22 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
 
 def write_umimatrix(output_dir: Path, cells: List[Cell]):
     """Create a UMI-count matrix with cells as columns and cloneids as rows"""
-    cell_dict = dict()
+    # Gather all lineage ids
+    lineage_ids = set()
     for cell in cells:
-        cellid = cell.cell_id
-        sorted_lineage_ids = sorted(cell.lineage_id_counts, key=lambda x: cell.lineage_id_counts[x], reverse=True)
-        if not sorted_lineage_ids:
-            continue
-        linid_dict = dict()
-        for lineage_id in sorted_lineage_ids:
-            linid_dict[lineage_id] = cell.lineage_id_counts[lineage_id]
-        cell_dict[cellid] = linid_dict
-
-    umi_matrix = pd.DataFrame(cell_dict).fillna(0)
-    umi_matrix = umi_matrix.astype(int)
-    umi_matrix.to_csv(output_dir / "umi_count_matrix.csv", sep = ",")
+        lineage_ids.update(lineage_id for lineage_id in cell.lineage_id_counts)
+    lineage_ids = sorted(lineage_ids)
+    all_lineage_id_counts = [cell.lineage_id_counts for cell in cells]
+    with open(output_dir / "umi_count_matrix.csv", "w") as f:
+        f.write(",")
+        f.write(",".join(cell.cell_id for cell in cells))
+        f.write("\n")
+        for lineage_id in lineage_ids:
+            f.write(lineage_id)
+            f.write(",")
+            values = [lic.get(lineage_id, 0) for lic in all_lineage_id_counts]
+            f.write(",".join(str(v) for v in values))
+            f.write("\n")
 
 
 class CellRangerError(Exception):
