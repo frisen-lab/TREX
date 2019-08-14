@@ -84,7 +84,7 @@ def parse_arguments():
         'as the given Cell Ranger directory paths. Example: "_1,_2,_3"',
         default=None)
     parser.add_argument('--umi-matrix', default=False, action='store_true',
-        help='Creates a umi count matrix with cells as columns and lineage IDs as rows')
+        help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the lineage graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
@@ -206,21 +206,21 @@ def cluster_sequences(
 
 
 class Read(NamedTuple):
-    cell_id: str
     umi: str
-    lineage_id: str
+    cell_id: str
+    clone_id: str
 
 
 class Molecule(NamedTuple):
-    cell_id: str
     umi: str
-    lineage_id: str
+    cell_id: str
+    clone_id: str
     read_count: int
 
 
 class Cell(NamedTuple):
     cell_id: str
-    lineage_id_counts: Dict[str, int]
+    clone_id_counts: Dict[str, int]
 
     def __hash__(self):
         return hash(self.cell_id)
@@ -230,7 +230,7 @@ class CellSet:
     def __init__(self, cells: List[Cell]):
         self.cells = cells
         self.cell_ids = tuple(sorted(c.cell_id for c in cells))
-        self.lineage_id_counts = sum((Counter(c.lineage_id_counts) for c in cells), Counter())
+        self.clone_id_counts = sum((Counter(c.clone_id_counts) for c in cells), Counter())
         self.n = len(cells)
         self.cell_id = 'M-' + min(self.cell_ids)
         self._hash = hash(self.cell_ids)
@@ -242,11 +242,11 @@ class CellSet:
         return self._hash
 
 
-def detect_lineage_id_location(alignment_file, reference_name):
+def detect_clone_id_location(alignment_file, reference_name):
     """
-    Detect where the lineage id is located on the reference by inspecting the alignments.
+    Detect where the clone id is located on the reference by inspecting the alignments.
 
-    Return (lineage_id_start, lineage_id_end)
+    Return (clone_id_start, clone_id_end)
     """
     # Look for reference positions at which reads are soft-clipped at their 3' end
     starts = Counter()
@@ -256,34 +256,34 @@ def detect_lineage_id_location(alignment_file, reference_name):
         if clip_right >= 5:
             starts[alignment.reference_end] += 1
 
-    for lineage_id_start, freq in starts.most_common(5):
-        # Soft-clipping at the 5' end cannot be used to find the lineage id end when
-        # the lineage id region is too far at the 3' end of the contig. Instead,
-        # look at pileups and check base frequencies (over the lineage id, bases should
+    for clone_id_start, freq in starts.most_common(5):
+        # Soft-clipping at the 5' end cannot be used to find the clone id end when
+        # the clone id region is too far at the 3' end of the contig. Instead,
+        # look at pileups and check base frequencies (over the clone id, bases should
         # be roughly uniformly distributed).
-        if lineage_id_start >= reference_length:
+        if clone_id_start >= reference_length:
             # The most common reference position that is soft clipped is often the 3' end
             # of the contig. Skip that.
             continue
-        lineage_id_end = lineage_id_start
-        for column in alignment_file.pileup(reference_name, start=lineage_id_start):
-            if column.reference_pos < lineage_id_start:
+        clone_id_end = clone_id_start
+        for column in alignment_file.pileup(reference_name, start=clone_id_start):
+            if column.reference_pos < clone_id_start:
                 # See pileup() documentation
                 continue
             bases = [p.alignment.query_sequence[p.query_position] for p in column.pileups if p.query_position is not None]
             counter = Counter(bases)
             # Check whether one base dominates
             if counter.most_common()[0][1] / len(bases) > 0.95:
-                # We appear to have found the end of the lineage id
-                lineage_id_end = column.reference_pos
+                # We appear to have found the end of the clone id
+                clone_id_end = column.reference_pos
                 break
-        if lineage_id_end - lineage_id_start >= 5:
+        if clone_id_end - clone_id_start >= 5:
             # Good enough
-            return (lineage_id_start, lineage_id_end)
-    raise ValueError(f'Could not detect lineage id location on chromosome {reference_name}')
+            return (clone_id_start, clone_id_end)
+    raise ValueError(f'Could not detect clone id location on chromosome {reference_name}')
 
 
-def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, lineage_id_start=None, lineage_id_end=None, file_name_suffix="_entries", cellid_suffix=None):
+def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, clone_id_start=None, clone_id_end=None, file_name_suffix="_entries", cellid_suffix=None):
     """
     bam_path -- path to input BAM file
     output_dir -- path to an output directory into which a BAM file is written that contais all
@@ -295,22 +295,22 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
             chr_name = alignment_file.references[-1]
 
         # TODO move out of here
-        if lineage_id_start is None or lineage_id_end is None:
-            if lineage_id_start is not None or lineage_id_end is not None:
-                raise ValueError('Either both or none of lineage id start and end must be provided')
-            lineage_id_start, lineage_id_end = detect_lineage_id_location(alignment_file, chr_name)
-        logger.info(f"Reading lineage ids from {chr_name}:{lineage_id_start + 1}-{lineage_id_end} "
+        if clone_id_start is None or clone_id_end is None:
+            if clone_id_start is not None or clone_id_end is not None:
+                raise ValueError('Either both or none of clone id start and end must be provided')
+            clone_id_start, clone_id_end = detect_clone_id_location(alignment_file, chr_name)
+        logger.info(f"Reading clone ids from {chr_name}:{clone_id_start + 1}-{clone_id_end} "
             f"in {bam_path}")
-        if lineage_id_end - lineage_id_start < 10:
-            raise ValueError('Auto-detected lineage id too short, something is wrong')
+        if clone_id_end - clone_id_start < 10:
+            raise ValueError('Auto-detected clone id too short, something is wrong')
         output_bam_path = output_dir / (chr_name + file_name_suffix + '.bam')
 
         with pysam.AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
-            # Fetches those reads aligning to the artifical, lineage-id-containing chromosome
+            # Fetches those reads aligning to the artifical, clone-id-containing chromosome
             reads = []
             unknown_ids = no_cell_id = no_umi = 0
             prev_start = None
-            for read in alignment_file.fetch(chr_name, max(0, lineage_id_start - 10), lineage_id_end + 10):
+            for read in alignment_file.fetch(chr_name, max(0, clone_id_start - 10), clone_id_end + 10):
                 # Skip reads without cellID or UMI
                 if not read.has_tag('CB') or not read.has_tag('UB'):
                     if not read.has_tag('CB'):
@@ -329,23 +329,23 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
                         cell_id = cell_id[:-2]
                     cell_id += cellid_suffix
 
-                # Use a cache of lineage id extraction results. This helps when there are
+                # Use a cache of clone id extraction results. This helps when there are
                 # many identical reads (amplicon data)
                 if prev_start != read.reference_start:
-                    lineage_id_cache = dict()
+                    clone_id_cache = dict()
                     prev_start = read.reference_start
                 cache_key = (read.reference_start, read.query_sequence)
                 try:
-                    lineage_id = lineage_id_cache[cache_key]
+                    clone_id = clone_id_cache[cache_key]
                     cache_hit += 1
                 except KeyError:
                     cache_miss += 1
-                    lineage_id = extract_lineage_id(lineage_id_start, lineage_id_end, read)
-                    lineage_id_cache[cache_key] = lineage_id
-                if lineage_id is None:
-                    # Read does not cover the lineage id
+                    clone_id = extract_clone_id(clone_id_start, clone_id_end, read)
+                    clone_id_cache[cache_key] = clone_id
+                if clone_id is None:
+                    # Read does not cover the clone id
                     continue
-                reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), lineage_id=lineage_id))
+                reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), clone_id=clone_id))
 
                 # Write the passing alignments to a separate file
                 out_bam.write(read)
@@ -353,21 +353,21 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, linea
             logger.info(f'Skipped {unknown_ids} reads with unrecognized cell ids '
                         f'(and {no_umi+no_cell_id} without UMI or cell id)')
     logger.info(f"Cache hits: {cache_hit}. Cache misses: {cache_miss}")
-    sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.lineage_id))
-    assert len(sorted_reads) == 0 or len(sorted_reads[0].lineage_id) == lineage_id_end - lineage_id_start
+    sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.clone_id))
+    assert len(sorted_reads) == 0 or len(sorted_reads[0].clone_id) == clone_id_end - clone_id_start
     return sorted_reads
 
 
-def extract_lineage_id(lineage_id_start, lineage_id_end, read):
+def extract_clone_id(clone_id_start, clone_id_end, read):
     query_align_end = read.query_alignment_end
     query_align_start = read.query_alignment_start
     query_sequence = read.query_sequence
-    # Extract lineage id
-    lineage_id = ['-'] * (lineage_id_end - lineage_id_start)
+    # Extract clone id
+    clone_id = ['-'] * (clone_id_end - clone_id_start)
     bases = 0
     for query_pos, ref_pos in read.get_aligned_pairs():
         # Replace soft-clipping with an ungapped alignment extending into the
-        # soft-clipped region, assuming the clipping occurred because the lineage id
+        # soft-clipped region, assuming the clipping occurred because the clone id
         # region was encountered.
         if ref_pos is None:
             # Soft clip or insertion
@@ -379,7 +379,7 @@ def extract_lineage_id(lineage_id_start, lineage_id_end, read):
                 ref_pos = read.reference_start - (query_align_start - query_pos)
             # ref_pos remains None if this is an insertion
 
-        if ref_pos is not None and lineage_id_start <= ref_pos < lineage_id_end:
+        if ref_pos is not None and clone_id_start <= ref_pos < clone_id_end:
             if query_pos is None:
                 # Deletion or intron skip
                 query_base = '0'
@@ -387,12 +387,12 @@ def extract_lineage_id(lineage_id_start, lineage_id_end, read):
                 # Match or mismatch
                 query_base = query_sequence[query_pos]
                 bases += 1
-            lineage_id[ref_pos - lineage_id_start] = query_base
+            clone_id[ref_pos - clone_id_start] = query_base
 
     if bases == 0:
         return None
     else:
-        return "".join(lineage_id)
+        return "".join(clone_id)
 
 
 def read_allowed_cellids(cellids_filtered):
@@ -456,34 +456,34 @@ def compute_molecules(sorted_reads):
     """
     - Forms groups of reads with identical CellIDs and UMIs => belong to one molecule
 
-    - forms consensus sequence of all lineage ids of one group,
+    - forms consensus sequence of all clone ids of one group,
     """
     groups = defaultdict(list)
     for read in sorted_reads:
-        groups[(read.umi, read.cell_id)].append(read.lineage_id)
+        groups[(read.umi, read.cell_id)].append(read.clone_id)
 
     molecules = []
-    for (umi, cell_id), lineage_ids in groups.items():
-        lineage_id_consensus = compute_consensus(lineage_ids)
+    for (umi, cell_id), clone_ids in groups.items():
+        clone_id_consensus = compute_consensus(clone_ids)
         molecules.append(
-            Molecule(cell_id=cell_id, umi=umi, lineage_id=lineage_id_consensus,
-                read_count=len(lineage_ids)))
+            Molecule(cell_id=cell_id, umi=umi, clone_id=clone_id_consensus,
+                read_count=len(clone_ids)))
 
-    sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.lineage_id, mol.umi))
+    sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.clone_id, mol.umi))
 
     return sorted_molecules
 
 
-def correct_lineage_ids(
+def correct_clone_ids(
         molecules: List[Molecule], max_hamming: int, min_overlap: int = 20) -> List[Molecule]:
     """
-    Attempt to correct sequencing errors in the lineage id sequences of all molecules
+    Attempt to correct sequencing errors in the clone id sequences of all molecules
     """
-    # Obtain all lineage ids (including those with '-' and '0')
-    lineage_ids = [m.lineage_id for m in molecules]
+    # Obtain all clone ids (including those with '-' and '0')
+    clone_ids = [m.clone_id for m in molecules]
 
-    # Count the full-length barcodes
-    lineage_id_counts = Counter(lineage_ids)
+    # Count the full-length clone ids
+    clone_id_counts = Counter(clone_ids)
 
     # Cluster them by Hamming distance
     def is_similar(s, t):
@@ -500,49 +500,49 @@ def correct_lineage_ids(
             # m = max_hamming * len(s) / len(original_length_of_s)
         return hamming_distance(s, t) <= max_hamming
 
-    clusters = cluster_sequences(list(set(lineage_ids)), is_similar=is_similar, k=7)
+    clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
 
-    # Map non-singleton barcodes to a cluster representative
-    lineage_id_map = dict()
+    # Map non-singleton clone ids to a cluster representative
+    clone_id_map = dict()
     for cluster in clusters:
         if len(cluster) > 1:
-            # Pick most frequent lineage id as representative
-            representative = max(cluster, key=lambda bc: (lineage_id_counts[bc], bc))
-            for lineage_id in cluster:
-                lineage_id_map[lineage_id] = representative
+            # Pick most frequent clone id as representative
+            representative = max(cluster, key=lambda bc: (clone_id_counts[bc], bc))
+            for clone_id in cluster:
+                clone_id_map[clone_id] = representative
 
-    # Create a new list of molecules in which the lineage ids have been replaced
+    # Create a new list of molecules in which the clone ids have been replaced
     # by their representatives
     new_molecules = []
     for molecule in molecules:
-        lineage_id = lineage_id_map.get(molecule.lineage_id, molecule.lineage_id)
-        new_molecules.append(molecule._replace(lineage_id=lineage_id))
+        clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
+        new_molecules.append(molecule._replace(clone_id=clone_id))
     return new_molecules
 
 
-def compute_cells(sorted_molecules: List[Molecule], minimum_lineage_id_length: int) -> List[Cell]:
+def compute_cells(sorted_molecules: List[Molecule], minimum_clone_id_length: int) -> List[Cell]:
     """
     Group molecules into cells.
     """
-    # 1. Forms groups of molecules (with set lineage id minimum length) that have identical cellIDs
+    # 1. Forms groups of molecules (with set clone id minimum length) that have identical cellIDs
     #    => belong to one cell,
-    # 2. counts number of appearances of each lineage id in each group,
+    # 2. counts number of appearances of each clone id in each group,
 
     cell_id_groups = defaultdict(list)
     for molecule in sorted_molecules:
-        lineage_id = molecule.lineage_id
-        pure_li = lineage_id.strip('-')
+        clone_id = molecule.clone_id
+        pure_li = clone_id.strip('-')
         # TODO may not work as intended (strip only removes prefixes and suffixes)
-        pure_bc0 = lineage_id.strip('0')
-        if len(pure_li) >= minimum_lineage_id_length and len(pure_bc0) >= minimum_lineage_id_length:
+        pure_bc0 = clone_id.strip('0')
+        if len(pure_li) >= minimum_clone_id_length and len(pure_bc0) >= minimum_clone_id_length:
             cell_id_groups[molecule.cell_id].append(molecule)
 
     cells = []
     for cell_id, molecules in cell_id_groups.items():
-        lineage_ids = [molecule.lineage_id for molecule in molecules]
-        lineage_id_counts = OrderedDict(sorted(Counter(lineage_ids).most_common(),
+        clone_ids = [molecule.clone_id for molecule in molecules]
+        clone_id_counts = OrderedDict(sorted(Counter(clone_ids).most_common(),
             key=lambda x: x[0].count('-')))
-        cells.append(Cell(cell_id=cell_id, lineage_id_counts=lineage_id_counts))
+        cells.append(Cell(cell_id=cell_id, clone_id_counts=clone_id_counts))
     return cells
 
 
@@ -550,40 +550,38 @@ def filter_cells(
         cells: Iterable[Cell], molecules: Iterable[Molecule],
         keep_single_reads: bool = False) -> List[Cell]:
     """
-    Filter lineage ids according to two criteria:
+    Filter clone ids according to two criteria:
 
-    - Lineage ids that have only a count of one and can be found in another cell are most
+    - Clone ids that have only a count of one and can be found in another cell are most
       likely results of contamination and are removed,
-    - If keep_single_reads is False, lineage ids that have only a count of one and are also only based
+    - If keep_single_reads is False, clone ids that have only a count of one and are also only based
       on one read are also removed
     """
-    overall_lineage_id_counts: Dict[str, int] = Counter()
+    overall_clone_id_counts: Dict[str, int] = Counter()
     for cell in cells:
-        overall_lineage_id_counts.update(cell.lineage_id_counts)
+        overall_clone_id_counts.update(cell.clone_id_counts)
 
-    single_read_lineage_ids = set()
+    single_read_clone_ids = set()
     for molecule in molecules:
         if molecule.read_count == 1:
-            single_read_lineage_ids.add(molecule.lineage_id)
-    logger.info(f"Found {len(single_read_lineage_ids)} single-read lineage ids")
-    # or:
-    # single_read_barcodes = {m.lineage_id for m in molecules if m.read_count == 1}
+            single_read_clone_ids.add(molecule.clone_id)
+    logger.info(f"Found {len(single_read_clone_ids)} single-read clone ids")
 
-    # filters out lineage ids with a count of one that appear in another cell
+    # filters out clone ids with a count of one that appear in another cell
     new_cells = []
     for cell in cells:
-        lineage_id_counts = cell.lineage_id_counts.copy()
-        for lineage_id, count in cell.lineage_id_counts.items():
+        clone_id_counts = cell.clone_id_counts.copy()
+        for clone_id, count in cell.clone_id_counts.items():
             if count > 1:
-                # This lineage id occurs more than once in this cell - keep it
+                # This clone id occurs more than once in this cell - keep it
                 continue
-            if overall_lineage_id_counts[lineage_id] > 1:
-                # This lineage id occurs also in other cells - remove it
-                del lineage_id_counts[lineage_id]
-            elif lineage_id in single_read_lineage_ids and not keep_single_reads:
-                del lineage_id_counts[lineage_id]
-        if lineage_id_counts:
-            new_cells.append(Cell(cell_id=cell.cell_id, lineage_id_counts=lineage_id_counts))
+            if overall_clone_id_counts[clone_id] > 1:
+                # This clone id occurs also in other cells - remove it
+                del clone_id_counts[clone_id]
+            elif clone_id in single_read_clone_ids and not keep_single_reads:
+                del clone_id_counts[clone_id]
+        if clone_id_counts:
+            new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
     return new_cells
 
 
@@ -597,42 +595,42 @@ class LineageGraph:
         Create graph of cells; add edges between cells that
         share at least one barcode. Return created graph.
         """
-        cells = [cell for cell in self._cells if cell.lineage_id_counts]
+        cells = [cell for cell in self._cells if cell.clone_id_counts]
         graph = Graph(cells)
         for i in range(len(cells)):
             for j in range(i + 1, len(cells)):
-                if set(cells[i].lineage_id_counts) & set(cells[j].lineage_id_counts):
-                    # Cell i and j share a lineage id
+                if set(cells[i].clone_id_counts) & set(cells[j].clone_id_counts):
+                    # Cell i and j share a clone id
                     graph.add_edge(cells[i], cells[j])
         return graph
 
     def _make_barcode_graph(self):
-        lineage_id_counts: Dict[str, int] = Counter()
+        clone_id_counts: Dict[str, int] = Counter()
         for cell in self._cells:
-            lineage_id_counts.update(cell.lineage_id_counts)
-        all_lineage_ids = list(lineage_id_counts)
+            clone_id_counts.update(cell.clone_id_counts)
+        all_clone_ids = list(clone_id_counts)
 
         # Create a graph of barcodes; add an edge for barcodes occuring in the same cell
-        graph = Graph(all_lineage_ids)
+        graph = Graph(all_clone_ids)
         for cell in self._cells:
-            barcodes = list(cell.lineage_id_counts)
+            barcodes = list(cell.clone_id_counts)
             for other in barcodes[1:]:
                 graph.add_edge(barcodes[0], other)
         return graph
 
     def lineages(self) -> Dict[str, List[Cell]]:
         """
-        Compute lineages. Return a dict that maps a representative lineage id to a list of cells.
+        Compute lineages. Return a dict that maps a representative clone id to a list of cells.
         """
         clusters = [g.nodes() for g in self._graph.connected_components()]
 
-        def most_abundant_lineage_id(cells: List[Cell]):
+        def most_abundant_clone_id(cells: List[Cell]):
             counts = Counter()
             for cell in cells:
-                counts.update(cell.lineage_id_counts)
+                counts.update(cell.clone_id_counts)
             return max(counts, key=lambda k: (counts[k], k))
 
-        return {most_abundant_lineage_id(cells): cells for cells in clusters}
+        return {most_abundant_clone_id(cells): cells for cells in clusters}
 
     def dot(self, highlight=None):
         s = StringIO()
@@ -656,8 +654,8 @@ class CompressedLineageGraph:
     def _compress_cells(cells):
         cell_lists = defaultdict(list)
         for cell in cells:
-            lineage_ids = tuple(cell.lineage_id_counts)
-            cell_lists[lineage_ids].append(cell)
+            clone_ids = tuple(cell.clone_id_counts)
+            cell_lists[clone_ids].append(cell)
 
         cell_sets = []
         for cells in cell_lists.values():
@@ -667,14 +665,14 @@ class CompressedLineageGraph:
     def _make_cell_graph(self):
         """
         Create graph of cells; add edges between cells that
-        share at least one lineage id. Return created graph.
+        share at least one clone id. Return created graph.
         """
-        cells = [cell for cell in self._cells if cell.lineage_id_counts]
+        cells = [cell for cell in self._cells if cell.clone_id_counts]
         graph = Graph(cells)
         for i in range(len(cells)):
             for j in range(i + 1, len(cells)):
-                if set(cells[i].lineage_id_counts) & set(cells[j].lineage_id_counts):
-                    # Cell i and j share a lineage id
+                if set(cells[i].clone_id_counts) & set(cells[j].clone_id_counts):
+                    # Cell i and j share a clone id
                     graph.add_edge(cells[i], cells[j])
         return graph
 
@@ -706,19 +704,19 @@ class CompressedLineageGraph:
 
     def lineages(self) -> Dict[str, List[Cell]]:
         """
-        Compute lineages. Return a dict that maps a representative lineage id to a list of cells.
+        Compute lineages. Return a dict that maps a representative clone id to a list of cells.
         """
         compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
         # Expand the CellSet instances into cells
         clusters = [self._expand_cell_sets(cluster) for cluster in compressed_clusters]
 
-        def most_abundant_lineage_id(cells: List[Cell]):
+        def most_abundant_clone_id(cells: List[Cell]):
             counts = Counter()
             for cell in cells:
-                counts.update(cell.lineage_id_counts)
+                counts.update(cell.clone_id_counts)
             return max(counts, key=lambda k: (counts[k], k))
 
-        return {most_abundant_lineage_id(cells): cells for cells in clusters}
+        return {most_abundant_clone_id(cells): cells for cells in clusters}
 
     def dot(self, highlight=None):
         if highlight is not None:
@@ -777,8 +775,8 @@ class CompressedLineageGraph:
                     highlighting = '+'
                 else:
                     highlighting = ''
-                print(cell.cell_id, highlighting, *sorted(cell.lineage_id_counts.keys()), sep='\t', file=s)
-                counter.update(cell.lineage_id_counts.keys())
+                print(cell.cell_id, highlighting, *sorted(cell.clone_id_counts.keys()), sep='\t', file=s)
+                counter.update(cell.clone_id_counts.keys())
         print(f'# {n_complete} complete components', file=s)
         return s.getvalue()
 
@@ -787,18 +785,18 @@ class CompressedLineageGraph:
         return self._graph
 
 
-def write_loom(cells: List[Cell], cellranger_outs, output_dir, lineage_id_length, top_n=6):
+def write_loom(cells: List[Cell], cellranger_outs, output_dir, clone_id_length, top_n=6):
     """
     Create a loom file from a Cell Ranger sample directory and augment it with information about
-    the most abundant lineage id and their counts.
+    the most abundant clone id and their counts.
     """
-    # For each cell, collect the most abundant lineage ids and their counts
-    # Maps cell_id to a list of (lineage_id, count) pairs that represent the most abundant lineage ids.
+    # For each cell, collect the most abundant clone ids and their counts
+    # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant clone ids.
     most_abundant = dict()
     for cell in cells:
-        if not cell.lineage_id_counts:
+        if not cell.clone_id_counts:
             continue
-        counts = sorted(cell.lineage_id_counts.items(), key=operator.itemgetter(1))
+        counts = sorted(cell.clone_id_counts.items(), key=operator.itemgetter(1))
         counts.reverse()
         counts = counts[:top_n]
         most_abundant[cell.cell_id] = counts
@@ -813,24 +811,24 @@ def write_loom(cells: List[Cell], cellranger_outs, output_dir, lineage_id_length
         # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
         loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
 
-        # Transform lineage ids and count data
-        # brings lineage id data into correct format for loom file.
+        # Transform clone ids and count data
+        # brings clone id data into correct format for loom file.
         # Array must have same shape as all_cellIDs
-        lineage_id_lists = [[] for _ in range(top_n)]
+        clone_id_lists = [[] for _ in range(top_n)]
         count_lists = [[] for _ in range(top_n)]
         for cell_id in loom_cell_ids:
-            lineage_id_counts = most_abundant.get(cell_id, [])
+            clone_id_counts = most_abundant.get(cell_id, [])
             # Fill up to a constant length
-            while len(lineage_id_counts) < top_n:
-                lineage_id_counts.append(('-', 0))
+            while len(clone_id_counts) < top_n:
+                clone_id_counts.append(('-', 0))
 
-            for i, (lineage_id, count) in enumerate(lineage_id_counts):
-                lineage_id_lists[i].append(lineage_id)
+            for i, (clone_id, count) in enumerate(clone_id_counts):
+                clone_id_lists[i].append(clone_id)
                 count_lists[i].append(count)
 
-        # Add lineage id and count information to loom file
+        # Add clone id and count information to loom file
         for i in range(top_n):
-            ds.ca[f'linBarcode_{i+1}'] = np.array(lineage_id_lists[i], dtype='S%r' % lineage_id_length)
+            ds.ca[f'linBarcode_{i+1}'] = np.array(clone_id_lists[i], dtype='S%r' % clone_id_length)
             ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
 
 
@@ -844,30 +842,29 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
             '0 = deletion in barcode sequence (position unknown)', file=f)
         for cell in cells:
             row = [cell.cell_id, ':']
-            sorted_lineage_ids = sorted(cell.lineage_id_counts, key=lambda x: cell.lineage_id_counts[x], reverse=True)
-            if not sorted_lineage_ids:
+            sorted_clone_ids = sorted(cell.clone_id_counts, key=lambda x: cell.clone_id_counts[x], reverse=True)
+            if not sorted_clone_ids:
                 continue
-            for lineage_id in sorted_lineage_ids:
-                row.extend([lineage_id, cell.lineage_id_counts[lineage_id]])
+            for clone_id in sorted_clone_ids:
+                row.extend([clone_id, cell.clone_id_counts[clone_id]])
             print(*row, sep='\t', file=f)
 
 
 def write_umimatrix(output_dir: Path, cells: List[Cell]):
-    """Create a UMI-count matrix with cells as columns and cloneids as rows"""
-    # Gather all lineage ids
-    lineage_ids = set()
+    """Create a UMI-count matrix with cells as columns and clone ids as rows"""
+    clone_ids = set()
     for cell in cells:
-        lineage_ids.update(lineage_id for lineage_id in cell.lineage_id_counts)
-    lineage_ids = sorted(lineage_ids)
-    all_lineage_id_counts = [cell.lineage_id_counts for cell in cells]
+        clone_ids.update(clone_id for clone_id in cell.clone_id_counts)
+    clone_ids = sorted(clone_ids)
+    all_clone_id_counts = [cell.clone_id_counts for cell in cells]
     with open(output_dir / "umi_count_matrix.csv", "w") as f:
         f.write(",")
         f.write(",".join(cell.cell_id for cell in cells))
         f.write("\n")
-        for lineage_id in lineage_ids:
-            f.write(lineage_id)
+        for clone_id in clone_ids:
+            f.write(clone_id)
             f.write(",")
-            values = [lic.get(lineage_id, 0) for lic in all_lineage_id_counts]
+            values = [lic.get(clone_id, 0) for lic in all_clone_id_counts]
             f.write(",".join(str(v) for v in values))
             f.write("\n")
 
@@ -979,10 +976,10 @@ def main():
     output_dir = args.output
     setup_logging(debug=False)
 
-    # PART I + II: Lineage id extraction and reads construction
+    # PART I + II: Clone id extraction and reads construction
 
-    # 1. Extracts reads aligning to lineage id chromosome,
-    # 2. extracts lineage ids, UMIs and cellIDs from reads,
+    # 1. Extracts reads aligning to clone id chromosome,
+    # 2. extracts clone ids, UMIs and cellIDs from reads,
     # 3. outputs UMI-sorted reads with barcodes
 
     try:
@@ -1042,9 +1039,9 @@ def main():
             args.start - 1 if args.start is not None else None, args.end,
             file_name_suffix=file_name_suffix, cellid_suffix=suffix)
 
-    # Extracts reads from  and amplicon lineage id chromosome from amplicon sequencing data
+    # Extracts reads from  and amplicon clone id chromosome from amplicon sequencing data
     # Combines reads from amplicon dataset with reads from transcriptome dataset for
-    # lineage id, cellID and UMI extraction
+    # clone id, cellID and UMI extraction
     sorted_reads = list()
     try:
         for path, suffix in zip(transcriptome_inputs, cellid_suffixes):
@@ -1054,12 +1051,12 @@ def main():
     except CellRangerError as e:
         logger.error("%s", e)
         sys.exit(1)
-    sorted_reads.sort(key=lambda read: (read.umi, read.cell_id, read.lineage_id))
+    sorted_reads.sort(key=lambda read: (read.umi, read.cell_id, read.clone_id))
 
-    lineage_ids = [
-        r.lineage_id for r in sorted_reads if '-' not in r.lineage_id and '0' not in r.lineage_id]
+    clone_ids = [
+        r.clone_id for r in sorted_reads if '-' not in r.clone_id and '0' not in r.clone_id]
     logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode '
-        f'({len(lineage_ids)} full barcodes, {len(set(lineage_ids))} unique)')
+        f'({len(clone_ids)} full barcodes, {len(set(clone_ids))} unique)')
     with open(output_dir / 'reads.txt', 'w') as reads_file:
         print(
             '#Each output line corresponds to one read and has the following style: '
@@ -1067,19 +1064,19 @@ def main():
             '# dash (-) = barcode base outside of read, '
             '0 = deletion in barcode sequence (position unknown)', file=reads_file)
         for read in sorted_reads:
-            print(read.cell_id, read.umi, read.lineage_id, sep='\t', file=reads_file)
+            print(read.cell_id, read.umi, read.clone_id, sep='\t', file=reads_file)
 
     # Part III: Molecule construction
 
     # 1. Forms groups of reads with identical CellIDs and UMIs => belong to one molecule,
-    # 2. forms consensus sequence of all lineage ids of one group,
+    # 2. forms consensus sequence of all clone ids of one group,
     # 3. outputs molecules and corresponding CellIDs/UMIs
 
     molecules = compute_molecules(sorted_reads)
-    lineage_ids = [
-        m.lineage_id for m in molecules if '-' not in m.lineage_id and '0' not in m.lineage_id]
-    logger.info(f'Detected {len(molecules)} molecules ({len(lineage_ids)} full lineage ids, '
-        f'{len(set(lineage_ids))} unique)')
+    clone_ids = [
+        m.clone_id for m in molecules if '-' not in m.clone_id and '0' not in m.clone_id]
+    logger.info(f'Detected {len(molecules)} molecules ({len(clone_ids)} full clone ids, '
+        f'{len(set(clone_ids))} unique)')
     with open(output_dir / 'molecules.txt', 'w') as molecules_file:
         print(
             '#Each output line corresponds to one molecule and has the following style: '
@@ -1087,19 +1084,19 @@ def main():
             '# dash (-) = barcode base outside of read, '
             '0 = deletion in barcode sequence (position unknown)', file=molecules_file)
         for molecule in molecules:
-            print(molecule.cell_id, molecule.umi, molecule.lineage_id, sep='\t', file=molecules_file)
+            print(molecule.cell_id, molecule.umi, molecule.clone_id, sep='\t', file=molecules_file)
 
     # Part IV: Cell construction
 
-    corrected_molecules = correct_lineage_ids(molecules, args.max_hamming, args.min_length)
-    lineage_ids = [m.lineage_id for m in corrected_molecules
-        if '-' not in m.lineage_id and '0' not in m.lineage_id]
-    logger.info(f'After lineage id correction, {len(set(lineage_ids))} unique lineage ids remain')
+    corrected_molecules = correct_clone_ids(molecules, args.max_hamming, args.min_length)
+    clone_ids = [m.clone_id for m in corrected_molecules
+        if '-' not in m.clone_id and '0' not in m.clone_id]
+    logger.info(f'After clone id correction, {len(set(clone_ids))} unique clone ids remain')
 
     with open(output_dir / 'molecules_corrected.txt', 'w') as molecules_file:
-        print('cell_id', 'umi', 'lineage_id', sep='\t', file=molecules_file)
+        print('cell_id', 'umi', 'clone_id', sep='\t', file=molecules_file)
         for molecule in corrected_molecules:
-            print(molecule.cell_id, molecule.umi, molecule.lineage_id, sep='\t', file=molecules_file)
+            print(molecule.cell_id, molecule.umi, molecule.clone_id, sep='\t', file=molecules_file)
 
     cells = compute_cells(corrected_molecules, args.min_length)
     logger.info(f'Detected {len(cells)} cells')
@@ -1156,9 +1153,9 @@ def main():
             '# dash (-) = barcode base outside of read, '
             '0 = deletion in barcode sequence (position unknown)', file=f)
 
-        for lineage_id in sorted(lineages):
-            cells = sorted(lineages[lineage_id])
-            row = [lineage_id, ':']
+        for clone_id in sorted(lineages):
+            cells = sorted(lineages[clone_id])
+            row = [clone_id, ':']
             for cell in cells:
                 row.append(cell.cell_id)
             print(*row, sep='\t', file=f)
@@ -1168,7 +1165,7 @@ def main():
         if len(transcriptome_inputs) > 1:
             logger.warning("Writing a loom file only for the first transcriptome dataset")
         outs_dir = create_cellranger_outs(transcriptome_inputs[0])
-        write_loom(cells, outs_dir, output_dir, lineage_id_length=args.end - args.start + 1)
+        write_loom(cells, outs_dir, output_dir, clone_id_length=args.end - args.start + 1)
 
     logger.info('Run completed!')
 
