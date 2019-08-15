@@ -24,6 +24,8 @@ with warnings.catch_warnings():
     import loompy
 
 from .cellranger import make_cellranger_outs, CellRangerError
+from .utils import NiceFormatter
+
 
 try:
     __version__ = get_distribution('braintrace').version
@@ -892,19 +894,6 @@ def write_umimatrix(output_dir: Path, cells: List[Cell]):
             values = [lic.get(clone_id, 0) for lic in all_clone_id_counts]
             f.write(",".join(str(v) for v in values))
             f.write("\n")
-
-
-class NiceFormatter(logging.Formatter):
-    """
-    Do not prefix "INFO:" to info-level log messages (but do it for all other
-    levels).
-
-    Based on http://stackoverflow.com/a/9218261/715090 .
-    """
-    def format(self, record):
-        if record.levelno != logging.INFO:
-            record.msg = '{}: {}'.format(record.levelname, record.msg)
-        return super().format(record)
 
 
 def setup_logging(debug: bool) -> None:
