@@ -702,6 +702,23 @@ class CompressedLineageGraph:
             cells.extend(cell_set.cells)
         return cells
 
+    def write_lineages(self, path):
+        lineages = self.lineages()
+        with open(path, 'w') as f:
+            print(
+                '#Each output line corresponds to one barcode group (clone) and has '
+                'the following style: Barcode\t:\tCellID1\tCellID2...\n'
+                '# dash (-) = barcode base outside of read, '
+                '0 = deletion in barcode sequence (position unknown)', file=f)
+
+            for clone_id in sorted(lineages):
+                cells = sorted(lineages[clone_id])
+                row = [clone_id, ':']
+                for cell in cells:
+                    row.append(cell.cell_id)
+                print(*row, sep='\t', file=f)
+        return lineages
+
     def lineages(self) -> Dict[str, List[Cell]]:
         """
         Compute lineages. Return a dict that maps a representative clone id to a list of cells.
@@ -1142,24 +1159,11 @@ def main():
     if args.plot:
         logger.info('Plotting corrected lineage graph')
         lineage_graph.plot(output_dir / 'graph_corrected', highlight_cell_ids)
-    lineages = lineage_graph.lineages()
+    lineages = lineage_graph.write_lineages(output_dir / 'lineages.txt')
     logger.info(f'Detected {len(lineages)} lineages')
     lineage_sizes = Counter(len(cells) for cells in lineages.values())
     logger.info('Lineage size histogram (size: count): %s',
         ', '.join(f'{k}: {v}' for k, v in lineage_sizes.items()))
-    with open(output_dir / 'lineages.txt', 'w') as f:
-        print(
-            '#Each output line corresponds to one barcode group (clone) and has '
-            'the following style: Barcode\t:\tCellID1\tCellID2...\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=f)
-
-        for clone_id in sorted(lineages):
-            cells = sorted(lineages[clone_id])
-            row = [clone_id, ':']
-            for cell in cells:
-                row.append(cell.cell_id)
-            print(*row, sep='\t', file=f)
 
     # Create a loom file if requested
     if args.loom:
