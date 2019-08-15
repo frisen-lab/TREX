@@ -15,10 +15,11 @@ setup(
     description='',
     long_description='',
     license='MIT',
-    py_modules=['braintrace'],
+    package_dir={'': 'src'},
+    packages=find_packages('src'),
     install_requires=['pysam', 'numpy', 'loompy', 'xopen>=0.5.0', 'alignlib'],
     python_requires='>=3.6',
-    entry_points={'console_scripts': ['braintrace = braintrace:main']},
+    entry_points={'console_scripts': ['braintrace = braintrace.__main__:main']},
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
