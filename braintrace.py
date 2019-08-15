@@ -718,6 +718,13 @@ class CompressedLineageGraph:
 
         return {most_abundant_clone_id(cells): cells for cells in clusters}
 
+    def plot(self, path, highlight=None):
+        graphviz_path = path.with_suffix(".gv")
+        with open(graphviz_path, "w") as f:
+            print(self.dot(highlight), file=f)
+        pdf_path = str(path.with_suffix(".pdf"))
+        subprocess.run(["sfdp", "-Tpdf", "-o", pdf_path, graphviz_path], check=True)
+
     def dot(self, highlight=None):
         if highlight is not None:
             highlight = set(highlight)
@@ -1125,10 +1132,7 @@ def main():
         print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
     if args.plot:
         logger.info('Plotting compressed lineage graph')
-        with open(output_dir / 'graph.gv', 'w') as f:
-            print(lineage_graph.dot(highlight_cell_ids), file=f)
-        subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph.pdf'),
-            str(output_dir / 'graph.gv')])
+        lineage_graph.plot(output_dir / 'graph', highlight_cell_ids)
 
     bridges = lineage_graph.bridges()
     logger.info(f'Removing {len(bridges)} bridges from the graph')
@@ -1137,10 +1141,7 @@ def main():
         print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
     if args.plot:
         logger.info('Plotting corrected lineage graph')
-        with open(output_dir / 'graph_corrected.gv', 'w') as f:
-            print(lineage_graph.dot(highlight_cell_ids), file=f)
-        subprocess.run(["sfdp", "-Tpdf", "-o" + str(output_dir / 'graph_corrected.pdf'),
-            str(output_dir / 'graph_corrected.gv')])
+        lineage_graph.plot(output_dir / 'graph_corrected', highlight_cell_ids)
     lineages = lineage_graph.lineages()
     logger.info(f'Detected {len(lineages)} lineages')
     lineage_sizes = Counter(len(cells) for cells in lineages.values())
