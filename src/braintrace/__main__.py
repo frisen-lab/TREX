@@ -15,7 +15,6 @@ from collections import Counter, defaultdict, OrderedDict
 from typing import Set, List, Dict, NamedTuple, Iterable, Callable
 from pkg_resources import get_distribution, DistributionNotFound
 
-from xopen import xopen
 from alignlib import hamming_distance
 import numpy as np
 import pandas as pd
@@ -23,6 +22,8 @@ import pysam
 with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
+
+from .cellranger import make_cellranger_outs, CellRangerError
 
 try:
     __version__ = get_distribution('braintrace').version
@@ -893,76 +894,6 @@ def write_umimatrix(output_dir: Path, cells: List[Cell]):
             f.write("\n")
 
 
-class CellRangerError(Exception):
-    pass
-
-
-class CellRangerOuts2:
-    """CellRanger 2 "outs/" directory structure"""
-    MATRICES = 'filtered_gene_bc_matrices'
-    BARCODES = 'barcodes.tsv'
-    BAM = 'possorted_genome_bam.bam'
-
-    def __init__(self, path: Path, genome_name: str = None):
-        self.path = path
-        matrices_path = path / self.MATRICES
-        if not matrices_path.exists():
-            raise CellRangerError(
-                f"Directory '{self.MATRICES}/' must exist in the given outs/ directory")
-        self.matrices_path: Path = matrices_path
-        self.bam = path / self.BAM
-        self.sample_dir = path.parent
-        self.genome_dir = self._detect_genome_dir(genome_name)
-        self.barcodes_path = self.genome_dir / self.BARCODES
-
-    def _detect_genome_dir(self, genome_name):
-        if genome_name is not None:
-            return self.matrices_path / genome_name
-
-        genomes = [p for p in self.matrices_path.iterdir() if p.is_dir()]
-        if not genomes:
-            raise CellRangerError(
-                f"No subfolders found in the '{self.matrices_path}' folder")
-        if len(genomes) > 1:
-            message = "Exactly one genome folder expected in the " \
-                f"'{self.matrices_path}' folder, but found:"
-            for g in genomes:
-                message += f'\n  {g!r}'
-            raise CellRangerError(message)
-        return genomes[0]
-
-    def cellids(self) -> Set[str]:
-        """
-        Read barcodes.tsv, which contains a list of corrected and approved cellIDs like this:
-
-        AAACCTGAGCGACGTA-1
-        AAACCTGCATACTCTT-1
-        """
-        with xopen(self.barcodes_path) as f:
-            ids = []
-            for line in f:
-                line = line.strip('\n')
-                ids.append(line)
-        return set(ids)
-
-
-class CellRangerOuts3(CellRangerOuts2):
-    MATRICES = 'filtered_feature_bc_matrix'
-    BARCODES = 'barcodes.tsv.gz'
-
-    def _detect_genome_dir(self, _genome_name):
-        return self.matrices_path
-
-
-def create_cellranger_outs(outs_path: Path, *args, **kwargs):
-    """Detect CellRanger outs/ format and return an appropritae instance of CellRangerOuts2/3"""
-    outs_path = Path(outs_path)
-    if (outs_path / 'filtered_gene_bc_matrices').exists():
-        return CellRangerOuts2(outs_path, *args, **kwargs)
-    else:
-        return CellRangerOuts3(outs_path, *args, **kwargs)
-
-
 class NiceFormatter(logging.Formatter):
     """
     Do not prefix "INFO:" to info-level log messages (but do it for all other
@@ -1045,7 +976,7 @@ def main():
         amplicon_inputs = []
 
     def read_one_dataset(path, suffix, file_name_suffix):
-        outs_dir = create_cellranger_outs(path, args.genome_name)
+        outs_dir = make_cellranger_outs(path, args.genome_name)
         if allowed_cell_ids:
             cell_ids = allowed_cell_ids
         else:
@@ -1143,7 +1074,7 @@ def main():
     if args.loom:
         if len(transcriptome_inputs) > 1:
             logger.warning("Writing a loom file only for the first transcriptome dataset")
-        outs_dir = create_cellranger_outs(transcriptome_inputs[0])
+        outs_dir = make_cellranger_outs(transcriptome_inputs[0])
         write_loom(cells, outs_dir, output_dir, clone_id_length=args.end - args.start + 1)
 
     logger.info('Run completed!')
