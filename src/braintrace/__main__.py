@@ -178,7 +178,7 @@ class CellSet:
         return self._hash
 
 
-def read_allowed_cellids(cellids_filtered):
+def read_allowed_cellids(path):
     """
     Read a user-provided list of allowed cellIDs from Seurat like this:
 
@@ -189,7 +189,7 @@ def read_allowed_cellids(cellids_filtered):
     AAACCTGCATACTCTT_1
     """
     allowed_ids = []
-    filtered_df = pd.read_csv(Path(cellids_filtered), sep=",", index_col=0)
+    filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
     for line in filtered_df.iloc[:, 0]:
         allowed_ids.append(line.split("_")[0] + "-1")
     logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
