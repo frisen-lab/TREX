@@ -1,4 +1,5 @@
-cell_id	umi	clone_id
+#Each output line corresponds to one molecule and has the following style: CellID	UMI	Barcode
+# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)
 AAACCTGAGAGGTACC-1	AGTTAAAGTA	TGTCAATCGTTCGGTTGAGCAAGATCTTAG
 AAACCTGAGTAGCGGT-1	TGCTTGACTA	TGTCAATCGTTCGGTTGAGCAAGATCTTAG
 AAACCTGAGTAGCGGT-1	GCATTTTATG	TGTCAATCGTTCGGTTGAGCAAGATCTTAG

@@ -1007,16 +1007,11 @@ def main():
     # 3. outputs UMI-sorted reads with barcodes
 
     try:
-        output_dir.mkdir()
+        make_output_dir(output_dir, args.delete)
     except FileExistsError:
-        if args.delete:
-            logger.info(f'Re-creating folder "{output_dir}"')
-            shutil.rmtree(output_dir)
-            output_dir.mkdir()
-        else:
-            logger.error(f'Output directory "{output_dir}" already exists '
-                '(use --delete to force deleting an existing output directory)')
-            sys.exit(1)
+        logger.error(f'Output directory "{output_dir}" already exists '
+                     '(use --delete to force deleting an existing output directory)')
+        sys.exit(1)
 
     add_file_logging(output_dir / 'log.txt')
     logger.info('Command line arguments: %s', ' '.join(sys.argv[1:]))
@@ -1028,7 +1023,6 @@ def main():
     allowed_cell_ids = None
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
-    cellid_suffixes = [None]
     transcriptome_inputs = str(args.path).split(",")
     if args.cellid_suffix:
         cellid_suffixes = args.cellid_suffix.split(",")
@@ -1081,46 +1075,25 @@ def main():
         r.clone_id for r in sorted_reads if '-' not in r.clone_id and '0' not in r.clone_id]
     logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode '
         f'({len(clone_ids)} full barcodes, {len(set(clone_ids))} unique)')
-    with open(output_dir / 'reads.txt', 'w') as reads_file:
-        print(
-            '#Each output line corresponds to one read and has the following style: '
-            'CellID\tUMI\tBarcode\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=reads_file)
-        for read in sorted_reads:
-            print(read.cell_id, read.umi, read.clone_id, sep='\t', file=reads_file)
+
+    write_reads(output_dir / "reads.txt", sorted_reads)
 
     # Part III: Molecule construction
-
-    # 1. Forms groups of reads with identical CellIDs and UMIs => belong to one molecule,
-    # 2. forms consensus sequence of all clone ids of one group,
-    # 3. outputs molecules and corresponding CellIDs/UMIs
 
     molecules = compute_molecules(sorted_reads)
     clone_ids = [
         m.clone_id for m in molecules if '-' not in m.clone_id and '0' not in m.clone_id]
     logger.info(f'Detected {len(molecules)} molecules ({len(clone_ids)} full clone ids, '
         f'{len(set(clone_ids))} unique)')
-    with open(output_dir / 'molecules.txt', 'w') as molecules_file:
-        print(
-            '#Each output line corresponds to one molecule and has the following style: '
-            'CellID\tUMI\tBarcode\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=molecules_file)
-        for molecule in molecules:
-            print(molecule.cell_id, molecule.umi, molecule.clone_id, sep='\t', file=molecules_file)
 
-    # Part IV: Cell construction
+    write_molecules(output_dir / 'molecules.txt', molecules)
 
     corrected_molecules = correct_clone_ids(molecules, args.max_hamming, args.min_length)
     clone_ids = [m.clone_id for m in corrected_molecules
         if '-' not in m.clone_id and '0' not in m.clone_id]
     logger.info(f'After clone id correction, {len(set(clone_ids))} unique clone ids remain')
 
-    with open(output_dir / 'molecules_corrected.txt', 'w') as molecules_file:
-        print('cell_id', 'umi', 'clone_id', sep='\t', file=molecules_file)
-        for molecule in corrected_molecules:
-            print(molecule.cell_id, molecule.umi, molecule.clone_id, sep='\t', file=molecules_file)
+    write_molecules(output_dir / 'molecules_corrected.txt', corrected_molecules)
 
     cells = compute_cells(corrected_molecules, args.min_length)
     logger.info(f'Detected {len(cells)} cells')
@@ -1156,16 +1129,17 @@ def main():
     lineage_graph.remove_edges(bridges)
     with open(output_dir / 'components_corrected.txt', 'w') as components_file:
         print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
+
     if args.plot:
         logger.info('Plotting corrected lineage graph')
         lineage_graph.plot(output_dir / 'graph_corrected', highlight_cell_ids)
+
     lineages = lineage_graph.write_lineages(output_dir / 'lineages.txt')
     logger.info(f'Detected {len(lineages)} lineages')
     lineage_sizes = Counter(len(cells) for cells in lineages.values())
     logger.info('Lineage size histogram (size: count): %s',
         ', '.join(f'{k}: {v}' for k, v in lineage_sizes.items()))
 
-    # Create a loom file if requested
     if args.loom:
         if len(transcriptome_inputs) > 1:
             logger.warning("Writing a loom file only for the first transcriptome dataset")
@@ -1173,6 +1147,40 @@ def main():
         write_loom(cells, outs_dir, output_dir, clone_id_length=args.end - args.start + 1)
 
     logger.info('Run completed!')
+
+
+def make_output_dir(path, delete_if_exists):
+    try:
+        path.mkdir()
+    except FileExistsError:
+        if delete_if_exists:
+            logger.debug(f'Re-creating folder "{path}"')
+            shutil.rmtree(path)
+            path.mkdir()
+        else:
+            raise
+
+
+def write_reads(path, reads):
+    with open(path, 'w') as f:
+        print(
+            '#Each output line corresponds to one read and has the following style: '
+            'CellID\tUMI\tBarcode\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=f)
+        for read in reads:
+            print(read.cell_id, read.umi, read.clone_id, sep='\t', file=f)
+
+
+def write_molecules(path, molecules):
+    with open(path, 'w') as f:
+        print(
+            '#Each output line corresponds to one molecule and has the following style: '
+            'CellID\tUMI\tBarcode\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=f)
+        for molecule in molecules:
+            print(molecule.cell_id, molecule.umi, molecule.clone_id, sep='\t', file=f)
 
 
 if __name__ == '__main__':
