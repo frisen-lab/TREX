@@ -38,167 +38,6 @@ __author__ = 'leonie.von.berlin@ki.se'
 logger = logging.getLogger(__name__)
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
-    parser.add_argument('--genome-name', metavar='NAME',
-        help='Name of the genome as indicated in Cell Ranger count run with the flag --genome. '
-             'Default: Auto-detected',
-        default=None)
-    parser.add_argument('--chromosome', '--chr',
-        help='Barcode chromosome name. Default: Last chromosome in the BAM file',
-        default=None)
-    parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
-        help='name of the run and directory created by program. Default: %(default)s',
-        default=Path('lineage_run'))
-    parser.add_argument('--delete', action='store_true', help='Delete output directory if it exists')
-    parser.add_argument('--start', '-s',
-        help='Position of first barcode base. Default: Auto-detected',
-        type=int, default=None)
-    parser.add_argument('--end', '-e',
-        help='Position of last barcode base. Default: Auto-detected',
-        type=int, default=None)
-    parser.add_argument('--min-length', '-m',
-        help='Minimum number of bases a barcode must have. Default: %(default)s',
-        type=int, default=20)
-    parser.add_argument('--max-hamming',
-        help='Hamming distance allowed for two barcodes to be called similar. '
-            'Default: %(default)s',
-        type=int, default=5)
-    parser.add_argument('--amplicon', '-a', metavar='DIRECTORY',
-        help='Path to Cell Ranger "outs" directory containing sequencing of the EGFP-barcode amplicon library. When combining' 
-        'Cell Ranger runs indicate paths separated by comma and in same order as paths for transcriptome data. Example "path1,path2,path3"',
-        default=None)
-    parser.add_argument('--filter-cellids', '-f', metavar='DIRECTORY', type=Path,
-        help='Path to a .csv file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
-        default=None)
-    parser.add_argument('--keep-single-reads', action='store_true', default=False,
-        help='Keep barcodes supported by only a single read. Default: Discard them')
-    parser.add_argument('-l', '--loom',
-        help='If given, create loom-file from Cell Ranger and barcode data. '
-            'File will have the same name as the run',
-        action='store_true')
-    parser.add_argument('--restrict', metavar='FILE',
-        help='Restrict analysis to the cell IDs listed in FILE')
-    parser.add_argument('--highlight',
-        help='Highlight cell IDs listed in FILE in the clone graph')
-    parser.add_argument('--cellid-suffix',
-        help='Add suffixes to cell IDs to merge different Cell Ranger runs. Suffixes should be separated by comma and have the same order'
-        'as the given Cell Ranger directory paths. Example: "_1,_2,_3"',
-        default=None)
-    parser.add_argument('--umi-matrix', default=False, action='store_true',
-        help='Creates a umi count matrix with cells as columns and clone IDs as rows')
-    parser.add_argument('--plot', dest='plot', default=False, action='store_true',
-        help='Plot the clone graph')
-    parser.add_argument('path', metavar='DIRECTORY', type=Path,
-        help='Path to Cell Ranger "outs" directory. To combine several runs, please separate paths by comma. Example: "path1,path2,path3".'
-        'Do not forget to indicate cell IDs suffixes to separate cell IDs from differen runs with the --cellid-suffix flag')
-    return parser.parse_args()
-
-
-def read_allowed_cellids(path):
-    """
-    Read a user-provided list of allowed cellIDs from Seurat like this:
-
-    AAACCTGAGCGACGTA
-
-    OR:
-
-    AAACCTGCATACTCTT_1
-    """
-    allowed_ids = []
-    filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
-    for line in filtered_df.iloc[:, 0]:
-        allowed_ids.append(line.split("_")[0] + "-1")
-    logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
-    return set(allowed_ids)
-
-
-def correct_clone_ids(
-        molecules: List[Molecule], max_hamming: int, min_overlap: int = 20) -> List[Molecule]:
-    """
-    Attempt to correct sequencing errors in the clone id sequences of all molecules
-    """
-    # Obtain all clone ids (including those with '-' and '0')
-    clone_ids = [m.clone_id for m in molecules]
-
-    # Count the full-length clone ids
-    clone_id_counts = Counter(clone_ids)
-
-    # Cluster them by Hamming distance
-    def is_similar(s, t):
-        # m = max_hamming
-        if '-' in s or '-' in t:
-            # Remove suffix and/or prefix where sequences do not overlap
-            s = s.lstrip('-')
-            t = t[-len(s):]
-            s = s.rstrip('-')
-            if len(s) < min_overlap:
-                return False
-            t = t[:len(s)]
-            # TODO allowed Hamming distance should be reduced relative to the overlap length
-            # m = max_hamming * len(s) / len(original_length_of_s)
-        return hamming_distance(s, t) <= max_hamming
-
-    clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
-
-    # Map non-singleton clone ids to a cluster representative
-    clone_id_map = dict()
-    for cluster in clusters:
-        if len(cluster) > 1:
-            # Pick most frequent clone id as representative
-            representative = max(cluster, key=lambda bc: (clone_id_counts[bc], bc))
-            for clone_id in cluster:
-                clone_id_map[clone_id] = representative
-
-    # Create a new list of molecules in which the clone ids have been replaced
-    # by their representatives
-    new_molecules = []
-    for molecule in molecules:
-        clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
-        new_molecules.append(molecule._replace(clone_id=clone_id))
-    return new_molecules
-
-
-def filter_cells(
-        cells: Iterable[Cell], molecules: Iterable[Molecule],
-        keep_single_reads: bool = False) -> List[Cell]:
-    """
-    Filter clone ids according to two criteria:
-
-    - Clone ids that have only a count of one and can be found in another cell are most
-      likely results of contamination and are removed,
-    - If keep_single_reads is False, clone ids that have only a count of one and are also only based
-      on one read are also removed
-    """
-    overall_clone_id_counts: Dict[str, int] = Counter()
-    for cell in cells:
-        overall_clone_id_counts.update(cell.clone_id_counts)
-
-    single_read_clone_ids = set()
-    for molecule in molecules:
-        if molecule.read_count == 1:
-            single_read_clone_ids.add(molecule.clone_id)
-    logger.info(f"Found {len(single_read_clone_ids)} single-read clone ids")
-
-    # filters out clone ids with a count of one that appear in another cell
-    new_cells = []
-    for cell in cells:
-        clone_id_counts = cell.clone_id_counts.copy()
-        for clone_id, count in cell.clone_id_counts.items():
-            if count > 1:
-                # This clone id occurs more than once in this cell - keep it
-                continue
-            if overall_clone_id_counts[clone_id] > 1:
-                # This clone id occurs also in other cells - remove it
-                del clone_id_counts[clone_id]
-            elif clone_id in single_read_clone_ids and not keep_single_reads:
-                del clone_id_counts[clone_id]
-        if clone_id_counts:
-            new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
-    return new_cells
-
-
 def main():
     args = parse_arguments()
     setup_logging(debug=False)
@@ -267,6 +106,95 @@ def main():
         should_write_loom=args.loom,
     )
     logger.info('Run completed!')
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    parser.add_argument('--genome-name', metavar='NAME',
+        help='Name of the genome as indicated in Cell Ranger count run with the flag --genome. '
+             'Default: Auto-detected',
+        default=None)
+    parser.add_argument('--chromosome', '--chr',
+        help='Barcode chromosome name. Default: Last chromosome in the BAM file',
+        default=None)
+    parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
+        help='name of the run and directory created by program. Default: %(default)s',
+        default=Path('lineage_run'))
+    parser.add_argument('--delete', action='store_true', help='Delete output directory if it exists')
+    parser.add_argument('--start', '-s',
+        help='Position of first barcode base. Default: Auto-detected',
+        type=int, default=None)
+    parser.add_argument('--end', '-e',
+        help='Position of last barcode base. Default: Auto-detected',
+        type=int, default=None)
+    parser.add_argument('--min-length', '-m',
+        help='Minimum number of bases a barcode must have. Default: %(default)s',
+        type=int, default=20)
+    parser.add_argument('--max-hamming',
+        help='Hamming distance allowed for two barcodes to be called similar. '
+            'Default: %(default)s',
+        type=int, default=5)
+    parser.add_argument('--amplicon', '-a', metavar='DIRECTORY',
+        help='Path to Cell Ranger "outs" directory containing sequencing of the EGFP-barcode amplicon library. When combining'
+        'Cell Ranger runs indicate paths separated by comma and in same order as paths for transcriptome data. Example "path1,path2,path3"',
+        default=None)
+    parser.add_argument('--filter-cellids', '-f', metavar='DIRECTORY', type=Path,
+        help='Path to a .csv file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
+        default=None)
+    parser.add_argument('--keep-single-reads', action='store_true', default=False,
+        help='Keep barcodes supported by only a single read. Default: Discard them')
+    parser.add_argument('-l', '--loom',
+        help='If given, create loom-file from Cell Ranger and barcode data. '
+            'File will have the same name as the run',
+        action='store_true')
+    parser.add_argument('--restrict', metavar='FILE',
+        help='Restrict analysis to the cell IDs listed in FILE')
+    parser.add_argument('--highlight',
+        help='Highlight cell IDs listed in FILE in the clone graph')
+    parser.add_argument('--cellid-suffix',
+        help='Add suffixes to cell IDs to merge different Cell Ranger runs. Suffixes should be separated by comma and have the same order'
+        'as the given Cell Ranger directory paths. Example: "_1,_2,_3"',
+        default=None)
+    parser.add_argument('--umi-matrix', default=False, action='store_true',
+        help='Creates a umi count matrix with cells as columns and clone IDs as rows')
+    parser.add_argument('--plot', dest='plot', default=False, action='store_true',
+        help='Plot the clone graph')
+    parser.add_argument('path', metavar='DIRECTORY', type=Path,
+        help='Path to Cell Ranger "outs" directory. To combine several runs, please separate paths by comma. Example: "path1,path2,path3".'
+        'Do not forget to indicate cell IDs suffixes to separate cell IDs from differen runs with the --cellid-suffix flag')
+    return parser.parse_args()
+
+
+def setup_logging(debug: bool) -> None:
+    """
+    Set up logging. If debug is True, then DEBUG level messages are printed.
+    """
+    handler = logging.StreamHandler()
+    handler.setFormatter(NiceFormatter())
+
+    root = logging.getLogger()
+    root.addHandler(handler)
+    root.setLevel(logging.DEBUG if debug else logging.INFO)
+
+
+def add_file_logging(path: Path) -> None:
+    file_handler = logging.FileHandler(path)
+    file_handler.setFormatter(NiceFormatter())
+    root = logging.getLogger()
+    root.addHandler(file_handler)
+
+
+def make_output_dir(path, delete_if_exists):
+    try:
+        path.mkdir()
+    except FileExistsError:
+        if delete_if_exists:
+            logger.debug(f'Re-creating folder "{path}"')
+            shutil.rmtree(path)
+            path.mkdir()
+        else:
+            raise
 
 
 def run_braintrace(
@@ -386,35 +314,109 @@ def run_braintrace(
         write_loom(cells, outs_dir, output_dir, clone_id_length=end - start)
 
 
-def setup_logging(debug: bool) -> None:
+def read_allowed_cellids(path):
     """
-    Set up logging. If debug is True, then DEBUG level messages are printed.
+    Read a user-provided list of allowed cellIDs from Seurat like this:
+
+    AAACCTGAGCGACGTA
+
+    OR:
+
+    AAACCTGCATACTCTT_1
     """
-    handler = logging.StreamHandler()
-    handler.setFormatter(NiceFormatter())
-
-    root = logging.getLogger()
-    root.addHandler(handler)
-    root.setLevel(logging.DEBUG if debug else logging.INFO)
-
-
-def add_file_logging(path: Path) -> None:
-    file_handler = logging.FileHandler(path)
-    file_handler.setFormatter(NiceFormatter())
-    root = logging.getLogger()
-    root.addHandler(file_handler)
+    allowed_ids = []
+    filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
+    for line in filtered_df.iloc[:, 0]:
+        allowed_ids.append(line.split("_")[0] + "-1")
+    logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
+    return set(allowed_ids)
 
 
-def make_output_dir(path, delete_if_exists):
-    try:
-        path.mkdir()
-    except FileExistsError:
-        if delete_if_exists:
-            logger.debug(f'Re-creating folder "{path}"')
-            shutil.rmtree(path)
-            path.mkdir()
-        else:
-            raise
+def correct_clone_ids(
+        molecules: List[Molecule], max_hamming: int, min_overlap: int = 20) -> List[Molecule]:
+    """
+    Attempt to correct sequencing errors in the clone id sequences of all molecules
+    """
+    # Obtain all clone ids (including those with '-' and '0')
+    clone_ids = [m.clone_id for m in molecules]
+
+    # Count the full-length clone ids
+    clone_id_counts = Counter(clone_ids)
+
+    # Cluster them by Hamming distance
+    def is_similar(s, t):
+        # m = max_hamming
+        if '-' in s or '-' in t:
+            # Remove suffix and/or prefix where sequences do not overlap
+            s = s.lstrip('-')
+            t = t[-len(s):]
+            s = s.rstrip('-')
+            if len(s) < min_overlap:
+                return False
+            t = t[:len(s)]
+            # TODO allowed Hamming distance should be reduced relative to the overlap length
+            # m = max_hamming * len(s) / len(original_length_of_s)
+        return hamming_distance(s, t) <= max_hamming
+
+    clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
+
+    # Map non-singleton clone ids to a cluster representative
+    clone_id_map = dict()
+    for cluster in clusters:
+        if len(cluster) > 1:
+            # Pick most frequent clone id as representative
+            representative = max(cluster, key=lambda bc: (clone_id_counts[bc], bc))
+            for clone_id in cluster:
+                clone_id_map[clone_id] = representative
+
+    # Create a new list of molecules in which the clone ids have been replaced
+    # by their representatives
+    new_molecules = []
+    for molecule in molecules:
+        clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
+        new_molecules.append(molecule._replace(clone_id=clone_id))
+    return new_molecules
+
+
+def filter_cells(
+    cells: Iterable[Cell],
+    molecules: Iterable[Molecule],
+    keep_single_reads: bool = False
+) -> List[Cell]:
+    """
+    Filter clone ids according to two criteria:
+
+    - Clone ids that have only a count of one and can be found in another cell are most
+      likely results of contamination and are removed,
+    - If keep_single_reads is False, clone ids that have only a count of one and are also only based
+      on one read are also removed
+    """
+    overall_clone_id_counts: Dict[str, int] = Counter()
+    for cell in cells:
+        overall_clone_id_counts.update(cell.clone_id_counts)
+
+    single_read_clone_ids = set()
+    for molecule in molecules:
+        if molecule.read_count == 1:
+            single_read_clone_ids.add(molecule.clone_id)
+    logger.info(f"Found {len(single_read_clone_ids)} single-read clone ids")
+
+    # filters out clone ids with a count of one that appear in another cell
+    new_cells = []
+    for cell in cells:
+        clone_id_counts = cell.clone_id_counts.copy()
+        for clone_id, count in cell.clone_id_counts.items():
+            if count > 1:
+                # This clone id occurs more than once in this cell - keep it
+                continue
+            if overall_clone_id_counts[clone_id] > 1:
+                # This clone id occurs also in other cells - remove it
+                del clone_id_counts[clone_id]
+            elif clone_id in single_read_clone_ids and not keep_single_reads:
+                del clone_id_counts[clone_id]
+        if clone_id_counts:
+            new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
+    return new_cells
 
 
 def write_reads(path, reads):
