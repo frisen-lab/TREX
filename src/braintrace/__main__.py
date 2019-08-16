@@ -23,7 +23,7 @@ from .cellranger import make_cellranger_outs, CellRangerError
 from .utils import NiceFormatter
 from .bam import read_bam
 from .clustering import cluster_sequences
-from .lineage import CompressedLineageGraph
+from .clone import CloneGraph
 from .molecule import Molecule, compute_molecules
 from .cell import Cell, compute_cells
 
@@ -81,7 +81,7 @@ def parse_arguments():
     parser.add_argument('--restrict', metavar='FILE',
         help='Restrict analysis to the cell IDs listed in FILE')
     parser.add_argument('--highlight',
-        help='Highlight cell IDs listed in FILE in the lineage graph')
+        help='Highlight cell IDs listed in FILE in the clone graph')
     parser.add_argument('--cellid-suffix',
         help='Add suffixes to cell IDs to merge different Cell Ranger runs. Suffixes should be separated by comma and have the same order'
         'as the given Cell Ranger directory paths. Example: "_1,_2,_3"',
@@ -89,7 +89,7 @@ def parse_arguments():
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
-        help='Plot the lineage graph')
+        help='Plot the clone graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
         help='Path to Cell Ranger "outs" directory. To combine several runs, please separate paths by comma. Example: "path1,path2,path3".'
         'Do not forget to indicate cell IDs suffixes to separate cell IDs from differen runs with the --cellid-suffix flag')
@@ -355,29 +355,29 @@ def run_braintrace(
         cells = [cell for cell in cells if cell.cell_id in restrict_cell_ids]
         logger.info(f'Restricting to {len(cells)} cells')
 
-    lineage_graph = CompressedLineageGraph(cells)
+    clone_graph = CloneGraph(cells)
 
     with open(output_dir / 'components.txt', 'w') as components_file:
-        print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
+        print(clone_graph.components_txt(highlight_cell_ids), file=components_file, end='')
     if should_plot:
-        logger.info('Plotting compressed lineage graph')
-        lineage_graph.plot(output_dir / 'graph', highlight_cell_ids)
+        logger.info('Plotting clone graph')
+        clone_graph.plot(output_dir / 'graph', highlight_cell_ids)
 
-    bridges = lineage_graph.bridges()
+    bridges = clone_graph.bridges()
     logger.info(f'Removing {len(bridges)} bridges from the graph')
-    lineage_graph.remove_edges(bridges)
+    clone_graph.remove_edges(bridges)
     with open(output_dir / 'components_corrected.txt', 'w') as components_file:
-        print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
+        print(clone_graph.components_txt(highlight_cell_ids), file=components_file, end='')
 
     if should_plot:
-        logger.info('Plotting corrected lineage graph')
-        lineage_graph.plot(output_dir / 'graph_corrected', highlight_cell_ids)
+        logger.info('Plotting corrected clone graph')
+        clone_graph.plot(output_dir / 'graph_corrected', highlight_cell_ids)
 
-    lineages = lineage_graph.write_lineages(output_dir / 'lineages.txt')
-    logger.info(f'Detected {len(lineages)} lineages')
-    lineage_sizes = Counter(len(cells) for cells in lineages.values())
-    logger.info('Lineage size histogram (size: count): %s',
-        ', '.join(f'{k}: {v}' for k, v in lineage_sizes.items()))
+    clones = clone_graph.write_clones(output_dir / 'clones.txt')
+    logger.info(f'Detected {len(clones)} clones')
+    clone_sizes = Counter(len(cells) for cells in clones.values())
+    logger.info('Clone size histogram (size: count): %s',
+        ', '.join(f'{k}: {v}' for k, v in clone_sizes.items()))
 
     if should_write_loom:
         if len(transcriptome_inputs) > 1:

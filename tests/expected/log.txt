@@ -11,6 +11,6 @@ Found 41 single-read clone ids
 763 filtered cells remain
 Writing UMI matrix
 Removing 0 bridges from the graph
-Detected 4 lineages
-Lineage size histogram (size: count): 752: 1, 8: 1, 1: 1, 2: 1
+Detected 4 clones
+Clone size histogram (size: count): 752: 1, 8: 1, 1: 1, 2: 1
 Run completed!

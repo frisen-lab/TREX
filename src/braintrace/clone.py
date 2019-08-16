@@ -1,5 +1,5 @@
 """
-Lineage computation. A lineage is represented as a set of cells (CellSet).
+Clone computation. A clone is represented as a set of cells.
 """
 from typing import List, Dict
 from collections import Counter, defaultdict
@@ -11,7 +11,7 @@ from .graph import Graph
 from .cell import Cell
 
 
-class CellSet:
+class Clone:
     def __init__(self, cells: List[Cell]):
         self.cells = cells
         self.cell_ids = tuple(sorted(c.cell_id for c in cells))
@@ -21,13 +21,13 @@ class CellSet:
         self._hash = hash(self.cell_ids)
 
     def __repr__(self):
-        return f'CellSet(cells={self.cells!r})'
+        return f'Clone(cells={self.cells!r})'
 
     def __hash__(self):
         return self._hash
 
 
-class CompressedLineageGraph:
+class CloneGraph:
     def __init__(self, cells: List[Cell]):
         self._cells = self._compress_cells(cells)
         self._graph = self._make_cell_graph()
@@ -41,7 +41,7 @@ class CompressedLineageGraph:
 
         cell_sets = []
         for cells in cell_lists.values():
-            cell_sets.append(CellSet(cells))
+            cell_sets.append(Clone(cells))
         return cell_sets
 
     def _make_cell_graph(self):
@@ -77,15 +77,15 @@ class CompressedLineageGraph:
             self._graph.remove_edge(node1, node2)
 
     @staticmethod
-    def _expand_cell_sets(cell_sets: List[CellSet]) -> List[Cell]:
+    def _expand_cell_sets(cell_sets: List[Clone]) -> List[Cell]:
         """Expand a list of CellSets into a list of Cells"""
         cells = []
         for cell_set in cell_sets:
             cells.extend(cell_set.cells)
         return cells
 
-    def write_lineages(self, path):
-        lineages = self.lineages()
+    def write_clones(self, path):
+        clones = self.clones()
         with open(path, 'w') as f:
             print(
                 '#Each output line corresponds to one barcode group (clone) and has '
@@ -93,20 +93,20 @@ class CompressedLineageGraph:
                 '# dash (-) = barcode base outside of read, '
                 '0 = deletion in barcode sequence (position unknown)', file=f)
 
-            for clone_id in sorted(lineages):
-                cells = sorted(lineages[clone_id])
+            for clone_id in sorted(clones):
+                cells = sorted(clones[clone_id])
                 row = [clone_id, ':']
                 for cell in cells:
                     row.append(cell.cell_id)
                 print(*row, sep='\t', file=f)
-        return lineages
+        return clones
 
-    def lineages(self) -> Dict[str, List[Cell]]:
+    def clones(self) -> Dict[str, List[Cell]]:
         """
-        Compute lineages. Return a dict that maps a representative clone id to a list of cells.
+        Compute clones. Return a dict that maps a representative clone id to a list of cells.
         """
         compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
-        # Expand the CellSet instances into cells
+        # Expand the Clone instances into cells
         clusters = [self._expand_cell_sets(cluster) for cluster in compressed_clusters]
 
         def most_abundant_clone_id(cells: List[Cell]):
@@ -162,7 +162,7 @@ class CompressedLineageGraph:
 
     def components_txt(self, highlight=None):
         s = StringIO()
-        print('# Lineage graph components (only incomplete/density<1)', file=s)
+        print('# Clone graph components (only incomplete/density<1)', file=s)
         n_complete = 0
         for subgraph in self.graph.connected_components():
             cells = sorted(self._expand_cell_sets(subgraph.nodes()), key=lambda c: c.cell_id)
@@ -192,7 +192,7 @@ class CompressedLineageGraph:
 
 
 # TODO this is unused
-class LineageGraph:
+class UncompressedCloneGraph:
     def __init__(self, cells: List[Cell]):
         self._cells = cells
         self._graph = self._make_cell_graph()
@@ -225,9 +225,9 @@ class LineageGraph:
                 graph.add_edge(barcodes[0], other)
         return graph
 
-    def lineages(self) -> Dict[str, List[Cell]]:
+    def clones(self) -> Dict[str, List[Cell]]:
         """
-        Compute lineages. Return a dict that maps a representative clone id to a list of cells.
+        Compute clones. Return a dict that maps a representative clone id to a list of cells.
         """
         clusters = [g.nodes() for g in self._graph.connected_components()]
 

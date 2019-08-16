@@ -1,2 +1,2 @@
-# Lineage graph components (only incomplete/density<1)
+# Clone graph components (only incomplete/density<1)
 # 4 complete components
