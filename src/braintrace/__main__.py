@@ -419,22 +419,14 @@ def filter_cells(
 
 def write_reads(path, reads):
     with open(path, 'w') as f:
-        print(
-            '#Each output line corresponds to one read and has the following style: '
-            'CellID\tUMI\tBarcode\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=f)
+        print("#cell_id", "umi", "clone_id", sep="\t", file=f)
         for read in sorted(reads, key=lambda read: (read.umi, read.cell_id, read.clone_id)):
             print(read.cell_id, read.umi, read.clone_id, sep='\t', file=f)
 
 
 def write_molecules(path, molecules):
     with open(path, 'w') as f:
-        print(
-            '#Each output line corresponds to one molecule and has the following style: '
-            'CellID\tUMI\tBarcode\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=f)
+        print("#cell_id", "umi", "clone_id", sep="\t", file=f)
         for molecule in molecules:
             print(molecule.cell_id, molecule.umi, molecule.clone_id, sep='\t', file=f)
 
@@ -442,11 +434,7 @@ def write_molecules(path, molecules):
 def write_cells(path: Path, cells: List[Cell]) -> None:
     """Write cells to a tab-separated file"""
     with open(path, 'w') as f:
-        print(
-            '#Each output line corresponds to one cell and has the following style: '
-            'CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=f)
+        print("#cell_id", ":", "clone_id1", "count1", "clone_id2", "count2", "...", sep="\t", file=f)
         for cell in cells:
             row = [cell.cell_id, ':']
             sorted_clone_ids = sorted(cell.clone_id_counts, key=lambda x: cell.clone_id_counts[x], reverse=True)

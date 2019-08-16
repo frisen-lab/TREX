@@ -1,5 +1,4 @@
-#Each output line corresponds to one cell and has the following style: CellID	:	Barcode1	Count1	Barcode2	Count2...
-# dash (-) = barcode base outside of read, 0 = deletion in barcode sequence (position unknown)
+#cell_id	:	clone_id1	count1	clone_id2	count2	...
 AAACCTGAGTAGCGGT-1	:	TGTCAATCGTTCGGTTGAGCAAGATCTTAG	3
 AAACCTGAGTCCAGGA-1	:	TGTCAATCGTTCGGTTGAGCAAGATCTTAG	2
 AAACGGGTCCTTCAAT-1	:	TGTCAATCGTTCGGTTGAGCAAGATCTTAG	2
