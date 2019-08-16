@@ -3,3 +3,5 @@ venv/
 lineage_run/
 .mypy_cache/
 __pycache__/
+.snakemake/
+pip-wheel-metadata/
