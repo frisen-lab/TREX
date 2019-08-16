@@ -87,12 +87,7 @@ class CloneGraph:
     def write_clones(self, path):
         clones = self.clones()
         with open(path, 'w') as f:
-            print(
-                '#Each output line corresponds to one barcode group (clone) and has '
-                'the following style: Barcode\t:\tCellID1\tCellID2...\n'
-                '# dash (-) = barcode base outside of read, '
-                '0 = deletion in barcode sequence (position unknown)', file=f)
-
+            print("#clone_id", ":", "cell_id1", "cell_id2", "...", sep="\t", file=f)
             for clone_id in sorted(clones):
                 cells = sorted(clones[clone_id])
                 row = [clone_id, ':']
