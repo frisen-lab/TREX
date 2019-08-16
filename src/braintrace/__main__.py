@@ -12,13 +12,12 @@ import subprocess
 from io import StringIO
 from pathlib import Path
 from collections import Counter, defaultdict, OrderedDict
-from typing import Set, List, Dict, NamedTuple, Iterable, Callable
+from typing import List, Dict, NamedTuple, Iterable
 from pkg_resources import get_distribution, DistributionNotFound
 
 from alignlib import hamming_distance
 import numpy as np
 import pandas as pd
-import pysam
 with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
@@ -27,6 +26,7 @@ from .cellranger import make_cellranger_outs, CellRangerError
 from .utils import NiceFormatter
 from .graph import Graph
 from .bam import read_bam
+from .clustering import cluster_sequences
 
 try:
     __version__ = get_distribution('braintrace').version
@@ -95,56 +95,6 @@ def parse_arguments():
         help='Path to Cell Ranger "outs" directory. To combine several runs, please separate paths by comma. Example: "path1,path2,path3".'
         'Do not forget to indicate cell IDs suffixes to separate cell IDs from differen runs with the --cellid-suffix flag')
     return parser.parse_args()
-
-
-def kmers(s: str, k: int):
-    """
-    Yield all overlapping k-kmers of s.
-
-    >>> list(kmers('hello', 3))
-    ['hel', 'ell', 'llo']
-    """
-    for i in range(len(s) - k + 1):
-        yield s[i:i+k]
-
-
-def cluster_sequences(
-        sequences: List[str], is_similar: Callable[[str, str], bool], k: int = 6) -> List[List[str]]:
-    """
-    Cluster sequences by Hamming distance.
-
-    If k > 0, a k-mer filter may be enabled for speedups. With the filter, a single barcode is not
-    compared to all others, but only to those others with which it shares a k-mer.
-
-    Speedups happen only at k >= 5, so for values lower than that, the filter is disabled.
-
-    The filter is a heuristic, so results may differ when it is enabled. This is relevant
-    starting at about k=8.
-
-    Each element of the returned list is a cluster.
-    """
-    graph = Graph(sequences)
-    if k >= 5:
-        shared_kmers = defaultdict(set)
-        for bc in sequences:
-            for kmer in kmers(bc, k):
-                shared_kmers[kmer].add(bc)
-
-        for bc in sequences:
-            others: Set[str] = set()
-            for kmer in kmers(bc, k):
-                others.update(shared_kmers[kmer])
-            for other in others:
-                if is_similar(bc, other):
-                    graph.add_edge(bc, other)
-    else:
-        for i, x in enumerate(sequences):
-            for j in range(i+1, len(sequences)):
-                y = sequences[j]
-                assert len(x) == len(y)
-                if is_similar(x, y):
-                    graph.add_edge(x, y)
-    return [g.nodes() for g in graph.connected_components()]
 
 
 class Molecule(NamedTuple):
@@ -592,109 +542,6 @@ class CompressedLineageGraph:
         return self._graph
 
 
-def write_loom(cells: List[Cell], cellranger_outs, output_dir, clone_id_length, top_n=6):
-    """
-    Create a loom file from a Cell Ranger sample directory and augment it with information about
-    the most abundant clone id and their counts.
-    """
-    # For each cell, collect the most abundant clone ids and their counts
-    # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant clone ids.
-    most_abundant = dict()
-    for cell in cells:
-        if not cell.clone_id_counts:
-            continue
-        counts = sorted(cell.clone_id_counts.items(), key=operator.itemgetter(1))
-        counts.reverse()
-        counts = counts[:top_n]
-        most_abundant[cell.cell_id] = counts
-
-    loompy.create_from_cellranger(cellranger_outs.sample_dir, outdir=output_dir)
-    # create_from_cellranger() does not tell us the name of the created file,
-    # so we need to re-derive it from the sample name.
-    sample_name = cellranger_outs.sample_dir.name
-    loom_path = output_dir / (sample_name + '.loom')
-
-    with loompy.connect(loom_path) as ds:
-        # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
-        loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
-
-        # Transform clone ids and count data
-        # brings clone id data into correct format for loom file.
-        # Array must have same shape as all_cellIDs
-        clone_id_lists = [[] for _ in range(top_n)]
-        count_lists = [[] for _ in range(top_n)]
-        for cell_id in loom_cell_ids:
-            clone_id_counts = most_abundant.get(cell_id, [])
-            # Fill up to a constant length
-            while len(clone_id_counts) < top_n:
-                clone_id_counts.append(('-', 0))
-
-            for i, (clone_id, count) in enumerate(clone_id_counts):
-                clone_id_lists[i].append(clone_id)
-                count_lists[i].append(count)
-
-        # Add clone id and count information to loom file
-        for i in range(top_n):
-            ds.ca[f'linBarcode_{i+1}'] = np.array(clone_id_lists[i], dtype='S%r' % clone_id_length)
-            ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
-
-
-def write_cells(path: Path, cells: List[Cell]) -> None:
-    """Write cells to a tab-separated file"""
-    with open(path, 'w') as f:
-        print(
-            '#Each output line corresponds to one cell and has the following style: '
-            'CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...\n'
-            '# dash (-) = barcode base outside of read, '
-            '0 = deletion in barcode sequence (position unknown)', file=f)
-        for cell in cells:
-            row = [cell.cell_id, ':']
-            sorted_clone_ids = sorted(cell.clone_id_counts, key=lambda x: cell.clone_id_counts[x], reverse=True)
-            if not sorted_clone_ids:
-                continue
-            for clone_id in sorted_clone_ids:
-                row.extend([clone_id, cell.clone_id_counts[clone_id]])
-            print(*row, sep='\t', file=f)
-
-
-def write_umimatrix(output_dir: Path, cells: List[Cell]):
-    """Create a UMI-count matrix with cells as columns and clone ids as rows"""
-    clone_ids = set()
-    for cell in cells:
-        clone_ids.update(clone_id for clone_id in cell.clone_id_counts)
-    clone_ids = sorted(clone_ids)
-    all_clone_id_counts = [cell.clone_id_counts for cell in cells]
-    with open(output_dir / "umi_count_matrix.csv", "w") as f:
-        f.write(",")
-        f.write(",".join(cell.cell_id for cell in cells))
-        f.write("\n")
-        for clone_id in clone_ids:
-            f.write(clone_id)
-            f.write(",")
-            values = [lic.get(clone_id, 0) for lic in all_clone_id_counts]
-            f.write(",".join(str(v) for v in values))
-            f.write("\n")
-
-
-def setup_logging(debug: bool) -> None:
-    """
-    Set up logging. If debug is True, then DEBUG level messages are printed.
-    """
-    handler = logging.StreamHandler()
-    handler.setFormatter(NiceFormatter())
-
-    root = logging.getLogger()
-    root.addHandler(handler)
-    root.setLevel(logging.DEBUG if debug else logging.INFO)
-
-
-def add_file_logging(path: Path) -> None:
-    file_handler = logging.FileHandler(path)
-    file_handler.setFormatter(NiceFormatter())
-    root = logging.getLogger()
-    root.addHandler(file_handler)
-
-
 def main():
     args = parse_arguments()
     output_dir = args.output
@@ -849,6 +696,25 @@ def main():
     logger.info('Run completed!')
 
 
+def setup_logging(debug: bool) -> None:
+    """
+    Set up logging. If debug is True, then DEBUG level messages are printed.
+    """
+    handler = logging.StreamHandler()
+    handler.setFormatter(NiceFormatter())
+
+    root = logging.getLogger()
+    root.addHandler(handler)
+    root.setLevel(logging.DEBUG if debug else logging.INFO)
+
+
+def add_file_logging(path: Path) -> None:
+    file_handler = logging.FileHandler(path)
+    file_handler.setFormatter(NiceFormatter())
+    root = logging.getLogger()
+    root.addHandler(file_handler)
+
+
 def make_output_dir(path, delete_if_exists):
     try:
         path.mkdir()
@@ -881,6 +747,90 @@ def write_molecules(path, molecules):
             '0 = deletion in barcode sequence (position unknown)', file=f)
         for molecule in molecules:
             print(molecule.cell_id, molecule.umi, molecule.clone_id, sep='\t', file=f)
+
+
+def write_cells(path: Path, cells: List[Cell]) -> None:
+    """Write cells to a tab-separated file"""
+    with open(path, 'w') as f:
+        print(
+            '#Each output line corresponds to one cell and has the following style: '
+            'CellID\t:\tBarcode1\tCount1\tBarcode2\tCount2...\n'
+            '# dash (-) = barcode base outside of read, '
+            '0 = deletion in barcode sequence (position unknown)', file=f)
+        for cell in cells:
+            row = [cell.cell_id, ':']
+            sorted_clone_ids = sorted(cell.clone_id_counts, key=lambda x: cell.clone_id_counts[x], reverse=True)
+            if not sorted_clone_ids:
+                continue
+            for clone_id in sorted_clone_ids:
+                row.extend([clone_id, cell.clone_id_counts[clone_id]])
+            print(*row, sep='\t', file=f)
+
+
+def write_loom(cells: List[Cell], cellranger_outs, output_dir, clone_id_length, top_n=6):
+    """
+    Create a loom file from a Cell Ranger sample directory and augment it with information about
+    the most abundant clone id and their counts.
+    """
+    # For each cell, collect the most abundant clone ids and their counts
+    # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant clone ids.
+    most_abundant = dict()
+    for cell in cells:
+        if not cell.clone_id_counts:
+            continue
+        counts = sorted(cell.clone_id_counts.items(), key=operator.itemgetter(1))
+        counts.reverse()
+        counts = counts[:top_n]
+        most_abundant[cell.cell_id] = counts
+
+    loompy.create_from_cellranger(cellranger_outs.sample_dir, outdir=output_dir)
+    # create_from_cellranger() does not tell us the name of the created file,
+    # so we need to re-derive it from the sample name.
+    sample_name = cellranger_outs.sample_dir.name
+    loom_path = output_dir / (sample_name + '.loom')
+
+    with loompy.connect(loom_path) as ds:
+        # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
+        loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
+
+        # Transform clone ids and count data
+        # brings clone id data into correct format for loom file.
+        # Array must have same shape as all_cellIDs
+        clone_id_lists = [[] for _ in range(top_n)]
+        count_lists = [[] for _ in range(top_n)]
+        for cell_id in loom_cell_ids:
+            clone_id_counts = most_abundant.get(cell_id, [])
+            # Fill up to a constant length
+            while len(clone_id_counts) < top_n:
+                clone_id_counts.append(('-', 0))
+
+            for i, (clone_id, count) in enumerate(clone_id_counts):
+                clone_id_lists[i].append(clone_id)
+                count_lists[i].append(count)
+
+        # Add clone id and count information to loom file
+        for i in range(top_n):
+            ds.ca[f'linBarcode_{i+1}'] = np.array(clone_id_lists[i], dtype='S%r' % clone_id_length)
+            ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
+
+
+def write_umimatrix(output_dir: Path, cells: List[Cell]):
+    """Create a UMI-count matrix with cells as columns and clone ids as rows"""
+    clone_ids = set()
+    for cell in cells:
+        clone_ids.update(clone_id for clone_id in cell.clone_id_counts)
+    clone_ids = sorted(clone_ids)
+    all_clone_id_counts = [cell.clone_id_counts for cell in cells]
+    with open(output_dir / "umi_count_matrix.csv", "w") as f:
+        f.write(",")
+        f.write(",".join(cell.cell_id for cell in cells))
+        f.write("\n")
+        for clone_id in clone_ids:
+            f.write(clone_id)
+            f.write(",")
+            values = [lic.get(clone_id, 0) for lic in all_clone_id_counts]
+            f.write(",".join(str(v) for v in values))
+            f.write("\n")
 
 
 if __name__ == '__main__':
