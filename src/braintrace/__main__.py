@@ -233,25 +233,23 @@ def run_braintrace(
     # Extracts reads from  and amplicon clone id chromosome from amplicon sequencing data
     # Combines reads from amplicon dataset with reads from transcriptome dataset for
     # clone id, cellID and UMI extraction
-    sorted_reads = list()
+    reads = list()
     try:
         for path, suffix in zip(transcriptome_inputs, cellid_suffixes):
-            sorted_reads.extend(read_one_dataset(path, suffix, "_entries"))
+            reads.extend(read_one_dataset(path, suffix, "_entries"))
         for path, suffix in zip(amplicon_inputs, cellid_suffixes):
-            sorted_reads.extend(read_one_dataset(path, suffix, "_amp_entries"))
+            reads.extend(read_one_dataset(path, suffix, "_amp_entries"))
     except CellRangerError as e:
         logger.error("%s", e)
         sys.exit(1)
-    sorted_reads.sort(key=lambda read: (read.umi, read.cell_id, read.clone_id))
-
     clone_ids = [
-        r.clone_id for r in sorted_reads if '-' not in r.clone_id and '0' not in r.clone_id]
-    logger.info(f'Read {len(sorted_reads)} reads containing (parts of) the barcode '
+        r.clone_id for r in reads if '-' not in r.clone_id and '0' not in r.clone_id]
+    logger.info(f'Read {len(reads)} reads containing (parts of) the barcode '
         f'({len(clone_ids)} full barcodes, {len(set(clone_ids))} unique)')
 
-    write_reads(output_dir / "reads.txt", sorted_reads)
+    write_reads(output_dir / "reads.txt", reads)
 
-    molecules = compute_molecules(sorted_reads)
+    molecules = compute_molecules(reads)
     clone_ids = [
         m.clone_id for m in molecules if '-' not in m.clone_id and '0' not in m.clone_id]
     logger.info(f'Detected {len(molecules)} molecules ({len(clone_ids)} full clone ids, '
@@ -426,7 +424,7 @@ def write_reads(path, reads):
             'CellID\tUMI\tBarcode\n'
             '# dash (-) = barcode base outside of read, '
             '0 = deletion in barcode sequence (position unknown)', file=f)
-        for read in reads:
+        for read in sorted(reads, key=lambda read: (read.umi, read.cell_id, read.clone_id)):
             print(read.cell_id, read.umi, read.clone_id, sep='\t', file=f)
 
 
