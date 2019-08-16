@@ -348,7 +348,7 @@ def run_braintrace(
 
     if should_write_umi_matrix:
         logger.info(f"Writing UMI matrix")
-        write_umimatrix(output_dir, cells)
+        write_umi_matrix(output_dir, cells)
 
     if restrict_cell_ids is not None:
         restrict_cell_ids = set(restrict_cell_ids)
@@ -504,7 +504,7 @@ def write_loom(cells: List[Cell], cellranger_outs, output_dir, clone_id_length, 
             ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
 
 
-def write_umimatrix(output_dir: Path, cells: List[Cell]):
+def write_umi_matrix(output_dir: Path, cells: List[Cell]):
     """Create a UMI-count matrix with cells as columns and clone ids as rows"""
     clone_ids = set()
     for cell in cells:
