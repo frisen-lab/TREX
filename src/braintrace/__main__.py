@@ -116,23 +116,23 @@ def parse_arguments():
              'Default: Auto-detected',
         default=None)
     parser.add_argument('--chromosome', '--chr',
-        help='Barcode chromosome name. Default: Last chromosome in the BAM file',
+        help='Name of chromosome on which clone id is located. Default: Last chromosome in BAM file',
         default=None)
     parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
         help='name of the run and directory created by program. Default: %(default)s',
         default=Path('lineage_run'))
     parser.add_argument('--delete', action='store_true', help='Delete output directory if it exists')
     parser.add_argument('--start', '-s',
-        help='Position of first barcode base. Default: Auto-detected',
+        help='Position of first clone id base. Default: Auto-detected',
         type=int, default=None)
     parser.add_argument('--end', '-e',
-        help='Position of last barcode base. Default: Auto-detected',
+        help='Position of last clone id base. Default: Auto-detected',
         type=int, default=None)
     parser.add_argument('--min-length', '-m',
-        help='Minimum number of bases a barcode must have. Default: %(default)s',
+        help='Minimum number of bases a clone id must have. Default: %(default)s',
         type=int, default=20)
     parser.add_argument('--max-hamming',
-        help='Hamming distance allowed for two barcodes to be called similar. '
+        help='Hamming distance allowed for two clone ids to be called similar. '
             'Default: %(default)s',
         type=int, default=5)
     parser.add_argument('--amplicon', '-a', metavar='DIRECTORY',
@@ -143,9 +143,9 @@ def parse_arguments():
         help='Path to a .csv file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
         default=None)
     parser.add_argument('--keep-single-reads', action='store_true', default=False,
-        help='Keep barcodes supported by only a single read. Default: Discard them')
+        help='Keep clone ids supported by only a single read. Default: Discard them')
     parser.add_argument('-l', '--loom',
-        help='If given, create loom-file from Cell Ranger and barcode data. '
+        help='If given, create loom-file from Cell Ranger and clone data. '
             'File will have the same name as the run',
         action='store_true')
     parser.add_argument('--restrict', metavar='FILE',
@@ -223,7 +223,7 @@ def run_braintrace(
             cell_ids = allowed_cell_ids
         else:
             cell_ids = outs_dir.cellids()
-        logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
+        logger.info(f'CellRanger reports {len(cell_ids)} cell ids')
 
         return read_bam(
             outs_dir.bam, output_dir, cell_ids, chromosome,
@@ -244,8 +244,8 @@ def run_braintrace(
         sys.exit(1)
     clone_ids = [
         r.clone_id for r in reads if '-' not in r.clone_id and '0' not in r.clone_id]
-    logger.info(f'Read {len(reads)} reads containing (parts of) the barcode '
-        f'({len(clone_ids)} full barcodes, {len(set(clone_ids))} unique)')
+    logger.info(f'Read {len(reads)} reads containing (parts of) the clone id '
+        f'({len(clone_ids)} full clone ids, {len(set(clone_ids))} unique)')
 
     write_reads(output_dir / "reads.txt", reads)
 
