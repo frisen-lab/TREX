@@ -180,7 +180,6 @@ def setup_logging(debug: bool) -> None:
 
 def add_file_logging(path: Path) -> None:
     file_handler = logging.FileHandler(path)
-    file_handler.setFormatter(NiceFormatter())
     root = logging.getLogger()
     root.addHandler(file_handler)
 
