@@ -61,16 +61,15 @@ def main():
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
     transcriptome_inputs = str(args.path).split(",")
-    if args.cellid_suffix:
-        cellid_suffixes = args.cellid_suffix.split(",")
+    if args.samples:
+        sample_names = args.samples.split(",")
+    elif len(transcriptome_inputs) == 1:
+        sample_names = [None]  # Do not modify suffixes
     else:
-        if len(transcriptome_inputs) == 1:
-            cellid_suffixes = [None]  # Do not modify suffixes
-        else:
-            cellid_suffixes = ["_{}".format(i) for i in range(1, len(transcriptome_inputs) + 1)]
-            logger.info("Using these cellid suffixes: %s", ", ".join(cellid_suffixes))
-    if len(cellid_suffixes) != len(transcriptome_inputs):
-        logger.error("The number of cellid suffixes (--cellid-suffix) must match the number of "
+        sample_names = ["_{}".format(i) for i in range(1, len(transcriptome_inputs) + 1)]
+        logger.info("Using these sample names: %s", ", ".join(sample_names))
+    if len(sample_names) != len(transcriptome_inputs):
+        logger.error("The number of sample names (--samples) must match the number of "
             "provided transcriptome datasets")
         sys.exit(1)
     if args.amplicon:
@@ -95,7 +94,7 @@ def main():
         end=args.end,
         transcriptome_inputs=transcriptome_inputs,
         amplicon_inputs=amplicon_inputs,
-        cellid_suffixes=cellid_suffixes,
+        sample_names=sample_names,
         max_hamming=args.max_hamming,
         min_length=args.min_length,
         keep_single_reads=args.keep_single_reads,
@@ -152,17 +151,15 @@ def parse_arguments():
         help='Restrict analysis to the cell IDs listed in FILE')
     parser.add_argument('--highlight',
         help='Highlight cell IDs listed in FILE in the clone graph')
-    parser.add_argument('--cellid-suffix',
-        help='Add suffixes to cell IDs to merge different Cell Ranger runs. Suffixes should be separated by comma and have the same order'
-        'as the given Cell Ranger directory paths. Example: "_1,_2,_3"',
-        default=None)
+    parser.add_argument('--samples',
+        help='Sample names separated by comma, in the same order as Cell Ranger outs directory '
+             'paths.', default=None)
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
-        help='Path to Cell Ranger "outs" directory. To combine several runs, please separate paths by comma. Example: "path1,path2,path3".'
-        'Do not forget to indicate cell IDs suffixes to separate cell IDs from differen runs with the --cellid-suffix flag')
+        help='Path(s) to Cell Ranger "outs" directories, separated by comma.')
     return parser.parse_args()
 
 
@@ -205,7 +202,7 @@ def run_braintrace(
     end: int,
     transcriptome_inputs: List[Path],
     amplicon_inputs: List[Path],
-    cellid_suffixes: List[str],
+    sample_names: List[str],
     max_hamming: int,
     min_length: int,
     keep_single_reads: bool,
@@ -229,8 +226,8 @@ def run_braintrace(
             start, end,
             file_name_suffix=file_name_suffix, cellid_suffix=suffix)
 
-    if len(cellid_suffixes) != len(set(cellid_suffixes)):
-        logger.error("The cell id suffixes need to be unique")
+    if len(sample_names) != len(set(sample_names)):
+        logger.error("The sample names need to be unique")
         sys.exit(1)  # TODO raise exception instead
 
     # Extracts reads from  and amplicon clone id chromosome from amplicon sequencing data
@@ -239,9 +236,11 @@ def run_braintrace(
     reads = list()
     try:
         # FIXME transcriptome and amplicon get the same suffix
-        for path, suffix in zip(transcriptome_inputs, cellid_suffixes):
+        for path, sample in zip(transcriptome_inputs, sample_names):
+            suffix = "_" + sample if sample else None
             reads.extend(read_one_dataset(path, suffix, "_entries"))
-        for path, suffix in zip(amplicon_inputs, cellid_suffixes):
+        for path, sample in zip(amplicon_inputs, sample_names):
+            suffix = "_" + sample if sample else None
             reads.extend(read_one_dataset(path, suffix, "_amp_entries"))
     except CellRangerError as e:
         logger.error("%s", e)
