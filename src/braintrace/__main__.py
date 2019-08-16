@@ -60,13 +60,13 @@ def main():
     allowed_cell_ids = None
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
-    transcriptome_inputs = str(args.path).split(",")
+    transcriptome_inputs = [Path(s) for s in args.path.split(",")]
     if args.samples:
         sample_names = args.samples.split(",")
     elif len(transcriptome_inputs) == 1:
         sample_names = [None]  # Do not modify suffixes
     else:
-        sample_names = ["_{}".format(i) for i in range(1, len(transcriptome_inputs) + 1)]
+        sample_names = [path.name for path in transcriptome_inputs]
         logger.info("Using these sample names: %s", ", ".join(sample_names))
     if len(sample_names) != len(transcriptome_inputs):
         logger.error("The number of sample names (--samples) must match the number of "
@@ -160,7 +160,7 @@ def parse_arguments():
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
-    parser.add_argument('path', metavar='DIRECTORY', type=Path,
+    parser.add_argument('path', metavar='DIRECTORY',
         help='Path(s) to Cell Ranger directories, separated by comma. Each must contain an "outs" subdirectory.')
     return parser.parse_args()
 
