@@ -252,7 +252,7 @@ def main():
         genome_name=args.genome_name,
         allowed_cell_ids=allowed_cell_ids,
         chromosome=args.chromosome,
-        start=args.start,
+        start=args.start - 1 if args.start is not None else None,
         end=args.end,
         transcriptome_inputs=transcriptome_inputs,
         amplicon_inputs=amplicon_inputs,
@@ -299,7 +299,7 @@ def run_braintrace(
 
         return read_bam(
             outs_dir.bam, output_dir, cell_ids, chromosome,
-            start - 1 if start is not None else None, end,
+            start, end,
             file_name_suffix=file_name_suffix, cellid_suffix=suffix)
 
     # Extracts reads from  and amplicon clone id chromosome from amplicon sequencing data
@@ -383,7 +383,7 @@ def run_braintrace(
         if len(transcriptome_inputs) > 1:
             logger.warning("Writing a loom file only for the first transcriptome dataset")
         outs_dir = make_cellranger_outs(transcriptome_inputs[0])
-        write_loom(cells, outs_dir, output_dir, clone_id_length=end - start + 1)
+        write_loom(cells, outs_dir, output_dir, clone_id_length=end - start)
 
 
 def setup_logging(debug: bool) -> None:
