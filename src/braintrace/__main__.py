@@ -2,14 +2,11 @@
 Extract and filter random barcodes from single-cell sequencing data
 """
 import sys
-import math
 import argparse
 import operator
 import shutil
 import warnings
 import logging
-import subprocess
-from io import StringIO
 from pathlib import Path
 from collections import Counter, defaultdict, OrderedDict
 from typing import List, Dict, NamedTuple, Iterable
@@ -24,9 +21,11 @@ with warnings.catch_warnings():
 
 from .cellranger import make_cellranger_outs, CellRangerError
 from .utils import NiceFormatter
-from .graph import Graph
 from .bam import read_bam
 from .clustering import cluster_sequences
+from .lineage import CompressedLineageGraph
+from .molecule import Molecule, compute_molecules
+from .cell import Cell, compute_cells
 
 try:
     __version__ = get_distribution('braintrace').version
@@ -97,37 +96,6 @@ def parse_arguments():
     return parser.parse_args()
 
 
-class Molecule(NamedTuple):
-    umi: str
-    cell_id: str
-    clone_id: str
-    read_count: int
-
-
-class Cell(NamedTuple):
-    cell_id: str
-    clone_id_counts: Dict[str, int]
-
-    def __hash__(self):
-        return hash(self.cell_id)
-
-
-class CellSet:
-    def __init__(self, cells: List[Cell]):
-        self.cells = cells
-        self.cell_ids = tuple(sorted(c.cell_id for c in cells))
-        self.clone_id_counts = sum((Counter(c.clone_id_counts) for c in cells), Counter())
-        self.n = len(cells)
-        self.cell_id = 'M-' + min(self.cell_ids)
-        self._hash = hash(self.cell_ids)
-
-    def __repr__(self):
-        return f'CellSet(cells={self.cells!r})'
-
-    def __hash__(self):
-        return self._hash
-
-
 def read_allowed_cellids(path):
     """
     Read a user-provided list of allowed cellIDs from Seurat like this:
@@ -144,67 +112,6 @@ def read_allowed_cellids(path):
         allowed_ids.append(line.split("_")[0] + "-1")
     logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
     return set(allowed_ids)
-
-
-def compute_consensus(sequences):
-    """
-    Compute a consensus for a set of sequences.
-
-    All sequences must have the same length.
-    """
-    if len(sequences) == 1:
-        return sequences[0]
-    assert sequences
-
-    # TODO
-    # Ensure that the sequences are actually somewhat similar
-
-    letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
-    length = len(sequences[0])
-    consens_np = np.zeros([length, 6], dtype='float16')
-    for sequence in sequences:
-        align = np.zeros([length, 6], dtype='float16')
-        for (i, ch) in enumerate(sequence):
-            # turns each base into a number and position in numpy array
-            if ch == 'A':
-                align[i, 0] = 1
-            elif ch == 'C':
-                align[i, 1] = 1
-            elif ch == 'G':
-                align[i, 2] = 1
-            elif ch == 'T':
-                align[i, 3] = 1
-            elif ch == '-':
-                align[i, 4] = 0.1
-            elif ch == '0':
-                align[i, 5] = 0.1
-        consens_np += align
-    # calculate base with maximum count for each position
-    bin_consens = np.argmax(align, axis=1)
-    # convert maximum counts into consensus sequence
-    return ''.join(letters[bin_consens])
-
-
-def compute_molecules(sorted_reads):
-    """
-    - Forms groups of reads with identical CellIDs and UMIs => belong to one molecule
-
-    - forms consensus sequence of all clone ids of one group,
-    """
-    groups = defaultdict(list)
-    for read in sorted_reads:
-        groups[(read.umi, read.cell_id)].append(read.clone_id)
-
-    molecules = []
-    for (umi, cell_id), clone_ids in groups.items():
-        clone_id_consensus = compute_consensus(clone_ids)
-        molecules.append(
-            Molecule(cell_id=cell_id, umi=umi, clone_id=clone_id_consensus,
-                read_count=len(clone_ids)))
-
-    sorted_molecules = sorted(molecules, key=lambda mol: (mol.cell_id, mol.clone_id, mol.umi))
-
-    return sorted_molecules
 
 
 def correct_clone_ids(
@@ -253,32 +160,6 @@ def correct_clone_ids(
     return new_molecules
 
 
-def compute_cells(sorted_molecules: List[Molecule], minimum_clone_id_length: int) -> List[Cell]:
-    """
-    Group molecules into cells.
-    """
-    # 1. Forms groups of molecules (with set clone id minimum length) that have identical cellIDs
-    #    => belong to one cell,
-    # 2. counts number of appearances of each clone id in each group,
-
-    cell_id_groups = defaultdict(list)
-    for molecule in sorted_molecules:
-        clone_id = molecule.clone_id
-        pure_li = clone_id.strip('-')
-        # TODO may not work as intended (strip only removes prefixes and suffixes)
-        pure_bc0 = clone_id.strip('0')
-        if len(pure_li) >= minimum_clone_id_length and len(pure_bc0) >= minimum_clone_id_length:
-            cell_id_groups[molecule.cell_id].append(molecule)
-
-    cells = []
-    for cell_id, molecules in cell_id_groups.items():
-        clone_ids = [molecule.clone_id for molecule in molecules]
-        clone_id_counts = OrderedDict(sorted(Counter(clone_ids).most_common(),
-            key=lambda x: x[0].count('-')))
-        cells.append(Cell(cell_id=cell_id, clone_id_counts=clone_id_counts))
-    return cells
-
-
 def filter_cells(
         cells: Iterable[Cell], molecules: Iterable[Molecule],
         keep_single_reads: bool = False) -> List[Cell]:
@@ -316,230 +197,6 @@ def filter_cells(
         if clone_id_counts:
             new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
     return new_cells
-
-
-class LineageGraph:
-    def __init__(self, cells: List[Cell]):
-        self._cells = cells
-        self._graph = self._make_cell_graph()
-
-    def _make_cell_graph(self):
-        """
-        Create graph of cells; add edges between cells that
-        share at least one barcode. Return created graph.
-        """
-        cells = [cell for cell in self._cells if cell.clone_id_counts]
-        graph = Graph(cells)
-        for i in range(len(cells)):
-            for j in range(i + 1, len(cells)):
-                if set(cells[i].clone_id_counts) & set(cells[j].clone_id_counts):
-                    # Cell i and j share a clone id
-                    graph.add_edge(cells[i], cells[j])
-        return graph
-
-    def _make_barcode_graph(self):
-        clone_id_counts: Dict[str, int] = Counter()
-        for cell in self._cells:
-            clone_id_counts.update(cell.clone_id_counts)
-        all_clone_ids = list(clone_id_counts)
-
-        # Create a graph of barcodes; add an edge for barcodes occuring in the same cell
-        graph = Graph(all_clone_ids)
-        for cell in self._cells:
-            barcodes = list(cell.clone_id_counts)
-            for other in barcodes[1:]:
-                graph.add_edge(barcodes[0], other)
-        return graph
-
-    def lineages(self) -> Dict[str, List[Cell]]:
-        """
-        Compute lineages. Return a dict that maps a representative clone id to a list of cells.
-        """
-        clusters = [g.nodes() for g in self._graph.connected_components()]
-
-        def most_abundant_clone_id(cells: List[Cell]):
-            counts = Counter()
-            for cell in cells:
-                counts.update(cell.clone_id_counts)
-            return max(counts, key=lambda k: (counts[k], k))
-
-        return {most_abundant_clone_id(cells): cells for cells in clusters}
-
-    def dot(self, highlight=None):
-        s = StringIO()
-        print('graph g {', file=s)
-        for node1, node2 in self._graph.edges():
-            print(f'"{node1.cell_id}" -- "{node2.cell_id}"', file=s)
-        print('}', file=s)
-        return s.getvalue()
-
-    @property
-    def graph(self):
-        return self._graph
-
-
-class CompressedLineageGraph:
-    def __init__(self, cells: List[Cell]):
-        self._cells = self._compress_cells(cells)
-        self._graph = self._make_cell_graph()
-
-    @staticmethod
-    def _compress_cells(cells):
-        cell_lists = defaultdict(list)
-        for cell in cells:
-            clone_ids = tuple(cell.clone_id_counts)
-            cell_lists[clone_ids].append(cell)
-
-        cell_sets = []
-        for cells in cell_lists.values():
-            cell_sets.append(CellSet(cells))
-        return cell_sets
-
-    def _make_cell_graph(self):
-        """
-        Create graph of cells; add edges between cells that
-        share at least one clone id. Return created graph.
-        """
-        cells = [cell for cell in self._cells if cell.clone_id_counts]
-        graph = Graph(cells)
-        for i in range(len(cells)):
-            for j in range(i + 1, len(cells)):
-                if set(cells[i].clone_id_counts) & set(cells[j].clone_id_counts):
-                    # Cell i and j share a clone id
-                    graph.add_edge(cells[i], cells[j])
-        return graph
-
-    def bridges(self):
-        """Find edges that appear to incorrectly bridge two unrelated subclusters."""
-        # A bridge as defined here is simply an edge between two nodes that
-        # have a non-empty set of common neighbors. We do not check for actual
-        # connectivity at the moment.
-        bridges = []
-        for node1, node2 in self._graph.edges():
-            neighbors1 = self._graph.neighbors(node1)
-            neighbors2 = self._graph.neighbors(node2)
-            common_neighbors = set(neighbors1) & set(neighbors2)
-            if not common_neighbors and (len(neighbors1) > 1 or len(neighbors2) > 1):
-                bridges.append((node1, node2))
-        return bridges
-
-    def remove_edges(self, edges):
-        for node1, node2 in edges:
-            self._graph.remove_edge(node1, node2)
-
-    @staticmethod
-    def _expand_cell_sets(cell_sets: List[CellSet]) -> List[Cell]:
-        """Expand a list of CellSets into a list of Cells"""
-        cells = []
-        for cell_set in cell_sets:
-            cells.extend(cell_set.cells)
-        return cells
-
-    def write_lineages(self, path):
-        lineages = self.lineages()
-        with open(path, 'w') as f:
-            print(
-                '#Each output line corresponds to one barcode group (clone) and has '
-                'the following style: Barcode\t:\tCellID1\tCellID2...\n'
-                '# dash (-) = barcode base outside of read, '
-                '0 = deletion in barcode sequence (position unknown)', file=f)
-
-            for clone_id in sorted(lineages):
-                cells = sorted(lineages[clone_id])
-                row = [clone_id, ':']
-                for cell in cells:
-                    row.append(cell.cell_id)
-                print(*row, sep='\t', file=f)
-        return lineages
-
-    def lineages(self) -> Dict[str, List[Cell]]:
-        """
-        Compute lineages. Return a dict that maps a representative clone id to a list of cells.
-        """
-        compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
-        # Expand the CellSet instances into cells
-        clusters = [self._expand_cell_sets(cluster) for cluster in compressed_clusters]
-
-        def most_abundant_clone_id(cells: List[Cell]):
-            counts = Counter()
-            for cell in cells:
-                counts.update(cell.clone_id_counts)
-            return max(counts, key=lambda k: (counts[k], k))
-
-        return {most_abundant_clone_id(cells): cells for cells in clusters}
-
-    def plot(self, path, highlight=None):
-        graphviz_path = path.with_suffix(".gv")
-        with open(graphviz_path, "w") as f:
-            print(self.dot(highlight), file=f)
-        pdf_path = str(path.with_suffix(".pdf"))
-        subprocess.run(["sfdp", "-Tpdf", "-o", pdf_path, graphviz_path], check=True)
-
-    def dot(self, highlight=None):
-        if highlight is not None:
-            highlight = set(highlight)
-        max_width = 10
-        edge_scaling = (max_width - 1) / math.log(
-            max((node1.n * node2.n for node1, node2 in self._graph.edges()), default=math.exp(1)))
-        node_scaling = (max_width - 1) / math.log(max(node.n for node in self._graph.nodes()))
-        s = StringIO()
-        print('graph g {', file=s)
-        # Using overlap=false would be nice here, but that does not work with some Graphviz builds
-        print('  graph [outputorder=edgesfirst];', file=s)
-        print('  edge [color=blue];', file=s)
-        print('  node [style=filled, fillcolor=white, fontname="Roboto"];', file=s)
-        for node in self._graph.nodes():
-            if self._graph.neighbors(node):
-                width = int(1 + node_scaling * math.log(node.n))
-                intersection = set(node.cell_ids) & highlight
-                hl = ',fillcolor=yellow' if intersection else ''
-                hl_label = f' ({len(intersection)})' if intersection else ''
-                print(
-                    f'  "{node.cell_id}" [penwidth={width}{hl},label="{node.cell_id}\\n{node.n}{hl_label}"];',
-                    file=s)
-        for node1, node2 in self._graph.edges():
-            width = int(1 + edge_scaling * math.log(node1.n * node2.n))
-            neighbors1 = self._graph.neighbors(node1)
-            neighbors2 = self._graph.neighbors(node2)
-            common_neighbors = set(neighbors1) & set(neighbors2)
-            bridge = ''
-            if (len(neighbors1) > 1 or len(neighbors2) > 1) and not common_neighbors:
-                bridge = ', style=dashed, color=red'
-                width = 2
-            print(f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}{bridge}];', file=s)
-
-        print('}', file=s)
-        return s.getvalue()
-
-    def components_txt(self, highlight=None):
-        s = StringIO()
-        print('# Lineage graph components (only incomplete/density<1)', file=s)
-        n_complete = 0
-        for subgraph in self.graph.connected_components():
-            cells = sorted(self._expand_cell_sets(subgraph.nodes()), key=lambda c: c.cell_id)
-            n_nodes = len(cells)
-            n_edges = sum(n1.n * n2.n for n1, n2 in subgraph.edges())
-            n_edges += sum(node.n * (node.n - 1) // 2 for node in subgraph.nodes())
-            possible_edges = n_nodes * (n_nodes - 1) // 2
-            if n_edges == possible_edges:
-                n_complete += 1
-                continue
-            density = n_edges / possible_edges
-            print(f'## {n_nodes} nodes, {n_edges} edges, density {density:.3f}', file=s)
-            counter = Counter()
-            for cell in cells:
-                if highlight is not None and cell.cell_id in highlight:
-                    highlighting = '+'
-                else:
-                    highlighting = ''
-                print(cell.cell_id, highlighting, *sorted(cell.clone_id_counts.keys()), sep='\t', file=s)
-                counter.update(cell.clone_id_counts.keys())
-        print(f'# {n_complete} complete components', file=s)
-        return s.getvalue()
-
-    @property
-    def graph(self):
-        return self._graph
 
 
 def main():
