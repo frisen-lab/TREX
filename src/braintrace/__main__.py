@@ -8,8 +8,8 @@ import shutil
 import warnings
 import logging
 from pathlib import Path
-from collections import Counter, defaultdict, OrderedDict
-from typing import List, Dict, NamedTuple, Iterable
+from collections import Counter
+from typing import List, Dict, Iterable
 from pkg_resources import get_distribution, DistributionNotFound
 
 from alignlib import hamming_distance
