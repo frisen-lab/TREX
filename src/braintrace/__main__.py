@@ -230,6 +230,10 @@ def run_braintrace(
             start, end,
             file_name_suffix=file_name_suffix, cellid_suffix=suffix)
 
+    if len(cellid_suffixes) != len(set(cellid_suffixes)):
+        logger.error("The cell id suffixes need to be unique")
+        sys.exit(1)  # TODO raise exception instead
+
     # Extracts reads from  and amplicon clone id chromosome from amplicon sequencing data
     # Combines reads from amplicon dataset with reads from transcriptome dataset for
     # clone id, cellID and UMI extraction
