@@ -1,5 +1,5 @@
 Command line arguments: --delete --loom --umi-matrix -s 695 -e 724 tests/data/outs
-CellRanger reports 4103 cell ids
+Considering 4103 cell ids
 Reading clone ids from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
 Skipped 1628 reads with unrecognized cell ids (and 67 without UMI or cell id)
 Cache hits: 3271. Cache misses: 937

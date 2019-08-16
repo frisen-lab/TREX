@@ -215,15 +215,15 @@ def run_braintrace(
     restrict_cell_ids: List[str],
     highlight_cell_ids: List[str],
     should_write_loom: bool,
-
 ):
+
     def read_one_dataset(path, suffix, file_name_suffix):
         outs_dir = make_cellranger_outs(path, genome_name)
         if allowed_cell_ids:
             cell_ids = allowed_cell_ids
         else:
             cell_ids = outs_dir.cellids()
-        logger.info(f'CellRanger reports {len(cell_ids)} cell ids')
+        logger.info(f'Considering {len(cell_ids)} cell ids')
 
         return read_bam(
             outs_dir.bam, output_dir, cell_ids, chromosome,
