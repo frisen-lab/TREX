@@ -201,15 +201,9 @@ def filter_cells(
 
 def main():
     args = parse_arguments()
-    output_dir = args.output
     setup_logging(debug=False)
 
-    # PART I + II: Clone id extraction and reads construction
-
-    # 1. Extracts reads aligning to clone id chromosome,
-    # 2. extracts clone ids, UMIs and cellIDs from reads,
-    # 3. outputs UMI-sorted reads with barcodes
-
+    output_dir = args.output
     try:
         make_output_dir(output_dir, args.delete)
     except FileExistsError:
@@ -237,7 +231,7 @@ def main():
             cellid_suffixes = ["_{}".format(i) for i in range(1, len(transcriptome_inputs) + 1)]
             logger.info("Using these cellid suffixes: %s", ", ".join(cellid_suffixes))
     if len(cellid_suffixes) != len(transcriptome_inputs):
-        logger.error("The number of cellid suffixs (--cellid-suffix) must match the number of "
+        logger.error("The number of cellid suffixes (--cellid-suffix) must match the number of "
             "provided transcriptome datasets")
         sys.exit(1)
     if args.amplicon:
@@ -248,8 +242,55 @@ def main():
     else:
         amplicon_inputs = []
 
+    highlight_cell_ids = []
+    if args.highlight:
+        with open(args.highlight) as f:
+            highlight_cell_ids = [line.strip() for line in f]
+
+    run_braintrace(
+        output_dir,
+        genome_name=args.genome_name,
+        allowed_cell_ids=allowed_cell_ids,
+        chromosome=args.chromosome,
+        start=args.start,
+        end=args.end,
+        transcriptome_inputs=transcriptome_inputs,
+        amplicon_inputs=amplicon_inputs,
+        cellid_suffixes=cellid_suffixes,
+        max_hamming=args.max_hamming,
+        min_length=args.min_length,
+        keep_single_reads=args.keep_single_reads,
+        should_write_umi_matrix=args.umi_matrix,
+        should_plot=args.plot,
+        restrict_cell_ids=restrict_cell_ids,
+        highlight_cell_ids=highlight_cell_ids,
+        should_write_loom=args.loom,
+    )
+    logger.info('Run completed!')
+
+
+def run_braintrace(
+    output_dir: Path,
+    genome_name: str,
+    allowed_cell_ids: List[str],
+    chromosome: str,
+    start: int,
+    end: int,
+    transcriptome_inputs: List[Path],
+    amplicon_inputs: List[Path],
+    cellid_suffixes: List[str],
+    max_hamming: int,
+    min_length: int,
+    keep_single_reads: bool,
+    should_write_umi_matrix: bool,
+    should_plot: bool,
+    restrict_cell_ids: List[str],
+    highlight_cell_ids: List[str],
+    should_write_loom: bool,
+
+):
     def read_one_dataset(path, suffix, file_name_suffix):
-        outs_dir = make_cellranger_outs(path, args.genome_name)
+        outs_dir = make_cellranger_outs(path, genome_name)
         if allowed_cell_ids:
             cell_ids = allowed_cell_ids
         else:
@@ -257,8 +298,8 @@ def main():
         logger.info(f'Found {len(cell_ids)} cell ids in the barcodes.tsv file')
 
         return read_bam(
-            outs_dir.bam, output_dir, cell_ids, args.chromosome,
-            args.start - 1 if args.start is not None else None, args.end,
+            outs_dir.bam, output_dir, cell_ids, chromosome,
+            start - 1 if start is not None else None, end,
             file_name_suffix=file_name_suffix, cellid_suffix=suffix)
 
     # Extracts reads from  and amplicon clone id chromosome from amplicon sequencing data
@@ -282,8 +323,6 @@ def main():
 
     write_reads(output_dir / "reads.txt", sorted_reads)
 
-    # Part III: Molecule construction
-
     molecules = compute_molecules(sorted_reads)
     clone_ids = [
         m.clone_id for m in molecules if '-' not in m.clone_id and '0' not in m.clone_id]
@@ -292,22 +331,22 @@ def main():
 
     write_molecules(output_dir / 'molecules.txt', molecules)
 
-    corrected_molecules = correct_clone_ids(molecules, args.max_hamming, args.min_length)
+    corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
     clone_ids = [m.clone_id for m in corrected_molecules
         if '-' not in m.clone_id and '0' not in m.clone_id]
     logger.info(f'After clone id correction, {len(set(clone_ids))} unique clone ids remain')
 
     write_molecules(output_dir / 'molecules_corrected.txt', corrected_molecules)
 
-    cells = compute_cells(corrected_molecules, args.min_length)
+    cells = compute_cells(corrected_molecules, min_length)
     logger.info(f'Detected {len(cells)} cells')
     write_cells(output_dir / 'cells.txt', cells)
 
-    cells = filter_cells(cells, corrected_molecules, args.keep_single_reads)
+    cells = filter_cells(cells, corrected_molecules, keep_single_reads)
     logger.info(f'{len(cells)} filtered cells remain')
     write_cells(output_dir / 'cells_filtered.txt', cells)
 
-    if args.umi_matrix:
+    if should_write_umi_matrix:
         logger.info(f"Writing UMI matrix")
         write_umimatrix(output_dir, cells)
 
@@ -317,14 +356,10 @@ def main():
         logger.info(f'Restricting to {len(cells)} cells')
 
     lineage_graph = CompressedLineageGraph(cells)
-    highlight_cell_ids = []
-    if args.highlight:
-        with open(args.highlight) as f:
-            highlight_cell_ids = [line.strip() for line in f]
 
     with open(output_dir / 'components.txt', 'w') as components_file:
         print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
-    if args.plot:
+    if should_plot:
         logger.info('Plotting compressed lineage graph')
         lineage_graph.plot(output_dir / 'graph', highlight_cell_ids)
 
@@ -334,7 +369,7 @@ def main():
     with open(output_dir / 'components_corrected.txt', 'w') as components_file:
         print(lineage_graph.components_txt(highlight_cell_ids), file=components_file, end='')
 
-    if args.plot:
+    if should_plot:
         logger.info('Plotting corrected lineage graph')
         lineage_graph.plot(output_dir / 'graph_corrected', highlight_cell_ids)
 
@@ -344,13 +379,11 @@ def main():
     logger.info('Lineage size histogram (size: count): %s',
         ', '.join(f'{k}: {v}' for k, v in lineage_sizes.items()))
 
-    if args.loom:
+    if should_write_loom:
         if len(transcriptome_inputs) > 1:
             logger.warning("Writing a loom file only for the first transcriptome dataset")
         outs_dir = make_cellranger_outs(transcriptome_inputs[0])
-        write_loom(cells, outs_dir, output_dir, clone_id_length=args.end - args.start + 1)
-
-    logger.info('Run completed!')
+        write_loom(cells, outs_dir, output_dir, clone_id_length=end - start + 1)
 
 
 def setup_logging(debug: bool) -> None:
