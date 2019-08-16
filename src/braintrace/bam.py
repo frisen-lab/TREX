@@ -87,9 +87,7 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, clone
             logger.info(f'Skipped {unknown_ids} reads with unrecognized cell ids '
                         f'(and {no_umi+no_cell_id} without UMI or cell id)')
     logger.info(f"Cache hits: {cache_hit}. Cache misses: {cache_miss}")
-    sorted_reads = sorted(reads, key=lambda read: (read.umi, read.cell_id, read.clone_id))
-    assert len(sorted_reads) == 0 or len(sorted_reads[0].clone_id) == clone_id_end - clone_id_start
-    return sorted_reads
+    return reads
 
 
 def detect_clone_id_location(alignment_file, reference_name):
