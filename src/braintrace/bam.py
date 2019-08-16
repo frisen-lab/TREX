@@ -17,7 +17,16 @@ class Read(NamedTuple):
     clone_id: str
 
 
-def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, clone_id_start=None, clone_id_end=None, file_name_suffix="_entries", cellid_suffix=None):
+def read_bam(
+    bam_path: Path,
+    output_dir: Path,
+    allowed_cell_ids,
+    chr_name: str,
+    clone_id_start=None,
+    clone_id_end=None,
+    file_name_suffix="_entries",
+    cellid_suffix=None,
+):
     """
     bam_path -- path to input BAM file
     output_dir -- path to an output directory into which a BAM file is written that contais all
@@ -54,14 +63,15 @@ def read_bam(bam_path: Path, output_dir: Path, allowed_cell_ids, chr_name, clone
                     continue
                 # Filters out reads that have not approved cellIDs
                 cell_id = read.get_tag('CB')
+                # Gives cellIDs an experiment-specific suffix
+                if cellid_suffix is not None:
+                    assert cell_id.endswith("-1")
+                    cell_id = cell_id[:-2]
+                    cell_id += cellid_suffix
+
                 if cell_id not in allowed_cell_ids:
                     unknown_ids += 1
                     continue
-                # Gives cellIDs an experiment-specific suffix
-                if cellid_suffix is not None:
-                    if cell_id.endswith("-1"):
-                        cell_id = cell_id[:-2]
-                    cell_id += cellid_suffix
 
                 # Use a cache of clone id extraction results. This helps when there are
                 # many identical reads (amplicon data)

@@ -139,8 +139,8 @@ def parse_arguments():
         help='Path to Cell Ranger "outs" directory containing sequencing of the EGFP-barcode amplicon library. When combining'
         'Cell Ranger runs indicate paths separated by comma and in same order as paths for transcriptome data. Example "path1,path2,path3"',
         default=None)
-    parser.add_argument('--filter-cellids', '-f', metavar='DIRECTORY', type=Path,
-        help='Path to a .csv file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
+    parser.add_argument('--filter-cellids', '-f', metavar='CSV', type=Path,
+        help='CSV file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
         default=None)
     parser.add_argument('--keep-single-reads', action='store_true', default=False,
         help='Keep clone ids supported by only a single read. Default: Discard them')
@@ -238,6 +238,7 @@ def run_braintrace(
     # clone id, cellID and UMI extraction
     reads = list()
     try:
+        # FIXME transcriptome and amplicon get the same suffix
         for path, suffix in zip(transcriptome_inputs, cellid_suffixes):
             reads.extend(read_one_dataset(path, suffix, "_entries"))
         for path, suffix in zip(amplicon_inputs, cellid_suffixes):
@@ -279,6 +280,7 @@ def run_braintrace(
         logger.info(f"Writing UMI matrix")
         write_umi_matrix(output_dir, cells)
 
+    # TODO remove --restrict in favor of --filter-cellids
     if restrict_cell_ids is not None:
         restrict_cell_ids = set(restrict_cell_ids)
         cells = [cell for cell in cells if cell.cell_id in restrict_cell_ids]
@@ -317,18 +319,17 @@ def run_braintrace(
 
 def read_allowed_cellids(path):
     """
-    Read a user-provided list of allowed cellIDs from Seurat like this:
+    Read a user-provided list of allowed cell ids from a CSV
 
-    AAACCTGAGCGACGTA
+    Example:
 
-    OR:
-
-    AAACCTGCATACTCTT_1
+    "X","z"
+    1,"ACGTACGTACGTACGT_10x99"
     """
     allowed_ids = []
     filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
-    for line in filtered_df.iloc[:, 0]:
-        allowed_ids.append(line.split("_")[0] + "-1")
+    for cell_id in filtered_df.iloc[:, 0]:
+        allowed_ids.append(cell_id)
     logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
     return set(allowed_ids)
 
