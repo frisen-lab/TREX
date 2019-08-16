@@ -19,7 +19,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
 
-from .cellranger import make_cellranger_outs, CellRangerError
+from .cellranger import make_cellranger, CellRangerError
 from .utils import NiceFormatter
 from .bam import read_bam
 from .clustering import cluster_sequences
@@ -135,8 +135,10 @@ def parse_arguments():
             'Default: %(default)s',
         type=int, default=5)
     parser.add_argument('--amplicon', '-a', metavar='DIRECTORY',
-        help='Path to Cell Ranger "outs" directory containing sequencing of the EGFP-barcode amplicon library. When combining'
-        'Cell Ranger runs indicate paths separated by comma and in same order as paths for transcriptome data. Example "path1,path2,path3"',
+        help='Path to Cell Ranger result directory (a subdirectory "outs" must exist) '
+        'containing sequencing of the EGFP-barcode amplicon library. When combining'
+        'Cell Ranger runs indicate paths separated by comma and in same order as paths '
+        'for transcriptome data. Example "path1,path2,path3"',
         default=None)
     parser.add_argument('--filter-cellids', '-f', metavar='CSV', type=Path,
         help='CSV file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
@@ -152,14 +154,14 @@ def parse_arguments():
     parser.add_argument('--highlight',
         help='Highlight cell IDs listed in FILE in the clone graph')
     parser.add_argument('--samples',
-        help='Sample names separated by comma, in the same order as Cell Ranger outs directory '
-             'paths.', default=None)
+        help='Sample names separated by comma, in the same order as Cell Ranger directories',
+        default=None)
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
     parser.add_argument('path', metavar='DIRECTORY', type=Path,
-        help='Path(s) to Cell Ranger "outs" directories, separated by comma.')
+        help='Path(s) to Cell Ranger directories, separated by comma. Each must contain an "outs" subdirectory.')
     return parser.parse_args()
 
 
@@ -214,15 +216,15 @@ def run_braintrace(
 ):
 
     def read_one_dataset(path, suffix, file_name_suffix):
-        outs_dir = make_cellranger_outs(path, genome_name)
+        cellranger_dir = make_cellranger(path, genome_name)
         if allowed_cell_ids:
             cell_ids = allowed_cell_ids
         else:
-            cell_ids = outs_dir.cellids()
+            cell_ids = cellranger_dir.cellids()
         logger.info(f'Considering {len(cell_ids)} cell ids')
 
         return read_bam(
-            outs_dir.bam, output_dir, cell_ids, chromosome,
+            cellranger_dir.bam, output_dir, cell_ids, chromosome,
             start, end,
             file_name_suffix=file_name_suffix, cellid_suffix=suffix)
 
@@ -312,8 +314,8 @@ def run_braintrace(
     if should_write_loom:
         if len(transcriptome_inputs) > 1:
             logger.warning("Writing a loom file only for the first transcriptome dataset")
-        outs_dir = make_cellranger_outs(transcriptome_inputs[0])
-        write_loom(cells, outs_dir, output_dir, clone_id_length=end - start)
+        cellranger = make_cellranger(transcriptome_inputs[0])
+        write_loom(cells, cellranger, output_dir, clone_id_length=end - start)
 
 
 def read_allowed_cellids(path):
@@ -448,9 +450,9 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
             print(*row, sep='\t', file=f)
 
 
-def write_loom(cells: List[Cell], cellranger_outs, output_dir, clone_id_length, top_n=6):
+def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
     """
-    Create a loom file from a Cell Ranger sample directory and augment it with information about
+    Create a loom file from a Cell Ranger result directory and augment it with information about
     the most abundant clone id and their counts.
     """
     # For each cell, collect the most abundant clone ids and their counts
@@ -464,10 +466,10 @@ def write_loom(cells: List[Cell], cellranger_outs, output_dir, clone_id_length, 
         counts = counts[:top_n]
         most_abundant[cell.cell_id] = counts
 
-    loompy.create_from_cellranger(cellranger_outs.sample_dir, outdir=output_dir)
+    loompy.create_from_cellranger(cellranger.sample_dir, outdir=output_dir)
     # create_from_cellranger() does not tell us the name of the created file,
     # so we need to re-derive it from the sample name.
-    sample_name = cellranger_outs.sample_dir.name
+    sample_name = cellranger.sample_dir.name
     loom_path = output_dir / (sample_name + '.loom')
 
     with loompy.connect(loom_path) as ds:

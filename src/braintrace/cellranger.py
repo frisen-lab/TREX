@@ -11,21 +11,21 @@ class CellRangerError(Exception):
     pass
 
 
-class CellRangerOuts2:
+class CellRangerDir2:
     """CellRanger 2 "outs/" directory structure"""
     MATRICES = 'filtered_gene_bc_matrices'
     BARCODES = 'barcodes.tsv'
     BAM = 'possorted_genome_bam.bam'
 
     def __init__(self, path: Path, genome_name: str = None):
-        self.path = path
-        matrices_path = path / self.MATRICES
+        self.path = path / "outs"
+        matrices_path = self.path / self.MATRICES
         if not matrices_path.exists():
             raise CellRangerError(
-                f"Directory '{self.MATRICES}/' must exist in the given outs/ directory")
+                f"Directory 'outs/{self.MATRICES}/' must exist in the given directory")
         self.matrices_path: Path = matrices_path
-        self.bam = path / self.BAM
-        self.sample_dir = path.parent
+        self.bam = self.path / self.BAM
+        self.sample_dir = path
         self.genome_dir = self._detect_genome_dir(genome_name)
         self.barcodes_path = self.genome_dir / self.BARCODES
 
@@ -60,7 +60,7 @@ class CellRangerOuts2:
         return set(ids)
 
 
-class CellRangerOuts3(CellRangerOuts2):
+class CellRangerDir3(CellRangerDir2):
     MATRICES = 'filtered_feature_bc_matrix'
     BARCODES = 'barcodes.tsv.gz'
 
@@ -68,10 +68,10 @@ class CellRangerOuts3(CellRangerOuts2):
         return self.matrices_path
 
 
-def make_cellranger_outs(outs_path: Path, *args, **kwargs):
-    """Detect CellRanger outs/ format and return an appropriate instance of CellRangerOuts2/3"""
-    outs_path = Path(outs_path)
-    if (outs_path / 'filtered_gene_bc_matrices').exists():
-        return CellRangerOuts2(outs_path, *args, **kwargs)
+def make_cellranger(path: Path, *args, **kwargs):
+    """Detect CellRanger outs/ format and return an appropriate instance of CellRangerDir2/3"""
+    path = Path(path)
+    if (path / "outs" / "filtered_gene_bc_matrices").exists():
+        return CellRangerDir2(path, *args, **kwargs)
     else:
-        return CellRangerOuts3(outs_path, *args, **kwargs)
+        return CellRangerDir3(path, *args, **kwargs)
