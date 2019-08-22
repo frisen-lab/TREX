@@ -44,7 +44,7 @@ class BraintraceError(Exception):
 
 def main():
     args = parse_arguments()
-    setup_logging(debug=False)
+    setup_logging(debug=args.debug)
 
     output_dir = args.output
     try:
@@ -118,6 +118,8 @@ def main():
 def parse_arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    parser.add_argument('--debug', default=False, action='store_true',
+        help='Print some extra debugging messages')
     parser.add_argument('--genome-name', metavar='NAME',
         help='Name of the genome as indicated in Cell Ranger count run with the flag --genome. '
              'Default: Auto-detected',
@@ -347,6 +349,8 @@ class DatasetReader:
             raise BraintraceError("Reading amplicon data not supported at the moment")
 
         if allowed_cell_ids:
+            logger.debug("Allowed cell ids:\n- %s\n  ...", "\n- ".join(list(allowed_cell_ids)[:10]))
+            logger.debug("Cell ids of reads:\n- %s\n  ...", "\n- ".join(r.cell_id for r in reads[:10]))
             reads = [r for r in reads if r.cell_id in allowed_cell_ids]
         if not reads:
             raise BraintraceError("No reads left after --filter-cellids filtering")
