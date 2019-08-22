@@ -4,7 +4,7 @@ Extract reads from BAM files
 import logging
 from collections import Counter
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, List
 
 from pysam import AlignmentFile
 
@@ -19,13 +19,11 @@ class Read(NamedTuple):
 
 def read_bam(
     bam_path: Path,
-    output_dir: Path,
-    allowed_cell_ids,
+    output_bam_path: Path,
+    allowed_cell_ids: List[str],
     chr_name: str,
     clone_id_start=None,
     clone_id_end=None,
-    file_name_suffix="_entries",
-    cellid_suffix=None,
 ):
     """
     bam_path -- path to input BAM file
@@ -45,33 +43,32 @@ def read_bam(
             f"in {bam_path}")
         if clone_id_end - clone_id_start < 10:
             raise ValueError('Auto-detected clone id too short, something is wrong')
-        output_bam_path = output_dir / (chr_name + file_name_suffix + '.bam')
 
         clone_id_extractor = CachedCloneIdExtractor(clone_id_start, clone_id_end)
         with AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
             # Fetches those reads aligning to the artifical, clone-id-containing chromosome
             reads = []
-            unknown_ids = no_cell_id = no_umi = 0
+            no_cell_id = no_umi = 0
             for read in alignment_file.fetch(chr_name, max(0, clone_id_start - 10), clone_id_end + 10):
                 # Skip reads without cellID or UMI
-                if not read.has_tag('CB') or not read.has_tag('UB'):
-                    if not read.has_tag('CB'):
+                has_cell_id = read.has_tag("CB")
+                has_umi = read.has_tag("UB")
+                if not has_cell_id or not has_umi:
+                    if not has_cell_id:
                         no_cell_id += 1
-                    if not read.has_tag('UB'):
+                    if not has_umi:
                         no_umi += 1
                     continue
-                # Filters out reads that have not approved cellIDs
-                cell_id = read.get_tag('CB')
-                # Gives cellIDs an experiment-specific suffix
-                if cellid_suffix is not None:
-                    assert cell_id.endswith("-1")
-                    cell_id = cell_id[:-2]
-                    cell_id += cellid_suffix
-
-                if cell_id not in allowed_cell_ids:
-                    unknown_ids += 1
+                cell_id = read.get_tag("CB")
+                if allowed_cell_ids and cell_id not in allowed_cell_ids:
+                    no_cell_id += 1
                     continue
-
+                if not cell_id.endswith("-1"):
+                    raise ValueError(
+                        f"A cell id ({cell_id!r}) was found that does not end in '-1'. "
+                        "Currently, this type of data cannot be used"
+                    )
+                cell_id = cell_id[:-2]
                 clone_id = clone_id_extractor.extract(read)
                 if clone_id is None:
                     # Read does not cover the clone id
@@ -82,8 +79,8 @@ def read_bam(
                 out_bam.write(read)
 
     logger.info(
-        f"Found {len(reads)} reads with usable clone ids. Skipped "
-        f"{unknown_ids}/{no_cell_id}/{no_umi} reads (unrecognized cell id/no cell id/no UMI)")
+        f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id, "
+        f"{no_umi} without UMI.")
     logger.debug(f"Cache hits: {clone_id_extractor.hits}. Cache misses: {clone_id_extractor.misses}")
     return reads
 
