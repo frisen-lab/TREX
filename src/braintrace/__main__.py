@@ -64,7 +64,7 @@ def main():
     allowed_cell_ids = None
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
-    transcriptome_inputs = [Path(s) for s in args.path.split(",")]
+    transcriptome_inputs = args.path
     if args.samples:
         sample_names = args.samples.split(",")
     elif len(transcriptome_inputs) == 1:
@@ -77,7 +77,7 @@ def main():
             "provided transcriptome datasets")
         sys.exit(1)
     if args.amplicon:
-        amplicon_inputs = [Path(a) for a in args.amplicon.split(",")]
+        amplicon_inputs = args.amplicon
         if len(transcriptome_inputs) != len(amplicon_inputs):
             logger.error("As many amplicon as transcriptome datasets must be provided")
             sys.exit(1)
@@ -142,11 +142,10 @@ def parse_arguments():
         help='Hamming distance allowed for two clone ids to be called similar. '
             'Default: %(default)s',
         type=int, default=5)
-    parser.add_argument('--amplicon', '-a', metavar='DIRECTORY',
+    parser.add_argument('--amplicon', '-a', nargs='+', metavar='DIRECTORY',
         help='Path to Cell Ranger result directory (a subdirectory "outs" must exist) '
-        'containing sequencing of the EGFP-barcode amplicon library. When combining'
-        'Cell Ranger runs indicate paths separated by comma and in same order as paths '
-        'for transcriptome data. Example "path1,path2,path3"',
+        'containing sequencing of the EGFP-barcode amplicon library. Provide these in '
+        'same order as transcriptome datasets',
         default=None)
     parser.add_argument('--filter-cellids', '-f', metavar='CSV', type=Path,
         help='CSV file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
@@ -170,8 +169,8 @@ def parse_arguments():
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
-    parser.add_argument('path', metavar='DIRECTORY',
-        help='Path(s) to Cell Ranger directories, separated by comma. Each must contain an "outs" subdirectory.')
+    parser.add_argument('path', type=Path, nargs='+', metavar='DIRECTORY',
+        help='Paths to a Cell Ranger directory with an "outs" subdirectory.')
     return parser.parse_args()
 
 
