@@ -100,6 +100,7 @@ def main():
             transcriptome_inputs=transcriptome_inputs,
             amplicon_inputs=amplicon_inputs,
             sample_names=sample_names,
+            prefix=args.prefix,
             max_hamming=args.max_hamming,
             min_length=args.min_length,
             keep_single_reads=args.keep_single_reads,
@@ -163,6 +164,8 @@ def parse_arguments():
     parser.add_argument('--samples',
         help='Sample names separated by comma, in the same order as Cell Ranger directories',
         default=None)
+    parser.add_argument("--prefix", default=False, action="store_true",
+        help="Add sample name as prefix to cell ids (instead of as suffix)")
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
@@ -212,6 +215,7 @@ def run_braintrace(
     transcriptome_inputs: List[Path],
     amplicon_inputs: List[Path],
     sample_names: List[str],
+    prefix: bool,
     max_hamming: int,
     min_length: int,
     keep_single_reads: bool,
@@ -224,7 +228,7 @@ def run_braintrace(
     if len(sample_names) != len(set(sample_names)):
         raise BraintraceError("The sample names need to be unique")
 
-    dataset_reader = DatasetReader(output_dir, genome_name, chromosome, start, end, prefix=False)
+    dataset_reader = DatasetReader(output_dir, genome_name, chromosome, start, end, prefix)
     reads = dataset_reader.read_all(
         transcriptome_inputs, amplicon_inputs, sample_names, allowed_cell_ids)
 
