@@ -32,7 +32,6 @@ def read_bam(
     output_dir -- path to an output directory into which a BAM file is written that contais all
         reads on the chromosome that have the required tags.
     """
-    cache_hit = cache_miss = 0
     with AlignmentFile(bam_path) as alignment_file:
         if chr_name is None:
             chr_name = alignment_file.references[-1]
@@ -48,11 +47,11 @@ def read_bam(
             raise ValueError('Auto-detected clone id too short, something is wrong')
         output_bam_path = output_dir / (chr_name + file_name_suffix + '.bam')
 
+        clone_id_extractor = CachedCloneIdExtractor(clone_id_start, clone_id_end)
         with AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
             # Fetches those reads aligning to the artifical, clone-id-containing chromosome
             reads = []
             unknown_ids = no_cell_id = no_umi = 0
-            prev_start = None
             for read in alignment_file.fetch(chr_name, max(0, clone_id_start - 10), clone_id_end + 10):
                 # Skip reads without cellID or UMI
                 if not read.has_tag('CB') or not read.has_tag('UB'):
@@ -73,19 +72,7 @@ def read_bam(
                     unknown_ids += 1
                     continue
 
-                # Use a cache of clone id extraction results. This helps when there are
-                # many identical reads (amplicon data)
-                if prev_start != read.reference_start:
-                    clone_id_cache = dict()
-                    prev_start = read.reference_start
-                cache_key = (read.reference_start, read.query_sequence)
-                try:
-                    clone_id = clone_id_cache[cache_key]
-                    cache_hit += 1
-                except KeyError:
-                    cache_miss += 1
-                    clone_id = extract_clone_id(clone_id_start, clone_id_end, read)
-                    clone_id_cache[cache_key] = clone_id
+                clone_id = clone_id_extractor.extract(read)
                 if clone_id is None:
                     # Read does not cover the clone id
                     continue
@@ -94,10 +81,75 @@ def read_bam(
                 # Write the passing alignments to a separate file
                 out_bam.write(read)
 
-            logger.info(f'Skipped {unknown_ids} reads with unrecognized cell ids '
-                        f'(and {no_umi+no_cell_id} without UMI or cell id)')
-    logger.info(f"Cache hits: {cache_hit}. Cache misses: {cache_miss}")
+    logger.info(
+        f"Found {len(reads)} reads with usable clone ids. Skipped "
+        f"{unknown_ids}/{no_cell_id}/{no_umi} reads (unrecognized cell id/no cell id/no UMI)")
+    logger.debug(f"Cache hits: {clone_id_extractor.hits}. Cache misses: {clone_id_extractor.misses}")
     return reads
+
+
+class CachedCloneIdExtractor:
+    """
+    Caching clone id extraction results helps when there are many identical reads
+    (amplicon data)
+    """
+    def __init__(self, clone_id_start, clone_id_end):
+        self._cache = dict()
+        self._start = clone_id_start
+        self._end = clone_id_end
+        self.hits = 0
+        self.misses = 0
+        self._prev_start = None
+
+    def extract(self, read):
+        if self._prev_start != read.reference_start:
+            self._cache = dict()
+            self._prev_start = read.reference_start
+        cache_key = (read.reference_start, read.query_sequence)
+        try:
+            clone_id = self._cache[cache_key]
+            self.hits += 1
+        except KeyError:
+            self.misses += 1
+            clone_id = self._extract(read)
+            self._cache[cache_key] = clone_id
+        return clone_id
+
+    def _extract(self, read):
+        query_align_end = read.query_alignment_end
+        query_align_start = read.query_alignment_start
+        query_sequence = read.query_sequence
+        # Extract clone id
+        clone_id = ['-'] * (self._end - self._start)
+        bases = 0
+        for query_pos, ref_pos in read.get_aligned_pairs():
+            # Replace soft-clipping with an ungapped alignment extending into the
+            # soft-clipped region, assuming the clipping occurred because the clone id
+            # region was encountered.
+            if ref_pos is None:
+                # Soft clip or insertion
+                if query_align_end <= query_pos:
+                    # We are in a soft-clipped region at the 3' end of the read
+                    ref_pos = read.reference_end + (query_pos - query_align_end)
+                elif query_align_start > query_pos:
+                    # We are in a soft-clipped region at the 5' end of the read
+                    ref_pos = read.reference_start - (query_align_start - query_pos)
+                # ref_pos remains None if this is an insertion
+
+            if ref_pos is not None and self._start <= ref_pos < self._end:
+                if query_pos is None:
+                    # Deletion or intron skip
+                    query_base = '0'
+                else:
+                    # Match or mismatch
+                    query_base = query_sequence[query_pos]
+                    bases += 1
+                clone_id[ref_pos - self._start] = query_base
+
+        if bases == 0:
+            return None
+        else:
+            return "".join(clone_id)
 
 
 def detect_clone_id_location(alignment_file, reference_name):
@@ -139,40 +191,3 @@ def detect_clone_id_location(alignment_file, reference_name):
             # Good enough
             return (clone_id_start, clone_id_end)
     raise ValueError(f'Could not detect clone id location on chromosome {reference_name}')
-
-
-def extract_clone_id(clone_id_start, clone_id_end, read):
-    query_align_end = read.query_alignment_end
-    query_align_start = read.query_alignment_start
-    query_sequence = read.query_sequence
-    # Extract clone id
-    clone_id = ['-'] * (clone_id_end - clone_id_start)
-    bases = 0
-    for query_pos, ref_pos in read.get_aligned_pairs():
-        # Replace soft-clipping with an ungapped alignment extending into the
-        # soft-clipped region, assuming the clipping occurred because the clone id
-        # region was encountered.
-        if ref_pos is None:
-            # Soft clip or insertion
-            if query_align_end <= query_pos:
-                # We are in a soft-clipped region at the 3' end of the read
-                ref_pos = read.reference_end + (query_pos - query_align_end)
-            elif query_align_start > query_pos:
-                # We are in a soft-clipped region at the 5' end of the read
-                ref_pos = read.reference_start - (query_align_start - query_pos)
-            # ref_pos remains None if this is an insertion
-
-        if ref_pos is not None and clone_id_start <= ref_pos < clone_id_end:
-            if query_pos is None:
-                # Deletion or intron skip
-                query_base = '0'
-            else:
-                # Match or mismatch
-                query_base = query_sequence[query_pos]
-                bases += 1
-            clone_id[ref_pos - clone_id_start] = query_base
-
-    if bases == 0:
-        return None
-    else:
-        return "".join(clone_id)
