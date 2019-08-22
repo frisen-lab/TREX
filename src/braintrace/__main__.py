@@ -333,10 +333,17 @@ def read_allowed_cellids(path):
 
     "X","z"
     1,"ACGTACGTACGTACGT_10x99"
+
+    or:
+
+    "X","z"
+    1,"ACGTACGTACGTACGT"
     """
     allowed_ids = []
     filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
     for cell_id in filtered_df.iloc[:, 0]:
+        if cell_id.endswith("-1"):
+            raise BraintraceError("Cell ids in the list of allowed cell ids must not end in '-1'")
         allowed_ids.append(cell_id)
     logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
     return set(allowed_ids)
