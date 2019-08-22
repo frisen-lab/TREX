@@ -359,10 +359,10 @@ class DatasetReader:
     def merge_datasets(self, datasets, names):
         if self.prefix:
             def combine(cell_id, affix):
-                return cell_id + "_" + affix
+                return affix + "_" + cell_id
         else:
             def combine(cell_id, affix):
-                return affix + "_" + cell_id
+                return cell_id + "_" + affix
         reads = []
         for dataset, name in zip(datasets, names):
             for read in dataset:
