@@ -38,6 +38,10 @@ __author__ = 'leonie.von.berlin@ki.se'
 logger = logging.getLogger(__name__)
 
 
+class BraintraceError(Exception):
+    pass
+
+
 def main():
     args = parse_arguments()
     setup_logging(debug=False)
@@ -85,26 +89,29 @@ def main():
         with open(args.highlight) as f:
             highlight_cell_ids = [line.strip() for line in f]
 
-    run_braintrace(
-        output_dir,
-        genome_name=args.genome_name,
-        allowed_cell_ids=allowed_cell_ids,
-        chromosome=args.chromosome,
-        start=args.start - 1 if args.start is not None else None,
-        end=args.end,
-        transcriptome_inputs=transcriptome_inputs,
-        amplicon_inputs=amplicon_inputs,
-        sample_names=sample_names,
-        max_hamming=args.max_hamming,
-        min_length=args.min_length,
-        keep_single_reads=args.keep_single_reads,
-        should_write_umi_matrix=args.umi_matrix,
-        should_plot=args.plot,
-        restrict_cell_ids=restrict_cell_ids,
-        highlight_cell_ids=highlight_cell_ids,
-        should_write_loom=args.loom,
-    )
-    logger.info('Run completed!')
+    try:
+        run_braintrace(
+            output_dir,
+            genome_name=args.genome_name,
+            allowed_cell_ids=allowed_cell_ids,
+            chromosome=args.chromosome,
+            start=args.start - 1 if args.start is not None else None,
+            end=args.end,
+            transcriptome_inputs=transcriptome_inputs,
+            amplicon_inputs=amplicon_inputs,
+            sample_names=sample_names,
+            max_hamming=args.max_hamming,
+            min_length=args.min_length,
+            keep_single_reads=args.keep_single_reads,
+            should_write_umi_matrix=args.umi_matrix,
+            should_plot=args.plot,
+            restrict_cell_ids=restrict_cell_ids,
+            highlight_cell_ids=highlight_cell_ids,
+            should_write_loom=args.loom,
+        )
+    except (CellRangerError, BraintraceError) as e:
+        logger.error("%s", e)
+        sys.exit(1)
 
 
 def parse_arguments():
