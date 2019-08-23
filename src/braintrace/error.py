@@ -1,0 +1,2 @@
+class BraintraceError(Exception):
+    pass
