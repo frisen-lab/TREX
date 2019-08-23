@@ -118,35 +118,35 @@ def parse_arguments():
              'Default: Auto-detected',
         default=None)
     parser.add_argument('--chromosome', '--chr',
-        help='Name of chromosome on which clone id is located. Default: Last chromosome in BAM file',
+        help='Name of chromosome on which clone ID is located. Default: Last chromosome in BAM file',
         default=None)
     parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
         help='name of the run and directory created by program. Default: %(default)s',
-        default=Path('lineage_run'))
+        default=Path('braintrace_run'))
     parser.add_argument('--delete', action='store_true', help='Delete output directory if it exists')
     parser.add_argument('--start', '-s',
-        help='Position of first clone id base. Default: Auto-detected',
+        help='Position of first clone ID nucleotide. Default: Auto-detected',
         type=int, default=None)
     parser.add_argument('--end', '-e',
-        help='Position of last clone id base. Default: Auto-detected',
+        help='Position of last clone ID nucleotide. Default: Auto-detected',
         type=int, default=None)
     parser.add_argument('--min-length', '-m',
-        help='Minimum number of bases a clone id must have. Default: %(default)s',
+        help='Minimum number of nucleotides a clone ID must have. Default: %(default)s',
         type=int, default=20)
     parser.add_argument('--max-hamming',
-        help='Hamming distance allowed for two clone ids to be called similar. '
+        help='Maximum hamming distance allowed for two clone IDs to be called similar. '
             'Default: %(default)s',
         type=int, default=5)
     parser.add_argument('--amplicon', '-a', nargs='+', metavar='DIRECTORY',
         help='Path to Cell Ranger result directory (a subdirectory "outs" must exist) '
-        'containing sequencing of the EGFP-barcode amplicon library. Provide these in '
+        'containing sequencing of the clone ID amplicon library. Provide these in '
         'same order as transcriptome datasets',
         default=None)
     parser.add_argument('--filter-cellids', '-f', metavar='CSV', type=Path,
         help='CSV file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
         default=None)
     parser.add_argument('--keep-single-reads', action='store_true', default=False,
-        help='Keep clone ids supported by only a single read. Default: Discard them')
+        help='Keep clone IDs supported by only a single read. Default: Discard them')
     parser.add_argument('-l', '--loom',
         help='If given, create loom-file from Cell Ranger and clone data. '
             'File will have the same name as the run',
@@ -159,13 +159,13 @@ def parse_arguments():
         help='Sample names separated by comma, in the same order as Cell Ranger directories',
         default=None)
     parser.add_argument("--prefix", default=False, action="store_true",
-        help="Add sample name as prefix to cell ids (instead of as suffix)")
+        help="Add sample name as prefix to cell IDs (instead of as suffix)")
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
     parser.add_argument('path', type=Path, nargs='+', metavar='DIRECTORY',
-        help='Paths to a Cell Ranger directory with an "outs" subdirectory.')
+        help='Path to a Cell Ranger directory with an "outs" subdirectory.')
     return parser.parse_args()
 
 
@@ -230,15 +230,15 @@ def run_braintrace(
 
     clone_ids = [
         r.clone_id for r in reads if '-' not in r.clone_id and '0' not in r.clone_id]
-    logger.info(f'Read {len(reads)} reads containing (parts of) the clone id '
-        f'({len(clone_ids)} full clone ids, {len(set(clone_ids))} unique)')
+    logger.info(f'Read {len(reads)} reads containing (parts of) the clone ID '
+        f'({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)')
 
     write_reads(output_dir / "reads.txt", reads)
 
     molecules = compute_molecules(reads)
     clone_ids = [
         m.clone_id for m in molecules if '-' not in m.clone_id and '0' not in m.clone_id]
-    logger.info(f'Detected {len(molecules)} molecules ({len(clone_ids)} full clone ids, '
+    logger.info(f'Detected {len(molecules)} molecules ({len(clone_ids)} full clone IDs, '
         f'{len(set(clone_ids))} unique)')
 
     write_molecules(output_dir / 'molecules.txt', molecules)
@@ -246,7 +246,7 @@ def run_braintrace(
     corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
     clone_ids = [m.clone_id for m in corrected_molecules
         if '-' not in m.clone_id and '0' not in m.clone_id]
-    logger.info(f'After clone id correction, {len(set(clone_ids))} unique clone ids remain')
+    logger.info(f'After clone ID correction, {len(set(clone_ids))} unique clone IDs remain')
 
     write_molecules(output_dir / 'molecules_corrected.txt', corrected_molecules)
 
@@ -301,7 +301,7 @@ def run_braintrace(
 
 def read_allowed_cellids(path):
     """
-    Read a user-provided list of allowed cell ids from a CSV
+    Read a user-provided list of allowed cell IDs from a CSV
 
     Example:
 
@@ -317,7 +317,7 @@ def read_allowed_cellids(path):
     filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
     for cell_id in filtered_df.iloc[:, 0]:
         if cell_id.endswith("-1"):
-            raise BraintraceError("Cell ids in the list of allowed cell ids must not end in '-1'")
+            raise BraintraceError("Cell ids in the list of allowed cell IDs must not end in '-1'")
         allowed_ids.append(cell_id)
     logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
     return set(allowed_ids)
@@ -326,12 +326,12 @@ def read_allowed_cellids(path):
 def correct_clone_ids(
         molecules: List[Molecule], max_hamming: int, min_overlap: int = 20) -> List[Molecule]:
     """
-    Attempt to correct sequencing errors in the clone id sequences of all molecules
+    Attempt to correct sequencing errors in the clone ID sequences of all molecules
     """
-    # Obtain all clone ids (including those with '-' and '0')
+    # Obtain all clone IDs (including those with '-' and '0')
     clone_ids = [m.clone_id for m in molecules]
 
-    # Count the full-length clone ids
+    # Count the full-length clone IDs
     clone_id_counts = Counter(clone_ids)
 
     # Cluster them by Hamming distance
@@ -351,16 +351,16 @@ def correct_clone_ids(
 
     clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
 
-    # Map non-singleton clone ids to a cluster representative
+    # Map non-singleton clone IDs to a cluster representative
     clone_id_map = dict()
     for cluster in clusters:
         if len(cluster) > 1:
-            # Pick most frequent clone id as representative
+            # Pick most frequent clone ID as representative
             representative = max(cluster, key=lambda bc: (clone_id_counts[bc], bc))
             for clone_id in cluster:
                 clone_id_map[clone_id] = representative
 
-    # Create a new list of molecules in which the clone ids have been replaced
+    # Create a new list of molecules in which the clone IDs have been replaced
     # by their representatives
     new_molecules = []
     for molecule in molecules:
@@ -375,11 +375,11 @@ def filter_cells(
     keep_single_reads: bool = False
 ) -> List[Cell]:
     """
-    Filter clone ids according to two criteria:
+    Filter clone IDs according to two criteria:
 
     - Clone ids that have only a count of one and can be found in another cell are most
       likely results of contamination and are removed,
-    - If keep_single_reads is False, clone ids that have only a count of one and are also only based
+    - If keep_single_reads is False, clone IDs that have only a count of one and are also only based
       on one read are also removed
     """
     overall_clone_id_counts: Dict[str, int] = Counter()
@@ -390,18 +390,18 @@ def filter_cells(
     for molecule in molecules:
         if molecule.read_count == 1:
             single_read_clone_ids.add(molecule.clone_id)
-    logger.info(f"Found {len(single_read_clone_ids)} single-read clone ids")
+    logger.info(f"Found {len(single_read_clone_ids)} single-read clone IDs")
 
-    # filters out clone ids with a count of one that appear in another cell
+    # filters out clone IDs with a count of one that appear in another cell
     new_cells = []
     for cell in cells:
         clone_id_counts = cell.clone_id_counts.copy()
         for clone_id, count in cell.clone_id_counts.items():
             if count > 1:
-                # This clone id occurs more than once in this cell - keep it
+                # This clone ID occurs more than once in this cell - keep it
                 continue
             if overall_clone_id_counts[clone_id] > 1:
-                # This clone id occurs also in other cells - remove it
+                # This clone ID occurs also in other cells - remove it
                 del clone_id_counts[clone_id]
             elif clone_id in single_read_clone_ids and not keep_single_reads:
                 del clone_id_counts[clone_id]
@@ -441,10 +441,10 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
 def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
     """
     Create a loom file from a Cell Ranger result directory and augment it with information about
-    the most abundant clone id and their counts.
+    the most abundant clone IDs and their counts.
     """
-    # For each cell, collect the most abundant clone ids and their counts
-    # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant clone ids.
+    # For each cell, collect the most abundant clone IDs and their counts
+    # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant clone IDs.
     most_abundant = dict()
     for cell in cells:
         if not cell.clone_id_counts:
@@ -464,8 +464,8 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
         # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
         loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
 
-        # Transform clone ids and count data
-        # brings clone id data into correct format for loom file.
+        # Transform clone IDs and count data
+        # brings clone ID data into correct format for loom file.
         # Array must have same shape as all_cellIDs
         clone_id_lists = [[] for _ in range(top_n)]
         count_lists = [[] for _ in range(top_n)]
@@ -479,14 +479,14 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
                 clone_id_lists[i].append(clone_id)
                 count_lists[i].append(count)
 
-        # Add clone id and count information to loom file
+        # Add clone ID and count information to loom file
         for i in range(top_n):
-            ds.ca[f'linBarcode_{i+1}'] = np.array(clone_id_lists[i], dtype='S%r' % clone_id_length)
-            ds.ca[f'linBarcode_count_{i+1}'] = np.array(count_lists[i], dtype=int)
+            ds.ca[f'cloneid_{i+1}'] = np.array(clone_id_lists[i], dtype='S%r' % clone_id_length)
+            ds.ca[f'cloneid_count_{i+1}'] = np.array(count_lists[i], dtype=int)
 
 
 def write_umi_matrix(output_dir: Path, cells: List[Cell]):
-    """Create a UMI-count matrix with cells as columns and clone ids as rows"""
+    """Create a UMI-count matrix with cells as columns and clone IDs as rows"""
     clone_ids = set()
     for cell in cells:
         clone_ids.update(clone_id for clone_id in cell.clone_id_counts)
@@ -506,3 +506,4 @@ def write_umi_matrix(output_dir: Path, cells: List[Cell]):
 
 if __name__ == '__main__':
     main()
+
