@@ -5,3 +5,4 @@ lineage_run/
 __pycache__/
 .snakemake/
 pip-wheel-metadata/
+src/braintrace/_version.py

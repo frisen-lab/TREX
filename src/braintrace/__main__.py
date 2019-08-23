@@ -10,7 +10,6 @@ import logging
 from pathlib import Path
 from collections import Counter
 from typing import List, Dict, Iterable
-from pkg_resources import get_distribution, DistributionNotFound
 
 from alignlib import hamming_distance
 import numpy as np
@@ -19,6 +18,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
 
+from . import __version__
 from .cellranger import make_cellranger, CellRangerError
 from .utils import NiceFormatter
 from .bam import read_bam
@@ -26,12 +26,6 @@ from .clustering import cluster_sequences
 from .clone import CloneGraph
 from .molecule import Molecule, compute_molecules
 from .cell import Cell, compute_cells
-
-try:
-    __version__ = get_distribution('braintrace').version
-except DistributionNotFound:
-    # package is not installed
-    pass
 
 __author__ = 'leonie.von.berlin@ki.se'
 
@@ -117,7 +111,7 @@ def main():
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--debug', default=False, action='store_true',
         help='Print some extra debugging messages')
     parser.add_argument('--genome-name', metavar='NAME',
