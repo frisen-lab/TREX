@@ -1,4 +1,5 @@
 from pathlib import Path
+from itertools import zip_longest
 import logging
 
 from .bam import read_bam
@@ -33,25 +34,23 @@ class DatasetReader:
         assert n_amplicon == 0 or n_amplicon == n_transcriptome
         assert n_transcriptome == len(names)
 
-        # Cases:
-        # - 1 transcriptome, 0 amplicon -- do not modify cell ids
-        # - 1 transcriptome, 1 amplicon -- modify cell ids?
-        # - n transcriptome, 0 amplicon -- modify cell ids!
-        # - n transcriptome, n amplicon -- modify cell ids!
-
-        if n_transcriptome == 1 and n_amplicon == 0:
+        if n_transcriptome == 1:
             reads = self.read_one(transcriptome_inputs[0], self.output_dir / "entries.bam")
-        elif n_transcriptome > 1 and n_amplicon == 0:
-            datasets = []
-            for path, name in zip(transcriptome_inputs, names):
-                assert name is not None
-                datasets.append(
-                    self.read_one(path, self.output_dir / (name + "_entries.bam"))
+            if n_amplicon == 1:
+                reads.extend(
+                    self.read_one(amplicon_inputs[0], self.output_dir / "amplicon_entries.bam")
                 )
-            reads = self.merge_datasets(datasets, names)
         else:
-            assert n_amplicon > 0
-            raise BraintraceError("Reading amplicon data not supported at the moment")
+            datasets = []
+            for *paths, name in zip_longest(transcriptome_inputs, amplicon_inputs, names):
+                assert name is not None
+                reads = self.read_one(paths[0], self.output_dir / (name + "_entries.bam"))
+                if paths[1]:
+                    reads.extend(
+                        self.read_one(paths[1], self.output_dir / (name + "_amplicon_entries.bam"))
+                    )
+                datasets.append(reads)
+            reads = self.merge_datasets(datasets, names)
 
         if allowed_cell_ids:
             logger.debug("Allowed cell ids:\n- %s\n  ...", "\n- ".join(list(allowed_cell_ids)[:10]))
