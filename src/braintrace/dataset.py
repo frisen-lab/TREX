@@ -57,8 +57,6 @@ class DatasetReader:
             logger.debug("Allowed cell ids:\n- %s\n  ...", "\n- ".join(list(allowed_cell_ids)[:10]))
             logger.debug("Cell ids of reads:\n- %s\n  ...", "\n- ".join(r.cell_id for r in reads[:10]))
             reads = [r for r in reads if r.cell_id in allowed_cell_ids]
-        if not reads:
-            raise BraintraceError("No reads left after --filter-cellids filtering")
         return reads
 
     def merge_datasets(self, datasets, names):

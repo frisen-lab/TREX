@@ -225,6 +225,8 @@ def run_braintrace(
     dataset_reader = DatasetReader(output_dir, genome_name, chromosome, start, end, prefix)
     reads = dataset_reader.read_all(
         transcriptome_inputs, amplicon_inputs, sample_names, allowed_cell_ids)
+    if not reads:
+        raise BraintraceError("No reads left after --filter-cellids filtering")
 
     clone_ids = [
         r.clone_id for r in reads if '-' not in r.clone_id and '0' not in r.clone_id]
