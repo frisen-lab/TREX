@@ -1,6 +1,6 @@
 venv/
 *.egg-info/
-lineage_run/
+braintrace_run/
 .mypy_cache/
 __pycache__/
 .snakemake/
