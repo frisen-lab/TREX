@@ -96,6 +96,7 @@ def main():
             prefix=args.prefix,
             max_hamming=args.max_hamming,
             min_length=args.min_length,
+            jaccard_threshold=args.jaccard_threshold,
             keep_single_reads=args.keep_single_reads,
             should_write_umi_matrix=args.umi_matrix,
             should_plot=args.plot,
@@ -137,6 +138,9 @@ def parse_arguments():
         help='Maximum hamming distance allowed for two clone IDs to be called similar. '
             'Default: %(default)s',
         type=int, default=5)
+    parser.add_argument('--jaccard-threshold', type=float, default=0, metavar='VALUE',
+        help='If the Jaccard index between clone IDs of two cells is higher than VALUE, they '
+            'are considered similar')
     parser.add_argument('--amplicon', '-a', nargs='+', metavar='DIRECTORY',
         help='Path to Cell Ranger result directory (a subdirectory "outs" must exist) '
         'containing sequencing of the clone ID amplicon library. Provide these in '
@@ -212,6 +216,7 @@ def run_braintrace(
     prefix: bool,
     max_hamming: int,
     min_length: int,
+    jaccard_threshold: float,
     keep_single_reads: bool,
     should_write_umi_matrix: bool,
     should_plot: bool,
@@ -268,7 +273,7 @@ def run_braintrace(
         cells = [cell for cell in cells if cell.cell_id in restrict_cell_ids]
         logger.info(f'Restricting to {len(cells)} cells')
 
-    clone_graph = CloneGraph(cells)
+    clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
 
     with open(output_dir / 'components.txt', 'w') as components_file:
         print(clone_graph.components_txt(highlight_cell_ids), file=components_file, end='')

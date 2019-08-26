@@ -28,7 +28,8 @@ class Clone:
 
 
 class CloneGraph:
-    def __init__(self, cells: List[Cell]):
+    def __init__(self, cells: List[Cell], jaccard_threshold: float=0):
+        self._jaccard_threshold = jaccard_threshold
         self._cells = self._compress_cells(cells)
         self._graph = self._make_cell_graph()
 
@@ -53,10 +54,22 @@ class CloneGraph:
         graph = Graph(cells)
         for i in range(len(cells)):
             for j in range(i + 1, len(cells)):
-                if set(cells[i].clone_id_counts) & set(cells[j].clone_id_counts):
-                    # Cell i and j share a clone id
+                if self._is_similar(cells[i], cells[j]):
                     graph.add_edge(cells[i], cells[j])
         return graph
+
+    @staticmethod
+    def jaccard_index(a, b):
+        if not a and not b:
+            return 1
+        return len(a & b) / len(a | b)
+
+    def _is_similar(self, cell1, cell2):
+        # TODO compute a weighted index using counts?
+        a = set(cell1.clone_id_counts)
+        b = set(cell2.clone_id_counts)
+        index = self.jaccard_index(a, b)
+        return index > self._jaccard_threshold
 
     def bridges(self):
         """Find edges that appear to incorrectly bridge two unrelated subclusters."""
