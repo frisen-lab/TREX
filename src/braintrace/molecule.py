@@ -70,7 +70,8 @@ def compute_consensus(sequences):
             elif ch == '0':
                 align[i, 5] = 0.1
         consens_np += align
+
     # calculate base with maximum count for each position
-    bin_consens = np.argmax(align, axis=1)
+    bin_consens = np.argmax(consens_np, axis=1)
     # convert maximum counts into consensus sequence
     return ''.join(letters[bin_consens])

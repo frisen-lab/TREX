@@ -12,19 +12,19 @@ jobs:
 
       - restore_cache:
           keys:
-          - v2-dependencies-{{ checksum "setup.py" }}
+          - v3-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install dependencies
           command: |
             python3 -m venv venv
-            venv/bin/pip install --upgrade pip setuptools
+            venv/bin/pip install --upgrade pip setuptools pytest
             venv/bin/pip install --upgrade .
 
       - save_cache:
           paths:
             - venv
-          key: v2-dependencies-{{ checksum "setup.py" }}
+          key: v3-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: run tests
