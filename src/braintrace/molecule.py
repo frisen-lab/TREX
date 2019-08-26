@@ -15,14 +15,14 @@ class Molecule(NamedTuple):
     read_count: int
 
 
-def compute_molecules(sorted_reads: List[Read]) -> List[Molecule]:
+def compute_molecules(reads: List[Read]) -> List[Molecule]:
     """
-    Group reads by cell id and UMI into molecules.
+    Group reads by cell ID and UMI into molecules.
 
     The clone id of the molecule is the consensus of the clone ids in the group.
     """
     groups = defaultdict(list)
-    for read in sorted_reads:
+    for read in reads:
         groups[(read.umi, read.cell_id)].append(read.clone_id)
 
     molecules = []
@@ -52,7 +52,7 @@ def compute_consensus(sequences):
 
     letters = np.array(['A', 'C', 'G', 'T', '-', '0'])
     length = len(sequences[0])
-    consens_np = np.zeros([length, 6], dtype='float16')
+    matrix = np.zeros([length, 6], dtype='float16')
     for sequence in sequences:
         align = np.zeros([length, 6], dtype='float16')
         for (i, ch) in enumerate(sequence):
@@ -69,9 +69,9 @@ def compute_consensus(sequences):
                 align[i, 4] = 0.1
             elif ch == '0':
                 align[i, 5] = 0.1
-        consens_np += align
+        matrix += align
 
     # calculate base with maximum count for each position
-    bin_consens = np.argmax(consens_np, axis=1)
+    bin_consens = np.argmax(matrix, axis=1)
     # convert maximum counts into consensus sequence
     return ''.join(letters[bin_consens])
