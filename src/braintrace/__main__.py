@@ -48,6 +48,7 @@ def main():
         sys.exit(1)
 
     add_file_logging(output_dir / 'log.txt')
+    logger.info(f'Braintrace {__version__}')
     logger.info('Command line arguments: %s', ' '.join(sys.argv[1:]))
 
     restrict_cell_ids = None
