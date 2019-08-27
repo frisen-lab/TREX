@@ -42,7 +42,7 @@ class CloneGraph:
         """Put cells that have identical sets of clone IDs into a clone"""
         cell_lists = defaultdict(list)
         for cell in cells:
-            clone_ids = tuple(cell.clone_id_counts)
+            clone_ids = tuple(sorted(cell.clone_id_counts))
             cell_lists[clone_ids].append(cell)
 
         clones = []
