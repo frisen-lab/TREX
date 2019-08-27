@@ -6,9 +6,13 @@ from collections import Counter, defaultdict
 from io import StringIO
 import math
 import subprocess
+import logging
 
 from .graph import Graph
 from .cell import Cell
+
+
+logger = logging.getLogger(__name__)
 
 
 class Clone:
@@ -28,34 +32,38 @@ class Clone:
 
 
 class CloneGraph:
-    def __init__(self, cells: List[Cell], jaccard_threshold: float=0):
+    def __init__(self, cells: List[Cell], jaccard_threshold: float = 0):
         self._jaccard_threshold = jaccard_threshold
-        self._cells = self._compress_cells(cells)
-        self._graph = self._make_cell_graph()
+        self._clones = self._precluster_cells(cells)
+        self._graph = self._make_graph()
 
     @staticmethod
-    def _compress_cells(cells):
+    def _precluster_cells(cells):
+        """Put cells that have identical sets of clone IDs into a clone"""
         cell_lists = defaultdict(list)
         for cell in cells:
             clone_ids = tuple(cell.clone_id_counts)
             cell_lists[clone_ids].append(cell)
 
-        cell_sets = []
+        clones = []
         for cells in cell_lists.values():
-            cell_sets.append(Clone(cells))
-        return cell_sets
+            clones.append(Clone(cells))
+        return clones
 
-    def _make_cell_graph(self):
+    def _make_graph(self):
         """
-        Create graph of cells; add edges between cells that
+        Create graph of clones; add edges between pre-clustered clones that
         share at least one clone id. Return created graph.
         """
-        cells = [cell for cell in self._cells if cell.clone_id_counts]
-        graph = Graph(cells)
-        for i in range(len(cells)):
-            for j in range(i + 1, len(cells)):
-                if self._is_similar(cells[i], cells[j]):
-                    graph.add_edge(cells[i], cells[j])
+        clones = [clone for clone in self._clones if clone.clone_id_counts]
+        graph = Graph(clones)
+        n = 0
+        for i in range(len(clones)):
+            for j in range(i + 1, len(clones)):
+                if self._is_similar(clones[i], clones[j]):
+                    n += 1
+                    graph.add_edge(clones[i], clones[j])
+        logger.debug(f"Added {n} edges to the clone graph")
         return graph
 
     @staticmethod
@@ -64,10 +72,10 @@ class CloneGraph:
             return 1
         return len(a & b) / len(a | b)
 
-    def _is_similar(self, cell1, cell2):
+    def _is_similar(self, clone1, clone2):
         # TODO compute a weighted index using counts?
-        a = set(cell1.clone_id_counts)
-        b = set(cell2.clone_id_counts)
+        a = set(clone1.clone_id_counts)
+        b = set(clone2.clone_id_counts)
         index = self.jaccard_index(a, b)
         return index > self._jaccard_threshold
 
@@ -90,11 +98,11 @@ class CloneGraph:
             self._graph.remove_edge(node1, node2)
 
     @staticmethod
-    def _expand_cell_sets(cell_sets: List[Clone]) -> List[Cell]:
-        """Expand a list of CellSets into a list of Cells"""
+    def _expand_clones(clones: List[Clone]) -> List[Cell]:
+        """Expand a list of Clone instances into a list of Cells"""
         cells = []
-        for cell_set in cell_sets:
-            cells.extend(cell_set.cells)
+        for clone in clones:
+            cells.extend(clone.cells)
         return cells
 
     def write_clones(self, path):
@@ -115,7 +123,7 @@ class CloneGraph:
         """
         compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
         # Expand the Clone instances into cells
-        clusters = [self._expand_cell_sets(cluster) for cluster in compressed_clusters]
+        clusters = [self._expand_clones(cluster) for cluster in compressed_clusters]
 
         def most_abundant_clone_id(cells: List[Cell]):
             counts = Counter()
@@ -173,7 +181,7 @@ class CloneGraph:
         print('# Clone graph components (only incomplete/density<1)', file=s)
         n_complete = 0
         for subgraph in self.graph.connected_components():
-            cells = sorted(self._expand_cell_sets(subgraph.nodes()), key=lambda c: c.cell_id)
+            cells = sorted(self._expand_clones(subgraph.nodes()), key=lambda c: c.cell_id)
             n_nodes = len(cells)
             n_edges = sum(n1.n * n2.n for n1, n2 in subgraph.edges())
             n_edges += sum(node.n * (node.n - 1) // 2 for node in subgraph.nodes())
