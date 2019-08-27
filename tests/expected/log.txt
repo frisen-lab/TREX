@@ -10,4 +10,9 @@ Found 41 single-read clone IDs
 Writing UMI matrix
 Removing 0 bridges from the graph
 Detected 4 clones
-Clone size histogram (size: count): 752: 1, 8: 1, 1: 1, 2: 1
+Clone size histogram
+ size count
+    1     1
+    2     1
+    8     1
+  752     1
