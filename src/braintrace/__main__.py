@@ -295,9 +295,12 @@ def run_braintrace(
     clones = clone_graph.clones()
     clone_graph.write_clones(output_dir / 'clones.txt', clones)
     logger.info(f'Detected {len(clones)} clones')
-    clone_sizes = Counter(len(cells) for cells in clones.values())
+    clone_sizes = Counter(len(cells) for clone_id, cells in clones)
     logger.info('Clone size histogram\n size count\n%s',
         '\n'.join(f'{k:5d} {clone_sizes[k]:5d}' for k in sorted(clone_sizes)))
+    number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
+    logger.debug('No. of cells in clones: %d', number_of_cells_in_clones)
+    assert len(cells) == number_of_cells_in_clones
 
     if should_write_loom:
         if len(transcriptome_inputs) > 1:

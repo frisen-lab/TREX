@@ -109,8 +109,8 @@ class CloneGraph:
     def write_clones(path, clones):
         with open(path, 'w') as f:
             print("#clone_id", ":", "cell_id1", "cell_id2", "...", sep="\t", file=f)
-            for clone_id in sorted(clones):
-                cells = sorted(clones[clone_id])
+            for clone_id, cells in sorted(clones):
+                cells = sorted(cells)
                 row = [clone_id, ':']
                 for cell in cells:
                     row.append(cell.cell_id)
@@ -118,11 +118,14 @@ class CloneGraph:
 
     def clones(self) -> Dict[str, List[Cell]]:
         """
-        Compute clones. Return a dict that maps a representative clone id to a list of cells.
+        Compute clones. Return a dict that maps a clone id to a list of cells.
         """
         compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
         # Expand the Clone instances into cells
         clusters = [self._expand_clones(cluster) for cluster in compressed_clusters]
+
+        logger.debug('CloneGraph.clones() called. %s connected components (clones) found',
+            len(clusters))
 
         def most_abundant_clone_id(cells: List[Cell]):
             counts = Counter()
@@ -130,7 +133,7 @@ class CloneGraph:
                 counts.update(cell.clone_id_counts)
             return max(counts, key=lambda k: (counts[k], k))
 
-        return {most_abundant_clone_id(cells): cells for cells in clusters}
+        return [(most_abundant_clone_id(cells), cells) for cells in clusters]
 
     def plot(self, path, highlight=None):
         graphviz_path = path.with_suffix(".gv")
