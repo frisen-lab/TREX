@@ -105,8 +105,8 @@ class CloneGraph:
             cells.extend(clone.cells)
         return cells
 
-    def write_clones(self, path):
-        clones = self.clones()
+    @staticmethod
+    def write_clones(path, clones):
         with open(path, 'w') as f:
             print("#clone_id", ":", "cell_id1", "cell_id2", "...", sep="\t", file=f)
             for clone_id in sorted(clones):
@@ -115,7 +115,6 @@ class CloneGraph:
                 for cell in cells:
                     row.append(cell.cell_id)
                 print(*row, sep='\t', file=f)
-        return clones
 
     def clones(self) -> Dict[str, List[Cell]]:
         """
