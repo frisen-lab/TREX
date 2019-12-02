@@ -141,7 +141,7 @@ def parse_arguments():
         type=int, default=5)
     parser.add_argument('--jaccard-threshold', type=float, default=0, metavar='VALUE',
         help='If the Jaccard index between clone IDs of two cells is higher than VALUE, they '
-            'are considered similar')
+            'are considered similar. Default: %(default)s')
     parser.add_argument('--amplicon', '-a', nargs='+', metavar='DIRECTORY',
         help='Path to Cell Ranger result directory (a subdirectory "outs" must exist) '
         'containing sequencing of the clone ID amplicon library. Provide these in '
