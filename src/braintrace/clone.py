@@ -1,7 +1,7 @@
 """
 Clone computation. A clone is represented as a set of cells.
 """
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from collections import Counter, defaultdict
 from io import StringIO
 import math
@@ -108,15 +108,15 @@ class CloneGraph:
     @staticmethod
     def write_clones(path, clones):
         with open(path, 'w') as f:
-            print("#clone_id", ":", "cell_id1", "cell_id2", "...", sep="\t", file=f)
-            for clone_id, cells in sorted(clones):
+            print("#clone_id", "clone_seq", "cell_id1", "cell_id2", "...", sep="\t", file=f)
+            for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
                 cells = sorted(cells)
-                row = [clone_id, ':']
+                row = [index, clone_id]
                 for cell in cells:
                     row.append(cell.cell_id)
                 print(*row, sep='\t', file=f)
 
-    def clones(self) -> Dict[str, List[Cell]]:
+    def clones(self) -> List[Tuple[str, List[Cell]]]:
         """
         Compute clones. Return a dict that maps a clone id to a list of cells.
         """
