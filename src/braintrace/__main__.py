@@ -100,6 +100,7 @@ def main():
             jaccard_threshold=args.jaccard_threshold,
             keep_single_reads=args.keep_single_reads,
             should_write_umi_matrix=args.umi_matrix,
+            should_run_visium=args.visium,
             should_plot=args.plot,
             restrict_cell_ids=restrict_cell_ids,
             highlight_cell_ids=highlight_cell_ids,
@@ -167,6 +168,8 @@ def parse_arguments():
         help="Add sample name as prefix to cell IDs (instead of as suffix)")
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
+    parser.add_argument('-v', '--visium', default=False, action='store_true',
+        help='Adapt braintrace run to 10x Visium data')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
     parser.add_argument('path', type=Path, nargs='+', metavar='DIRECTORY',
@@ -220,6 +223,7 @@ def run_braintrace(
     jaccard_threshold: float,
     keep_single_reads: bool,
     should_write_umi_matrix: bool,
+    should_run_visium: bool,
     should_plot: bool,
     restrict_cell_ids: List[str],
     highlight_cell_ids: List[str],
@@ -260,9 +264,10 @@ def run_braintrace(
     logger.info(f'Detected {len(cells)} cells')
     write_cells(output_dir / 'cells.txt', cells)
 
-    cells = filter_cells(cells, corrected_molecules, keep_single_reads)
-    logger.info(f'{len(cells)} filtered cells remain')
-    write_cells(output_dir / 'cells_filtered.txt', cells)
+    if not should_run_visium:
+        cells = filter_cells(cells, corrected_molecules, keep_single_reads)
+        logger.info(f'{len(cells)} filtered cells remain')
+        write_cells(output_dir / 'cells_filtered.txt', cells)
 
     if should_write_umi_matrix:
         logger.info(f"Writing UMI matrix")
