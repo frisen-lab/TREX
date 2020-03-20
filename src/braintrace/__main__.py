@@ -169,7 +169,7 @@ def parse_arguments():
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('-v', '--visium', default=False, action='store_true',
-        help='Adapt braintrace run to 10x Visium data')
+        help='Adapt braintrace run to 10x Visium data: No removal of singe molecule clone IDs')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
     parser.add_argument('path', type=Path, nargs='+', metavar='DIRECTORY',
@@ -264,10 +264,15 @@ def run_braintrace(
     logger.info(f'Detected {len(cells)} cells')
     write_cells(output_dir / 'cells.txt', cells)
 
-    if not should_run_visium:
+    if should_run_visium:
+        cells = filter_visium(cells, corrected_molecules)
+        logger.info(f'{len(cells)} filtered cells remain')
+        write_cells(output_dir / 'cells_filtered.txt', cells)
+    else:
         cells = filter_cells(cells, corrected_molecules, keep_single_reads)
         logger.info(f'{len(cells)} filtered cells remain')
         write_cells(output_dir / 'cells_filtered.txt', cells)
+
 
     if should_write_umi_matrix:
         logger.info(f"Writing UMI matrix")
@@ -383,6 +388,33 @@ def correct_clone_ids(
         clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
         new_molecules.append(molecule._replace(clone_id=clone_id))
     return new_molecules
+
+def filter_visium(
+    cells: Iterable[Cell],
+    molecules: Iterable[Molecule],
+) -> List[Cell]:
+    """
+    Filter: clone IDs that have only a count of one and are also only based on one read are  removed
+    """
+    overall_clone_id_counts: Dict[str, int] = Counter()
+    for cell in cells:
+        overall_clone_id_counts.update(cell.clone_id_counts)
+
+    single_read_clone_ids = set()
+    for molecule in molecules:
+        if molecule.read_count == 1:
+            single_read_clone_ids.add(molecule.clone_id)
+    logger.info(f"Found {len(single_read_clone_ids)} single-read clone IDs")
+
+    new_cells = []
+    for cell in cells:
+        clone_id_counts = cell.clone_id_counts.copy()
+        for clone_id, count in cell.clone_id_counts.items():
+            if clone_id in single_read_clone_ids:
+                del clone_id_counts[clone_id]
+        if clone_id_counts:
+            new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
+    return new_cells
 
 
 def filter_cells(
