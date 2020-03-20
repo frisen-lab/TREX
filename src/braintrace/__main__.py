@@ -169,7 +169,7 @@ def parse_arguments():
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('-v', '--visium', default=False, action='store_true',
-        help='Adapt braintrace run to 10x Visium data: No removal of singe molecule clone IDs')
+        help='Adapt braintrace run to 10x Visium data: Filter out clone IDs only based on 1 read, but keep those with only one UMI')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
     parser.add_argument('path', type=Path, nargs='+', metavar='DIRECTORY',
@@ -400,20 +400,29 @@ def filter_visium(
     for cell in cells:
         overall_clone_id_counts.update(cell.clone_id_counts)
 
-    single_read_clone_ids = set()
-    for molecule in molecules:
-        if molecule.read_count == 1:
-            single_read_clone_ids.add(molecule.clone_id)
-    logger.info(f"Found {len(single_read_clone_ids)} single-read clone IDs")
-
     new_cells = []
+    del_cells = 0
+    del_cloneids = 0
     for cell in cells:
+        cell_id = cell.cell_id
         clone_id_counts = cell.clone_id_counts.copy()
         for clone_id, count in cell.clone_id_counts.items():
-            if clone_id in single_read_clone_ids:
-                del clone_id_counts[clone_id]
+            if count > 1:
+                # This clone ID occurs more than once in this cell - keep it
+                continue
+            else:
+                for molecule in molecules:
+                    if molecule.cell_id == cell_id and molecule.clone_id == clone_id:
+                        if molecule.read_count == 1:
+                            #This clone ID has only a read count of 1 - remove it
+                            del_cloneids += 1
+                            del clone_id_counts[clone_id]
         if clone_id_counts:
             new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
+        else:
+            del_cells += 1
+    
+    logger.info(f"Found {str(del_cloneids)} single-read clone IDs and removed {str(del_cells)} cells")
     return new_cells
 
 
