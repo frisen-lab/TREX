@@ -100,6 +100,7 @@ def main():
             jaccard_threshold=args.jaccard_threshold,
             keep_single_reads=args.keep_single_reads,
             should_write_umi_matrix=args.umi_matrix,
+            should_run_visium=args.visium,
             should_plot=args.plot,
             restrict_cell_ids=restrict_cell_ids,
             highlight_cell_ids=highlight_cell_ids,
@@ -167,6 +168,8 @@ def parse_arguments():
         help="Add sample name as prefix to cell IDs (instead of as suffix)")
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
+    parser.add_argument('-v', '--visium', default=False, action='store_true',
+        help='Adapt braintrace run to 10x Visium data: Filter out clone IDs only based on 1 read, but keep those with only one UMI')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
     parser.add_argument('path', type=Path, nargs='+', metavar='DIRECTORY',
@@ -220,6 +223,7 @@ def run_braintrace(
     jaccard_threshold: float,
     keep_single_reads: bool,
     should_write_umi_matrix: bool,
+    should_run_visium: bool,
     should_plot: bool,
     restrict_cell_ids: List[str],
     highlight_cell_ids: List[str],
@@ -260,9 +264,15 @@ def run_braintrace(
     logger.info(f'Detected {len(cells)} cells')
     write_cells(output_dir / 'cells.txt', cells)
 
-    cells = filter_cells(cells, corrected_molecules, keep_single_reads)
-    logger.info(f'{len(cells)} filtered cells remain')
-    write_cells(output_dir / 'cells_filtered.txt', cells)
+    if should_run_visium:
+        cells = filter_visium(cells, corrected_molecules)
+        logger.info(f'{len(cells)} filtered cells remain')
+        write_cells(output_dir / 'cells_filtered.txt', cells)
+    else:
+        cells = filter_cells(cells, corrected_molecules, keep_single_reads)
+        logger.info(f'{len(cells)} filtered cells remain')
+        write_cells(output_dir / 'cells_filtered.txt', cells)
+
 
     if should_write_umi_matrix:
         logger.info(f"Writing UMI matrix")
@@ -378,6 +388,36 @@ def correct_clone_ids(
         clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
         new_molecules.append(molecule._replace(clone_id=clone_id))
     return new_molecules
+
+def filter_visium(
+    cells: Iterable[Cell],
+    molecules: Iterable[Molecule],
+) -> List[Cell]:
+    """
+    Filter: clone IDs that have only a count of one and are also only based on one read are  removed
+    """
+    new_cells = []
+    del_cells = 0
+    del_cloneids = 0
+    for cell in cells:
+        cell_id = cell.cell_id
+        clone_id_counts = cell.clone_id_counts.copy()
+        for clone_id, count in cell.clone_id_counts.items():
+            if count > 1:
+                # This clone ID occurs more than once in this cell - keep it
+                continue
+            for molecule in molecules:
+                if molecule.cell_id == cell_id and molecule.clone_id == clone_id and molecule.read_count == 1:
+                    #This clone ID has only a read count of 1 - remove it
+                    del_cloneids += 1
+                    del clone_id_counts[clone_id]
+        if clone_id_counts:
+            new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
+        else:
+            del_cells += 1
+    
+    logger.info(f"Found {del_cloneids} single-read clone IDs and removed {del_cells} cells")
+    return new_cells
 
 
 def filter_cells(
