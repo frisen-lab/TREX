@@ -396,10 +396,6 @@ def filter_visium(
     """
     Filter: clone IDs that have only a count of one and are also only based on one read are  removed
     """
-    overall_clone_id_counts: Dict[str, int] = Counter()
-    for cell in cells:
-        overall_clone_id_counts.update(cell.clone_id_counts)
-
     new_cells = []
     del_cells = 0
     del_cloneids = 0
@@ -410,19 +406,17 @@ def filter_visium(
             if count > 1:
                 # This clone ID occurs more than once in this cell - keep it
                 continue
-            else:
-                for molecule in molecules:
-                    if molecule.cell_id == cell_id and molecule.clone_id == clone_id:
-                        if molecule.read_count == 1:
-                            #This clone ID has only a read count of 1 - remove it
-                            del_cloneids += 1
-                            del clone_id_counts[clone_id]
+            for molecule in molecules:
+                if molecule.cell_id == cell_id and molecule.clone_id == clone_id and molecule.read_count == 1:
+                    #This clone ID has only a read count of 1 - remove it
+                    del_cloneids += 1
+                    del clone_id_counts[clone_id]
         if clone_id_counts:
             new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
         else:
             del_cells += 1
     
-    logger.info(f"Found {str(del_cloneids)} single-read clone IDs and removed {str(del_cells)} cells")
+    logger.info(f"Found {del_cloneids} single-read clone IDs and removed {del_cells} cells")
     return new_cells
 
 
