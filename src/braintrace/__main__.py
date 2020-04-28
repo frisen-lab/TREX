@@ -303,8 +303,10 @@ def run_braintrace(
         clone_graph.plot(output_dir / 'graph_corrected', highlight_cell_ids)
 
     clones = clone_graph.clones()
-    clone_graph.write_clones(output_dir / 'clones.txt', clones)
-    clone_graph.write_clone_sequences(output_dir / 'clone_sequences.txt', clones)
+    with open(output_dir / 'clones.txt', 'w') as f:
+        clone_graph.write_clones(f, clones)
+    with open(output_dir / 'clone_sequences.txt', 'w') as f:
+        clone_graph.write_clone_sequences(f, clones)
     logger.info(f'Detected {len(clones)} clones')
     clone_sizes = Counter(len(cells) for clone_id, cells in clones)
     logger.info('Clone size histogram\n size count\n%s',
