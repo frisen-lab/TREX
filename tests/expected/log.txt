@@ -1,5 +1,5 @@
-Braintrace 0.4.dev72+g0e7ac32
-Command line arguments: --delete --loom --umi-matrix -s 695 -e 724 tests/data/
+Braintrace 0.4.dev103+gc0afa54.d20200428
+Command line arguments: run10x --delete --loom --umi-matrix -s 695 -e 724 tests/data/
 Reading clone ids from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
 Found 3857 reads with usable clone ids. Skipped 1692 without cell id, 3 without UMI.
 Read 3857 reads containing (parts of) the clone ID (2703 full clone IDs, 71 unique)

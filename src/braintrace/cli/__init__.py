@@ -1,0 +1,2 @@
+class CommandLineError(Exception):
+    pass
