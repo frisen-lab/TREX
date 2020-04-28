@@ -22,7 +22,13 @@ class DatasetReader:
         cellranger_dir = make_cellranger(path, self.genome_name)
         allowed_cell_ids = cellranger_dir.cellids()
         reads = read_bam(
-            cellranger_dir.bam, output_bam_path, allowed_cell_ids, self.chromosome, self.start, self.end)
+            cellranger_dir.bam,
+            output_bam_path,
+            allowed_cell_ids,
+            self.chromosome,
+            self.start,
+            self.end,
+        )
         assert len(reads) > 0, "No reads"
         return reads
 
@@ -53,7 +59,8 @@ class DatasetReader:
 
         if allowed_cell_ids:
             logger.debug("Allowed cell ids:\n- %s\n  ...", "\n- ".join(list(allowed_cell_ids)[:10]))
-            logger.debug("Cell ids of reads:\n- %s\n  ...", "\n- ".join(r.cell_id for r in reads[:10]))
+            logger.debug(
+                "Cell ids of reads:\n- %s\n  ...", "\n- ".join(r.cell_id for r in reads[:10]))
             reads = [r for r in reads if r.cell_id in allowed_cell_ids]
         return reads
 

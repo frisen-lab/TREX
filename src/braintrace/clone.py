@@ -165,7 +165,8 @@ class CloneGraph:
                 hl = ',fillcolor=yellow' if intersection else ''
                 hl_label = f' ({len(intersection)})' if intersection else ''
                 print(
-                    f'  "{node.cell_id}" [penwidth={width}{hl},label="{node.cell_id}\\n{node.n}{hl_label}"];',
+                    f'  "{node.cell_id}" [penwidth={width}{hl},label="{node.cell_id}'
+                    f'\\n{node.n}{hl_label}"];',
                     file=s)
         for node1, node2 in self._graph.edges():
             width = int(1 + edge_scaling * math.log(node1.n * node2.n))
@@ -202,7 +203,9 @@ class CloneGraph:
                     highlighting = '+'
                 else:
                     highlighting = ''
-                print(cell.cell_id, highlighting, *sorted(cell.clone_id_counts.keys()), sep='\t', file=s)
+                clone_ids = sorted(cell.clone_id_counts.keys())
+                print(
+                    cell.cell_id, highlighting, *clone_ids, sep='\t', file=s)
                 counter.update(cell.clone_id_counts.keys())
         print(f'# {n_complete} complete components', file=s)
         return s.getvalue()

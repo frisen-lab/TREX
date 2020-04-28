@@ -16,7 +16,8 @@ def kmers(s: str, k: int):
 
 
 def cluster_sequences(
-        sequences: List[str], is_similar: Callable[[str, str], bool], k: int = 6) -> List[List[str]]:
+        sequences: List[str], is_similar: Callable[[str, str], bool], k: int = 6
+) -> List[List[str]]:
     """
     Cluster sequences by Hamming distance.
 

@@ -121,12 +121,14 @@ def parse_arguments():
              'Default: Auto-detected',
         default=None)
     parser.add_argument('--chromosome', '--chr',
-        help='Name of chromosome on which clone ID is located. Default: Last chromosome in BAM file',
+        help='Name of chromosome on which clone ID is located.'
+             ' Default: Last chromosome in BAM file',
         default=None)
     parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
         help='name of the run and directory created by program. Default: %(default)s',
         default=Path('braintrace_run'))
-    parser.add_argument('--delete', action='store_true', help='Delete output directory if it exists')
+    parser.add_argument('--delete', action='store_true',
+        help='Delete output directory if it exists')
     parser.add_argument('--start', '-s',
         help='Position of first clone ID nucleotide. Default: Auto-detected',
         type=int, default=None)
@@ -149,7 +151,8 @@ def parse_arguments():
         'same order as transcriptome datasets',
         default=None)
     parser.add_argument('--filter-cellids', '-f', metavar='CSV', type=Path,
-        help='CSV file containing cell IDs to keep in the analysis. This flag enables to remove cells e.g. doublets',
+        help='CSV file containing cell IDs to keep in the analysis.'
+             ' This flag enables to remove cells e.g. doublets',
         default=None)
     parser.add_argument('--keep-single-reads', action='store_true', default=False,
         help='Keep clone IDs supported by only a single read. Default: Discard them')
@@ -169,7 +172,8 @@ def parse_arguments():
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('-v', '--visium', default=False, action='store_true',
-        help='Adapt braintrace run to 10x Visium data: Filter out clone IDs only based on 1 read, but keep those with only one UMI')
+        help='Adapt braintrace run to 10x Visium data: Filter out clone IDs only based on 1 read,'
+             ' but keep those with only one UMI')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
     parser.add_argument('path', type=Path, nargs='+', metavar='DIRECTORY',
@@ -272,7 +276,6 @@ def run_braintrace(
         cells = filter_cells(cells, corrected_molecules, keep_single_reads)
         logger.info(f'{len(cells)} filtered cells remain')
         write_cells(output_dir / 'cells_filtered.txt', cells)
-
 
     if should_write_umi_matrix:
         logger.info(f"Writing UMI matrix")
@@ -391,6 +394,7 @@ def correct_clone_ids(
         new_molecules.append(molecule._replace(clone_id=clone_id))
     return new_molecules
 
+
 def filter_visium(
     cells: Iterable[Cell],
     molecules: Iterable[Molecule],
@@ -409,15 +413,19 @@ def filter_visium(
                 # This clone ID occurs more than once in this cell - keep it
                 continue
             for molecule in molecules:
-                if molecule.cell_id == cell_id and molecule.clone_id == clone_id and molecule.read_count == 1:
-                    #This clone ID has only a read count of 1 - remove it
+                if (
+                    molecule.cell_id == cell_id
+                    and molecule.clone_id == clone_id
+                    and molecule.read_count == 1
+                ):
+                    # This clone ID has only a read count of 1 - remove it
                     del_cloneids += 1
                     del clone_id_counts[clone_id]
         if clone_id_counts:
             new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
         else:
             del_cells += 1
-    
+
     logger.info(f"Found {del_cloneids} single-read clone IDs and removed {del_cells} cells")
     return new_cells
 
@@ -480,10 +488,12 @@ def write_molecules(path, molecules):
 def write_cells(path: Path, cells: List[Cell]) -> None:
     """Write cells to a tab-separated file"""
     with open(path, 'w') as f:
-        print("#cell_id", ":", "clone_id1", "count1", "clone_id2", "count2", "...", sep="\t", file=f)
+        print(
+            "#cell_id", ":", "clone_id1", "count1", "clone_id2", "count2", "...", sep="\t", file=f)
         for cell in cells:
             row = [cell.cell_id, ':']
-            sorted_clone_ids = sorted(cell.clone_id_counts, key=lambda x: cell.clone_id_counts[x], reverse=True)
+            sorted_clone_ids = sorted(
+                cell.clone_id_counts, key=lambda x: cell.clone_id_counts[x], reverse=True)
             if not sorted_clone_ids:
                 continue
             for clone_id in sorted_clone_ids:
@@ -559,4 +569,3 @@ def write_umi_matrix(output_dir: Path, cells: List[Cell]):
 
 if __name__ == '__main__':
     main()
-

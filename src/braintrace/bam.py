@@ -49,7 +49,8 @@ def read_bam(
             # Fetches those reads aligning to the artifical, clone-id-containing chromosome
             reads = []
             no_cell_id = no_umi = 0
-            for read in alignment_file.fetch(chr_name, max(0, clone_id_start - 10), clone_id_end + 10):
+            start, stop = max(0, clone_id_start - 10), clone_id_end + 10
+            for read in alignment_file.fetch(chr_name, start, stop):
                 # Skip reads without cellID or UMI
                 has_cell_id = read.has_tag("CB")
                 has_umi = read.has_tag("UB")
@@ -81,7 +82,8 @@ def read_bam(
     logger.info(
         f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id, "
         f"{no_umi} without UMI.")
-    logger.debug(f"Cache hits: {clone_id_extractor.hits}. Cache misses: {clone_id_extractor.misses}")
+    logger.debug(
+        f"Cache hits: {clone_id_extractor.hits}. Cache misses: {clone_id_extractor.misses}")
     return reads
 
 
@@ -177,7 +179,11 @@ def detect_clone_id_location(alignment_file, reference_name):
             if column.reference_pos < clone_id_start:
                 # See pileup() documentation
                 continue
-            bases = [p.alignment.query_sequence[p.query_position] for p in column.pileups if p.query_position is not None]
+            bases = [
+                p.alignment.query_sequence[p.query_position]
+                for p in column.pileups
+                if p.query_position is not None
+            ]
             counter = Counter(bases)
             # Check whether one base dominates
             if counter.most_common()[0][1] / len(bases) > 0.95:
