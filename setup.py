@@ -22,7 +22,7 @@ setup(
         'numpy',
         'loompy',
         'xopen>=0.5.0',
-        'alignlib',
+        'tinyalign',
         'pandas',
     ],
     python_requires='>=3.6',

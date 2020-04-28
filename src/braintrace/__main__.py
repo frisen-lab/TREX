@@ -12,7 +12,7 @@ from collections import Counter
 
 from typing import List, Dict, Iterable
 
-from alignlib import hamming_distance
+from tinyalign import hamming_distance
 import numpy as np
 import pandas as pd
 with warnings.catch_warnings():
