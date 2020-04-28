@@ -4,7 +4,6 @@ import logging
 
 from .bam import read_bam
 from .cellranger import make_cellranger
-from .error import BraintraceError
 
 
 logger = logging.getLogger(__name__)
