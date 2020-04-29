@@ -10,6 +10,7 @@ from pathlib import Path
 from collections import Counter
 from typing import List, Dict, Iterable
 
+from braintrace.cli import setup_logging
 from tinyalign import hamming_distance
 import numpy as np
 import pandas as pd
@@ -19,7 +20,6 @@ with warnings.catch_warnings():
 
 from .. import __version__
 from ..cellranger import make_cellranger, CellRangerError
-from ..utils import NiceFormatter
 from ..clustering import cluster_sequences
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
@@ -174,18 +174,6 @@ def add_arguments(parser):
         help='Plot the clone graph')
     parser.add_argument('path', type=Path, nargs='+', metavar='DIRECTORY',
         help='Path to a Cell Ranger directory with an "outs" subdirectory.')
-
-
-def setup_logging(debug: bool) -> None:
-    """
-    Set up logging. If debug is True, then DEBUG level messages are printed.
-    """
-    handler = logging.StreamHandler()
-    handler.setFormatter(NiceFormatter())
-
-    root = logging.getLogger()
-    root.addHandler(handler)
-    root.setLevel(logging.DEBUG if debug else logging.INFO)
 
 
 def add_file_logging(path: Path) -> None:
