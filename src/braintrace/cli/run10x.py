@@ -10,7 +10,6 @@ from pathlib import Path
 from collections import Counter
 from typing import List, Dict, Iterable
 
-from braintrace.cli import setup_logging
 from tinyalign import hamming_distance
 import numpy as np
 import pandas as pd
@@ -18,6 +17,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
 
+from . import setup_logging, CommandLineError
 from .. import __version__
 from ..cellranger import make_cellranger, CellRangerError
 from ..clustering import cluster_sequences
@@ -40,9 +40,8 @@ def main(args):
     try:
         make_output_dir(output_dir, args.delete)
     except FileExistsError:
-        logger.error(f'Output directory "{output_dir}" already exists '
-                     '(use --delete to force deleting an existing output directory)')
-        sys.exit(1)
+        raise CommandLineError(f"Output directory '{output_dir}' already exists "
+            "(use --delete to force deleting an existing output directory)")
 
     add_file_logging(output_dir / 'log.txt')
     logger.info(f'Braintrace {__version__}')
@@ -64,14 +63,12 @@ def main(args):
         sample_names = [path.name for path in transcriptome_inputs]
         logger.info("Using these sample names: %s", ", ".join(sample_names))
     if len(sample_names) != len(transcriptome_inputs):
-        logger.error("The number of sample names (--samples) must match the number of "
+        raise CommandLineError("The number of sample names (--samples) must match the number of "
             "provided transcriptome datasets")
-        sys.exit(1)
     if args.amplicon:
         amplicon_inputs = args.amplicon
         if len(transcriptome_inputs) != len(amplicon_inputs):
-            logger.error("As many amplicon as transcriptome datasets must be provided")
-            sys.exit(1)
+            raise CommandLineError("As many amplicon as transcriptome datasets must be provided")
     else:
         amplicon_inputs = []
 
@@ -104,8 +101,7 @@ def main(args):
             should_write_loom=args.loom,
         )
     except (CellRangerError, BraintraceError) as e:
-        logger.error("%s", e)
-        sys.exit(1)
+        raise CommandLineError(e)
 
 
 def add_arguments(parser):
