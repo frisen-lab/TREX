@@ -21,11 +21,11 @@ with warnings.catch_warnings():
 from .. import __version__
 from ..utils import NiceFormatter
 from ..clustering import cluster_sequences
-from ..clone import CloneGraph
-from ..molecule import Molecule, compute_molecules
-from ..cell import Cell, compute_cells
+from ..cloneS3 import CloneGraph
+from ..cellS3 import Cell, compute_cells
 from ..error import BraintraceError
 from ..datasetS3 import DatasetReader
+from ..bamS3 import Read
 
 
 __author__ = 'leonie.von.berlin@ki.se'
@@ -75,7 +75,7 @@ def main(args):
     if args.highlight:
         with open(args.highlight) as f:
             highlight_cell_ids = [line.strip() for line in f]
-#FINE UNTIL HERE
+    
     try:
         run_braintrace(
             output_dir,
@@ -217,33 +217,24 @@ def run_braintrace(
         f'({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)')
 
     write_reads(output_dir / "reads.txt", reads)
-    sys.exit(1)
 
-    molecules = compute_molecules(reads)
-    clone_ids = [
-        m.clone_id for m in molecules if '-' not in m.clone_id and '0' not in m.clone_id]
-    logger.info(f'Detected {len(molecules)} molecules ({len(clone_ids)} full clone IDs, '
-        f'{len(set(clone_ids))} unique)')
-
-    write_molecules(output_dir / 'molecules.txt', molecules)
-
-    corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
-    clone_ids = [m.clone_id for m in corrected_molecules
-        if '-' not in m.clone_id and '0' not in m.clone_id]
+    corrected_reads = correct_clone_ids(reads, max_hamming, min_length)
+    clone_ids = [r.clone_id for r in corrected_reads
+        if '-' not in r.clone_id and '0' not in r.clone_id]
     logger.info(f'After clone ID correction, {len(set(clone_ids))} unique clone IDs remain')
 
-    write_molecules(output_dir / 'molecules_corrected.txt', corrected_molecules)
+    write_reads(output_dir / 'reads_corrected.txt', corrected_reads)
 
-    cells = compute_cells(corrected_molecules, min_length)
+    cells = compute_cells(corrected_reads, min_length)
     logger.info(f'Detected {len(cells)} cells')
     write_cells(output_dir / 'cells.txt', cells)
 
-    cells = filter_cells(cells, corrected_molecules, keep_single_reads)
-    logger.info(f'{len(cells)} filtered cells remain')
-    write_cells(output_dir / 'cells_filtered.txt', cells)
+    #cells = filter_cells(cells, corrected_reads, keep_single_reads)
+    #logger.info(f'{len(cells)} filtered cells remain')
+    #write_cells(output_dir / 'cells_filtered.txt', cells)
 
     if should_write_read_matrix:
-        logger.info(f"Writing Read matrix")
+        logger.info(f"Writing read matrix")
         write_read_matrix(output_dir, cells)
 
     clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
@@ -304,12 +295,12 @@ def read_allowed_cellids(path):
 
 #EDIT
 def correct_clone_ids(
-        molecules: List[Molecule], max_hamming: int, min_overlap: int = 20) -> List[Molecule]:
+        reads: List[Read], max_hamming: int, min_overlap: int = 20) -> List[Read]:
     """
     Attempt to correct sequencing errors in the clone ID sequences of all molecules
     """
     # Obtain all clone IDs (including those with '-' and '0')
-    clone_ids = [m.clone_id for m in molecules]
+    clone_ids = [r.clone_id for r in reads]
 
     # Count the full-length clone IDs
     clone_id_counts = Counter(clone_ids)
@@ -342,16 +333,16 @@ def correct_clone_ids(
 
     # Create a new list of molecules in which the clone IDs have been replaced
     # by their representatives
-    new_molecules = []
-    for molecule in molecules:
-        clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
-        new_molecules.append(molecule._replace(clone_id=clone_id))
-    return new_molecules
-
+    new_reads = []
+    for read in reads:
+        clone_id = clone_id_map.get(read.clone_id, read.clone_id)
+        new_reads.append(read._replace(clone_id=clone_id))
+    return new_reads
+'''
 #EDIT
 def filter_cells(
     cells: Iterable[Cell],
-    molecules: Iterable[Molecule],
+    reads: Iterable[Read],
     keep_single_reads: bool = False
 ) -> List[Cell]:
     """
@@ -388,20 +379,13 @@ def filter_cells(
         if clone_id_counts:
             new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
     return new_cells
-
+'''
 
 def write_reads(path, reads):
     with open(path, 'w') as f:
         print("#cell_id", "clone_id", sep="\t", file=f)
         for read in sorted(reads, key=lambda read: (read.clone_id, read.cell_id)):
             print(read.cell_id, read.clone_id, sep='\t', file=f)
-
-#REMOVE
-def write_molecules(path, molecules):
-    with open(path, 'w') as f:
-        print("#cell_id", "umi", "clone_id", sep="\t", file=f)
-        for molecule in molecules:
-            print(molecule.cell_id, molecule.umi, molecule.clone_id, sep='\t', file=f)
 
 
 def write_cells(path: Path, cells: List[Cell]) -> None:
@@ -412,28 +396,28 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
         for cell in cells:
             row = [cell.cell_id, ':']
             sorted_clone_ids = sorted(
-                cell.clone_id_counts, key=lambda x: cell.clone_id_counts[x], reverse=True)
+                cell.read_counts, key=lambda x: cell.read_counts[x], reverse=True)
             if not sorted_clone_ids:
                 continue
             for clone_id in sorted_clone_ids:
-                row.extend([clone_id, cell.clone_id_counts[clone_id]])
+                row.extend([clone_id, cell.read_counts[clone_id]])
             print(*row, sep='\t', file=f)
 
-#EDIT
+
 def write_read_matrix(output_dir: Path, cells: List[Cell]):
-    """Create a UMI-count matrix with cells as columns and clone IDs as rows"""
+    """Create a Read-count matrix with cells as columns and clone IDs as rows"""
     clone_ids = set()
     for cell in cells:
-        clone_ids.update(clone_id for clone_id in cell.clone_id_counts)
+        clone_ids.update(clone_id for clone_id in cell.read_counts)
     clone_ids = sorted(clone_ids)
-    all_clone_id_counts = [cell.clone_id_counts for cell in cells]
-    with open(output_dir / "umi_count_matrix.csv", "w") as f:
+    all_read_counts = [cell.read_counts for cell in cells]
+    with open(output_dir / "read_count_matrix.csv", "w") as f:
         f.write(",")
         f.write(",".join(cell.cell_id for cell in cells))
         f.write("\n")
         for clone_id in clone_ids:
             f.write(clone_id)
             f.write(",")
-            values = [lic.get(clone_id, 0) for lic in all_clone_id_counts]
+            values = [lic.get(clone_id, 0) for lic in all_read_counts]
             f.write(",".join(str(v) for v in values))
             f.write("\n")

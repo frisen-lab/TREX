@@ -3,6 +3,7 @@ from itertools import zip_longest
 import logging
 
 from .bamS3 import read_bam
+from .bamS3 import Read
 
 
 
@@ -58,7 +59,9 @@ class DatasetReader:
             logger.debug(
                 "Cell ids of reads:\n- %s\n  ...", "\n- ".join(r.cell_id for r in reads[:10]))
             reads = [r for r in reads if r.cell_id in allowed_cell_ids]
-        return reads
+        
+        sorted_reads = sorted(reads, key=lambda rd: (rd.cell_id, rd.clone_id))
+        return sorted_reads
 
     def merge_datasets(self, datasets, names):
         if self.prefix:
