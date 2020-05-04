@@ -47,10 +47,6 @@ def main(args):
     logger.info(f'Braintrace {__version__}')
     logger.info('Command line arguments: %s', ' '.join(sys.argv[1:]))
 
-    restrict_cell_ids = None
-    if args.restrict:
-        with open(args.restrict) as f:
-            restrict_cell_ids = [line.strip() for line in f]
     allowed_cell_ids = None
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
@@ -96,7 +92,6 @@ def main(args):
             should_write_umi_matrix=args.umi_matrix,
             should_run_visium=args.visium,
             should_plot=args.plot,
-            restrict_cell_ids=restrict_cell_ids,
             highlight_cell_ids=highlight_cell_ids,
             should_write_loom=args.loom,
         )
@@ -152,8 +147,6 @@ def add_arguments(parser):
         help='If given, create loom-file from Cell Ranger and clone data. '
             'File will have the same name as the run',
         action='store_true')
-    parser.add_argument('--restrict', metavar='FILE',
-        help='Restrict analysis to the cell IDs listed in FILE')
     parser.add_argument('--highlight',
         help='Highlight cell IDs listed in FILE in the clone graph')
     parser.add_argument('--samples',
@@ -208,7 +201,6 @@ def run_braintrace(
     should_write_umi_matrix: bool,
     should_run_visium: bool,
     should_plot: bool,
-    restrict_cell_ids: List[str],
     highlight_cell_ids: List[str],
     should_write_loom: bool,
 ):
@@ -259,12 +251,6 @@ def run_braintrace(
     if should_write_umi_matrix:
         logger.info(f"Writing UMI matrix")
         write_umi_matrix(output_dir, cells)
-
-    # TODO remove --restrict in favor of --filter-cellids
-    if restrict_cell_ids is not None:
-        restrict_cell_ids = set(restrict_cell_ids)
-        cells = [cell for cell in cells if cell.cell_id in restrict_cell_ids]
-        logger.info(f'Restricting to {len(cells)} cells')
 
     clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
 
