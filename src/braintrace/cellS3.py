@@ -1,7 +1,7 @@
 from typing import NamedTuple, Dict, List
 from collections import defaultdict, OrderedDict, Counter
 
-from .bamS3 import Read
+from .bam import Read
 
 
 class Cell(NamedTuple):

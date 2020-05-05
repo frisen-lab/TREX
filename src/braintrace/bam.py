@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class Read(NamedTuple):
-    umi: str
+    umi: None
     cell_id: str
     clone_id: str
 
@@ -24,6 +24,8 @@ def read_bam(
     chr_name: str,
     clone_id_start=None,
     clone_id_end=None,
+    require_umis=True,
+    cell_id_tag="CB",
 ):
     """
     bam_path -- path to input BAM file
@@ -52,36 +54,43 @@ def read_bam(
             start, stop = max(0, clone_id_start - 10), clone_id_end + 10
             for read in alignment_file.fetch(chr_name, start, stop):
                 # Skip reads without cellID or UMI
-                has_cell_id = read.has_tag("CB")
+                has_cell_id = read.has_tag(cell_id_tag)
                 has_umi = read.has_tag("UB")
                 if not has_cell_id or not has_umi:
                     if not has_cell_id:
                         no_cell_id += 1
-                    if not has_umi:
+                        continue
+                    if require_umis and not has_umi:
                         no_umi += 1
-                    continue
-                cell_id = read.get_tag("CB")
+                        continue
+                cell_id = read.get_tag(cell_id_tag)
                 if allowed_cell_ids and cell_id not in allowed_cell_ids:
                     no_cell_id += 1
                     continue
-                if not cell_id.endswith("-1"):
-                    raise ValueError(
-                        f"A cell id ({cell_id!r}) was found that does not end in '-1'. "
-                        "Currently, this type of data cannot be used"
-                    )
-                cell_id = cell_id[:-2]
+                umi = None
+                if cell_id_tag == "CB":
+                    umi = read.get_tag('UB')
+                    if not cell_id.endswith("-1"):
+                        raise ValueError(
+                            f"A cell id ({cell_id!r}) was found that does not end in '-1'. "
+                            "Currently, this type of data cannot be used"
+                        )
+                    cell_id = cell_id[:-2]
                 clone_id = clone_id_extractor.extract(read)
                 if clone_id is None:
                     # Read does not cover the clone id
                     continue
-                reads.append(Read(cell_id=cell_id, umi=read.get_tag('UB'), clone_id=clone_id))
-
+                reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
                 # Write the passing alignments to a separate file
                 out_bam.write(read)
 
-    logger.info(
-        f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id, "
-        f"{no_umi} without UMI.")
+    if require_umis:
+        logger.info(
+            f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id, "
+            f"{no_umi} without UMI.")
+    else:
+        logger.info(
+            f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id")
     logger.debug(
         f"Cache hits: {clone_id_extractor.hits}. Cache misses: {clone_id_extractor.misses}")
     return reads
