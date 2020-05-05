@@ -17,15 +17,14 @@ with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
 
-#EDIT
 from .. import __version__
 from ..utils import NiceFormatter
 from ..clustering import cluster_sequences
 from ..cloneS3 import CloneGraph
 from ..cellS3 import Cell, compute_cells
 from ..error import BraintraceError
-from ..datasetS3 import DatasetReader
-from ..bamS3 import Read
+from ..dataset import DatasetReader
+from ..bam import Read
 
 
 __author__ = 'leonie.von.berlin@ki.se'
@@ -79,6 +78,7 @@ def main(args):
     try:
         run_braintrace(
             output_dir,
+            genome_name=args.genome_name,
             allowed_cell_ids=allowed_cell_ids,
             chromosome=args.chromosome,
             start=args.start - 1 if args.start is not None else None,
@@ -104,6 +104,10 @@ def add_arguments(parser):
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--debug', default=False, action='store_true',
         help='Print some extra debugging messages')
+    parser.add_argument('--genome-name', metavar='NAME',
+        help='Name of the genome as indicated in Cell Ranger count run with the flag --genome. '
+             'Default: None',
+        default=None)
     parser.add_argument('--chromosome', '--chr',
         help='Name of chromosome on which clone ID is located.'
              ' Default: Last chromosome in BAM file',
@@ -183,9 +187,10 @@ def make_output_dir(path, delete_if_exists):
         else:
             raise
 
-#EDIT
+
 def run_braintrace(
     output_dir: Path,
+    genome_name: str,
     allowed_cell_ids: List[str],
     chromosome: str,
     start: int,
@@ -205,9 +210,9 @@ def run_braintrace(
     if len(sample_names) != len(set(sample_names)):
         raise BraintraceError("The sample names need to be unique")
 
-    dataset_reader = DatasetReader(output_dir, chromosome, start, end, prefix)
+    dataset_reader = DatasetReader(output_dir, genome_name, chromosome, start, end, prefix)
     reads = dataset_reader.read_all(
-        transcriptome_inputs, amplicon_inputs, sample_names, allowed_cell_ids)
+        transcriptome_inputs, amplicon_inputs, sample_names, allowed_cell_ids, require_umis=False, cell_id_tag = "BC")
     if not reads:
         raise BraintraceError("No reads left after --filter-cellids filtering")
 

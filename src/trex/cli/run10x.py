@@ -219,7 +219,7 @@ def run_trex(
         f'({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)')
 
     write_reads(output_dir / "reads.txt", reads)
-
+ 
     molecules = compute_molecules(reads)
     clone_ids = [
         m.clone_id for m in molecules if '-' not in m.clone_id and '0' not in m.clone_id]
