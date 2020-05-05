@@ -323,7 +323,7 @@ def correct_clone_ids(
     clone_ids = [m.clone_id for m in molecules]
 
     # Count the full-length clone IDs
-    clone_id_counts = Counter(clone_ids)
+    counts = Counter(clone_ids)
 
     # Cluster them by Hamming distance
     def is_similar(s, t):
@@ -347,7 +347,7 @@ def correct_clone_ids(
     for cluster in clusters:
         if len(cluster) > 1:
             # Pick most frequent clone ID as representative
-            representative = max(cluster, key=lambda bc: (clone_id_counts[bc], bc))
+            representative = max(cluster, key=lambda bc: (counts[bc], bc))
             for clone_id in cluster:
                 clone_id_map[clone_id] = representative
 
@@ -372,8 +372,8 @@ def filter_visium(
     del_cloneids = 0
     for cell in cells:
         cell_id = cell.cell_id
-        clone_id_counts = cell.clone_id_counts.copy()
-        for clone_id, count in cell.clone_id_counts.items():
+        counts = cell.counts.copy()
+        for clone_id, count in cell.counts.items():
             if count > 1:
                 # This clone ID occurs more than once in this cell - keep it
                 continue
@@ -385,9 +385,9 @@ def filter_visium(
                 ):
                     # This clone ID has only a read count of 1 - remove it
                     del_cloneids += 1
-                    del clone_id_counts[clone_id]
-        if clone_id_counts:
-            new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
+                    del counts[clone_id]
+        if counts:
+            new_cells.append(Cell(cell_id=cell.cell_id, counts=counts))
         else:
             del_cells += 1
 
@@ -408,9 +408,9 @@ def filter_cells(
     - If keep_single_reads is False, clone IDs that have only a count of one and are also only based
       on one read are also removed
     """
-    overall_clone_id_counts: Dict[str, int] = Counter()
+    overall_counts: Dict[str, int] = Counter()
     for cell in cells:
-        overall_clone_id_counts.update(cell.clone_id_counts)
+        overall_counts.update(cell.counts)
 
     single_read_clone_ids = set()
     for molecule in molecules:
@@ -421,18 +421,18 @@ def filter_cells(
     # filters out clone IDs with a count of one that appear in another cell
     new_cells = []
     for cell in cells:
-        clone_id_counts = cell.clone_id_counts.copy()
-        for clone_id, count in cell.clone_id_counts.items():
+        counts = cell.counts.copy()
+        for clone_id, count in cell.counts.items():
             if count > 1:
                 # This clone ID occurs more than once in this cell - keep it
                 continue
-            if overall_clone_id_counts[clone_id] > 1:
+            if overall_counts[clone_id] > 1:
                 # This clone ID occurs also in other cells - remove it
-                del clone_id_counts[clone_id]
+                del counts[clone_id]
             elif clone_id in single_read_clone_ids and not keep_single_reads:
-                del clone_id_counts[clone_id]
-        if clone_id_counts:
-            new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
+                del counts[clone_id]
+        if counts:
+            new_cells.append(Cell(cell_id=cell.cell_id, counts=counts))
     return new_cells
 
 
@@ -458,11 +458,11 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
         for cell in cells:
             row = [cell.cell_id, ':']
             sorted_clone_ids = sorted(
-                cell.clone_id_counts, key=lambda x: cell.clone_id_counts[x], reverse=True)
+                cell.counts, key=lambda x: cell.counts[x], reverse=True)
             if not sorted_clone_ids:
                 continue
             for clone_id in sorted_clone_ids:
-                row.extend([clone_id, cell.clone_id_counts[clone_id]])
+                row.extend([clone_id, cell.counts[clone_id]])
             print(*row, sep='\t', file=f)
 
 
@@ -475,9 +475,9 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
     # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant clone IDs.
     most_abundant = dict()
     for cell in cells:
-        if not cell.clone_id_counts:
+        if not cell.counts:
             continue
-        counts = sorted(cell.clone_id_counts.items(), key=operator.itemgetter(1))
+        counts = sorted(cell.counts.items(), key=operator.itemgetter(1))
         counts.reverse()
         counts = counts[:top_n]
         most_abundant[cell.cell_id] = counts
@@ -517,9 +517,9 @@ def write_umi_matrix(output_dir: Path, cells: List[Cell]):
     """Create a UMI-count matrix with cells as columns and clone IDs as rows"""
     clone_ids = set()
     for cell in cells:
-        clone_ids.update(clone_id for clone_id in cell.clone_id_counts)
+        clone_ids.update(clone_id for clone_id in cell.counts)
     clone_ids = sorted(clone_ids)
-    all_clone_id_counts = [cell.clone_id_counts for cell in cells]
+    all_counts = [cell.counts for cell in cells]
     with open(output_dir / "umi_count_matrix.csv", "w") as f:
         f.write(",")
         f.write(",".join(cell.cell_id for cell in cells))
@@ -527,6 +527,6 @@ def write_umi_matrix(output_dir: Path, cells: List[Cell]):
         for clone_id in clone_ids:
             f.write(clone_id)
             f.write(",")
-            values = [lic.get(clone_id, 0) for lic in all_clone_id_counts]
+            values = [lic.get(clone_id, 0) for lic in all_counts]
             f.write(",".join(str(v) for v in values))
             f.write("\n")

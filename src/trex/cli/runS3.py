@@ -20,8 +20,8 @@ with warnings.catch_warnings():
 from .. import __version__
 from ..utils import NiceFormatter
 from ..clustering import cluster_sequences
-from ..cloneS3 import CloneGraph
-from ..cellS3 import Cell, compute_cells
+from ..clone import CloneGraph
+from ..cell import Cell, compute_cells
 from ..error import BraintraceError
 from ..dataset import DatasetReader
 from ..bam import Read
@@ -230,7 +230,9 @@ def run_braintrace(
 
     write_reads(output_dir / 'reads_corrected.txt', corrected_reads)
 
-    cells = compute_cells(corrected_reads, min_length)
+    # We do not have multiple reads per molecule, so we treat each read as one molecule
+    corrected_molecules = corrected_reads
+    cells = compute_cells(corrected_molecules, min_length)
     logger.info(f'Detected {len(cells)} cells')
     write_cells(output_dir / 'cells.txt', cells)
 
@@ -401,11 +403,11 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
         for cell in cells:
             row = [cell.cell_id, ':']
             sorted_clone_ids = sorted(
-                cell.read_counts, key=lambda x: cell.read_counts[x], reverse=True)
+                cell.counts, key=lambda x: cell.counts[x], reverse=True)
             if not sorted_clone_ids:
                 continue
             for clone_id in sorted_clone_ids:
-                row.extend([clone_id, cell.read_counts[clone_id]])
+                row.extend([clone_id, cell.counts[clone_id]])
             print(*row, sep='\t', file=f)
 
 
@@ -413,9 +415,9 @@ def write_read_matrix(output_dir: Path, cells: List[Cell]):
     """Create a Read-count matrix with cells as columns and clone IDs as rows"""
     clone_ids = set()
     for cell in cells:
-        clone_ids.update(clone_id for clone_id in cell.read_counts)
+        clone_ids.update(clone_id for clone_id in cell.counts)
     clone_ids = sorted(clone_ids)
-    all_read_counts = [cell.read_counts for cell in cells]
+    all_counts = [cell.counts for cell in cells]
     with open(output_dir / "read_count_matrix.csv", "w") as f:
         f.write(",")
         f.write(",".join(cell.cell_id for cell in cells))
@@ -423,6 +425,6 @@ def write_read_matrix(output_dir: Path, cells: List[Cell]):
         for clone_id in clone_ids:
             f.write(clone_id)
             f.write(",")
-            values = [lic.get(clone_id, 0) for lic in all_read_counts]
+            values = [lic.get(clone_id, 0) for lic in all_counts]
             f.write(",".join(str(v) for v in values))
             f.write("\n")
