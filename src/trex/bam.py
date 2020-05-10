@@ -5,6 +5,7 @@ import logging
 from collections import Counter
 from pathlib import Path
 from typing import NamedTuple, List
+from typing import Optional
 
 from pysam import AlignmentFile
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Read(NamedTuple):
-    umi: None
+    umi: Optional[str]
     cell_id: str
     clone_id: str
 
@@ -59,9 +60,9 @@ def read_bam(
                 if not has_cell_id or not has_umi:
                     if not has_cell_id:
                         no_cell_id += 1
-                        continue
-                    if require_umis and not has_umi:
+                    if not has_umi:
                         no_umi += 1
+                    if not has_cell_id or (require_umis and not has_umi):
                         continue
                 cell_id = read.get_tag(cell_id_tag)
                 if allowed_cell_ids and cell_id not in allowed_cell_ids:

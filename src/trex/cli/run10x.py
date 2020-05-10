@@ -17,7 +17,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
 
-from . import setup_logging, CommandLineError
+from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
 from ..cellranger import make_cellranger, CellRangerError
 from ..clustering import cluster_sequences
@@ -163,24 +163,6 @@ def add_arguments(parser):
         help='Plot the clone graph')
     parser.add_argument('path', type=Path, nargs='+', metavar='DIRECTORY',
         help='Path to a Cell Ranger directory with an "outs" subdirectory.')
-
-
-def add_file_logging(path: Path) -> None:
-    file_handler = logging.FileHandler(path)
-    root = logging.getLogger()
-    root.addHandler(file_handler)
-
-
-def make_output_dir(path, delete_if_exists):
-    try:
-        path.mkdir()
-    except FileExistsError:
-        if delete_if_exists:
-            logger.debug(f'Re-creating folder "{path}"')
-            shutil.rmtree(path)
-            path.mkdir()
-        else:
-            raise
 
 
 def run_trex(

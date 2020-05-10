@@ -1,5 +1,5 @@
 """
-Run on SmartSeq3 data
+Run on Smart-seq3 data
 """
 import sys
 import operator
@@ -17,12 +17,14 @@ with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
 
+from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
 from ..utils import NiceFormatter
 from ..clustering import cluster_sequences
 from ..clone import CloneGraph
+from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
-from ..error import BraintraceError
+from ..error import TrexError
 from ..dataset import DatasetReader
 from ..bam import Read
 
@@ -44,7 +46,7 @@ def main(args):
         sys.exit(1)
 
     add_file_logging(output_dir / 'log.txt')
-    logger.info(f'Braintrace {__version__}')
+    logger.info(f'trex {__version__}')
     logger.info('Command line arguments: %s', ' '.join(sys.argv[1:]))
 
     allowed_cell_ids = None
@@ -76,7 +78,7 @@ def main(args):
             highlight_cell_ids = [line.strip() for line in f]
     
     try:
-        run_braintrace(
+        run_smartseq3(
             output_dir,
             genome_name=args.genome_name,
             allowed_cell_ids=allowed_cell_ids,
@@ -95,7 +97,7 @@ def main(args):
             should_plot=args.plot,
             highlight_cell_ids=highlight_cell_ids,
         )
-    except (BraintraceError) as e:
+    except (TrexError) as e:
         logger.error("%s", e)
         sys.exit(1)
 
@@ -114,7 +116,7 @@ def add_arguments(parser):
         default=None)
     parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
         help='name of the run and directory created by program. Default: %(default)s',
-        default=Path('braintrace_run'))
+        default=Path('trex_run'))
     parser.add_argument('--delete', action='store_true',
         help='Delete output directory if it exists')
     parser.add_argument('--start', '-s',
@@ -158,37 +160,7 @@ def add_arguments(parser):
         help='Path to a united bam file for all cells or path to a folder with one bam file per cell.')
 
 
-def setup_logging(debug: bool) -> None:
-    """
-    Set up logging. If debug is True, then DEBUG level messages are printed.
-    """
-    handler = logging.StreamHandler()
-    handler.setFormatter(NiceFormatter())
-
-    root = logging.getLogger()
-    root.addHandler(handler)
-    root.setLevel(logging.DEBUG if debug else logging.INFO)
-
-
-def add_file_logging(path: Path) -> None:
-    file_handler = logging.FileHandler(path)
-    root = logging.getLogger()
-    root.addHandler(file_handler)
-
-
-def make_output_dir(path, delete_if_exists):
-    try:
-        path.mkdir()
-    except FileExistsError:
-        if delete_if_exists:
-            logger.debug(f'Re-creating folder "{path}"')
-            shutil.rmtree(path)
-            path.mkdir()
-        else:
-            raise
-
-
-def run_braintrace(
+def run_smartseq3(
     output_dir: Path,
     genome_name: str,
     allowed_cell_ids: List[str],
@@ -208,13 +180,13 @@ def run_braintrace(
     highlight_cell_ids: List[str],
 ):
     if len(sample_names) != len(set(sample_names)):
-        raise BraintraceError("The sample names need to be unique")
+        raise TrexError("The sample names need to be unique")
 
     dataset_reader = DatasetReader(output_dir, genome_name, chromosome, start, end, prefix)
     reads = dataset_reader.read_all(
         transcriptome_inputs, amplicon_inputs, sample_names, allowed_cell_ids, require_umis=False, cell_id_tag = "BC")
     if not reads:
-        raise BraintraceError("No reads left after --filter-cellids filtering")
+        raise TrexError("No reads left after --filter-cellids filtering")
 
     clone_ids = [
         r.clone_id for r in reads if '-' not in r.clone_id and '0' not in r.clone_id]
@@ -223,15 +195,16 @@ def run_braintrace(
 
     write_reads(output_dir / "reads.txt", reads)
 
-    corrected_reads = correct_clone_ids(reads, max_hamming, min_length)
+    # We do not have multiple reads per molecule, so we treat each read as one molecule
+    molecules = reads
+
+    corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
     clone_ids = [r.clone_id for r in corrected_reads
         if '-' not in r.clone_id and '0' not in r.clone_id]
     logger.info(f'After clone ID correction, {len(set(clone_ids))} unique clone IDs remain')
 
     write_reads(output_dir / 'reads_corrected.txt', corrected_reads)
 
-    # We do not have multiple reads per molecule, so we treat each read as one molecule
-    corrected_molecules = corrected_reads
     cells = compute_cells(corrected_molecules, min_length)
     logger.info(f'Detected {len(cells)} cells')
     write_cells(output_dir / 'cells.txt', cells)
@@ -295,22 +268,22 @@ def read_allowed_cellids(path):
     filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
     for cell_id in filtered_df.iloc[:, 0]:
         if cell_id.endswith("-1"):
-            raise BraintraceError("Cell ids in the list of allowed cell IDs must not end in '-1'")
+            raise TrexError("Cell ids in the list of allowed cell IDs must not end in '-1'")
         allowed_ids.append(cell_id)
     logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
     return set(allowed_ids)
 
-#EDIT
+
 def correct_clone_ids(
-        reads: List[Read], max_hamming: int, min_overlap: int = 20) -> List[Read]:
+        molecules: List[Molecule], max_hamming: int, min_overlap: int = 20) -> List[Molecule]:
     """
     Attempt to correct sequencing errors in the clone ID sequences of all molecules
     """
     # Obtain all clone IDs (including those with '-' and '0')
-    clone_ids = [r.clone_id for r in reads]
+    clone_ids = [m.clone_id for m in molecules]
 
     # Count the full-length clone IDs
-    clone_id_counts = Counter(clone_ids)
+    counts = Counter(clone_ids)
 
     # Cluster them by Hamming distance
     def is_similar(s, t):
