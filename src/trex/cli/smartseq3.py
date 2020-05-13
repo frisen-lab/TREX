@@ -17,9 +17,11 @@ with warnings.catch_warnings():
     warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
     import loompy
 
+from .run10x import read_allowed_cellids, correct_clone_ids
 from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
 from ..utils import NiceFormatter
+from ..writers import write_count_matrix, write_cells, write_reads
 from ..clustering import cluster_sequences
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
@@ -97,7 +99,7 @@ def main(args):
             should_plot=args.plot,
             highlight_cell_ids=highlight_cell_ids,
         )
-    except (TrexError) as e:
+    except TrexError as e:
         logger.error("%s", e)
         sys.exit(1)
 
@@ -193,17 +195,17 @@ def run_smartseq3(
     logger.info(f'Read {len(reads)} reads containing (parts of) the clone ID '
         f'({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)')
 
-    write_reads(output_dir / "reads.txt", reads)
+    write_reads(output_dir / "reads.txt", reads, require_umis=False)
 
     # We do not have multiple reads per molecule, so we treat each read as one molecule
     molecules = reads
 
     corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
-    clone_ids = [r.clone_id for r in corrected_reads
-        if '-' not in r.clone_id and '0' not in r.clone_id]
+    clone_ids = [m.clone_id for m in corrected_molecules
+        if '-' not in m.clone_id and '0' not in m.clone_id]
     logger.info(f'After clone ID correction, {len(set(clone_ids))} unique clone IDs remain')
 
-    write_reads(output_dir / 'reads_corrected.txt', corrected_reads)
+    write_reads(output_dir / 'molecules_corrected.txt', corrected_molecules, require_umis=False)
 
     cells = compute_cells(corrected_molecules, min_length)
     logger.info(f'Detected {len(cells)} cells')
@@ -215,7 +217,7 @@ def run_smartseq3(
 
     if should_write_read_matrix:
         logger.info(f"Writing read matrix")
-        write_read_matrix(output_dir, cells)
+        write_count_matrix(output_dir / "read_count_matrix.csv", cells)
 
     clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
 
@@ -247,157 +249,3 @@ def run_smartseq3(
     number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
     logger.debug('No. of cells in clones: %d', number_of_cells_in_clones)
     assert len(cells) == number_of_cells_in_clones
-
-
-
-def read_allowed_cellids(path):
-    """
-    Read a user-provided list of allowed cell IDs from a CSV
-
-    Example:
-
-    "X","z"
-    1,"ACGTACGTACGTACGT_10x99"
-
-    or:
-
-    "X","z"
-    1,"ACGTACGTACGTACGT"
-    """
-    allowed_ids = []
-    filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
-    for cell_id in filtered_df.iloc[:, 0]:
-        if cell_id.endswith("-1"):
-            raise TrexError("Cell ids in the list of allowed cell IDs must not end in '-1'")
-        allowed_ids.append(cell_id)
-    logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
-    return set(allowed_ids)
-
-
-def correct_clone_ids(
-        molecules: List[Molecule], max_hamming: int, min_overlap: int = 20) -> List[Molecule]:
-    """
-    Attempt to correct sequencing errors in the clone ID sequences of all molecules
-    """
-    # Obtain all clone IDs (including those with '-' and '0')
-    clone_ids = [m.clone_id for m in molecules]
-
-    # Count the full-length clone IDs
-    counts = Counter(clone_ids)
-
-    # Cluster them by Hamming distance
-    def is_similar(s, t):
-        # m = max_hamming
-        if '-' in s or '-' in t:
-            # Remove suffix and/or prefix where sequences do not overlap
-            s = s.lstrip('-')
-            t = t[-len(s):]
-            s = s.rstrip('-')
-            if len(s) < min_overlap:
-                return False
-            t = t[:len(s)]
-            # TODO allowed Hamming distance should be reduced relative to the overlap length
-            # m = max_hamming * len(s) / len(original_length_of_s)
-        return hamming_distance(s, t) <= max_hamming
-
-    clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
-
-    # Map non-singleton clone IDs to a cluster representative
-    clone_id_map = dict()
-    for cluster in clusters:
-        if len(cluster) > 1:
-            # Pick most frequent clone ID as representative
-            representative = max(cluster, key=lambda bc: (clone_id_counts[bc], bc))
-            for clone_id in cluster:
-                clone_id_map[clone_id] = representative
-
-    # Create a new list of molecules in which the clone IDs have been replaced
-    # by their representatives
-    new_reads = []
-    for read in reads:
-        clone_id = clone_id_map.get(read.clone_id, read.clone_id)
-        new_reads.append(read._replace(clone_id=clone_id))
-    return new_reads
-'''
-#EDIT
-def filter_cells(
-    cells: Iterable[Cell],
-    reads: Iterable[Read],
-    keep_single_reads: bool = False
-) -> List[Cell]:
-    """
-    Filter clone IDs according to two criteria:
-
-    - Clone ids that have only a count of one and can be found in another cell are most
-      likely results of contamination and are removed,
-    - If keep_single_reads is False, clone IDs that have only a count of one and are also only based
-      on one read are also removed
-    """
-    overall_clone_id_counts: Dict[str, int] = Counter()
-    for cell in cells:
-        overall_clone_id_counts.update(cell.clone_id_counts)
-
-    single_read_clone_ids = set()
-    for molecule in molecules:
-        if molecule.read_count == 1:
-            single_read_clone_ids.add(molecule.clone_id)
-    logger.info(f"Found {len(single_read_clone_ids)} single-read clone IDs")
-
-    # filters out clone IDs with a count of one that appear in another cell
-    new_cells = []
-    for cell in cells:
-        clone_id_counts = cell.clone_id_counts.copy()
-        for clone_id, count in cell.clone_id_counts.items():
-            if count > 1:
-                # This clone ID occurs more than once in this cell - keep it
-                continue
-            if overall_clone_id_counts[clone_id] > 1:
-                # This clone ID occurs also in other cells - remove it
-                del clone_id_counts[clone_id]
-            elif clone_id in single_read_clone_ids and not keep_single_reads:
-                del clone_id_counts[clone_id]
-        if clone_id_counts:
-            new_cells.append(Cell(cell_id=cell.cell_id, clone_id_counts=clone_id_counts))
-    return new_cells
-'''
-
-def write_reads(path, reads):
-    with open(path, 'w') as f:
-        print("#cell_id", "clone_id", sep="\t", file=f)
-        for read in sorted(reads, key=lambda read: (read.clone_id, read.cell_id)):
-            print(read.cell_id, read.clone_id, sep='\t', file=f)
-
-
-def write_cells(path: Path, cells: List[Cell]) -> None:
-    """Write cells to a tab-separated file"""
-    with open(path, 'w') as f:
-        print(
-            "#cell_id", ":", "clone_id1", "count1", "clone_id2", "count2", "...", sep="\t", file=f)
-        for cell in cells:
-            row = [cell.cell_id, ':']
-            sorted_clone_ids = sorted(
-                cell.counts, key=lambda x: cell.counts[x], reverse=True)
-            if not sorted_clone_ids:
-                continue
-            for clone_id in sorted_clone_ids:
-                row.extend([clone_id, cell.counts[clone_id]])
-            print(*row, sep='\t', file=f)
-
-
-def write_read_matrix(output_dir: Path, cells: List[Cell]):
-    """Create a Read-count matrix with cells as columns and clone IDs as rows"""
-    clone_ids = set()
-    for cell in cells:
-        clone_ids.update(clone_id for clone_id in cell.counts)
-    clone_ids = sorted(clone_ids)
-    all_counts = [cell.counts for cell in cells]
-    with open(output_dir / "read_count_matrix.csv", "w") as f:
-        f.write(",")
-        f.write(",".join(cell.cell_id for cell in cells))
-        f.write("\n")
-        for clone_id in clone_ids:
-            f.write(clone_id)
-            f.write(",")
-            values = [lic.get(clone_id, 0) for lic in all_counts]
-            f.write(",".join(str(v) for v in values))
-            f.write("\n")

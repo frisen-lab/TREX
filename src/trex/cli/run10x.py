@@ -3,7 +3,6 @@ Run on 10X data
 """
 import sys
 import operator
-import shutil
 import warnings
 import logging
 from pathlib import Path
@@ -20,6 +19,7 @@ with warnings.catch_warnings():
 from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
 from ..cellranger import make_cellranger, CellRangerError
+from ..writers import write_count_matrix, write_cells, write_reads, write_molecules
 from ..clustering import cluster_sequences
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
@@ -232,7 +232,7 @@ def run_trex(
 
     if should_write_umi_matrix:
         logger.info("Writing UMI matrix")
-        write_umi_matrix(output_dir, cells)
+        write_count_matrix(output_dir / "umi_count_matrix.csv", cells)
 
     clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
 
@@ -418,36 +418,6 @@ def filter_cells(
     return new_cells
 
 
-def write_reads(path, reads):
-    with open(path, 'w') as f:
-        print("#cell_id", "umi", "clone_id", sep="\t", file=f)
-        for read in sorted(reads, key=lambda read: (read.umi, read.cell_id, read.clone_id)):
-            print(read.cell_id, read.umi, read.clone_id, sep='\t', file=f)
-
-
-def write_molecules(path, molecules):
-    with open(path, 'w') as f:
-        print("#cell_id", "umi", "clone_id", sep="\t", file=f)
-        for molecule in molecules:
-            print(molecule.cell_id, molecule.umi, molecule.clone_id, sep='\t', file=f)
-
-
-def write_cells(path: Path, cells: List[Cell]) -> None:
-    """Write cells to a tab-separated file"""
-    with open(path, 'w') as f:
-        print(
-            "#cell_id", ":", "clone_id1", "count1", "clone_id2", "count2", "...", sep="\t", file=f)
-        for cell in cells:
-            row = [cell.cell_id, ':']
-            sorted_clone_ids = sorted(
-                cell.counts, key=lambda x: cell.counts[x], reverse=True)
-            if not sorted_clone_ids:
-                continue
-            for clone_id in sorted_clone_ids:
-                row.extend([clone_id, cell.counts[clone_id]])
-            print(*row, sep='\t', file=f)
-
-
 def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
     """
     Create a loom file from a Cell Ranger result directory and augment it with information about
@@ -493,22 +463,3 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
         for i in range(top_n):
             ds.ca[f'cloneid_{i+1}'] = np.array(clone_id_lists[i], dtype='S%r' % clone_id_length)
             ds.ca[f'cloneid_count_{i+1}'] = np.array(count_lists[i], dtype=int)
-
-
-def write_umi_matrix(output_dir: Path, cells: List[Cell]):
-    """Create a UMI-count matrix with cells as columns and clone IDs as rows"""
-    clone_ids = set()
-    for cell in cells:
-        clone_ids.update(clone_id for clone_id in cell.counts)
-    clone_ids = sorted(clone_ids)
-    all_counts = [cell.counts for cell in cells]
-    with open(output_dir / "umi_count_matrix.csv", "w") as f:
-        f.write(",")
-        f.write(",".join(cell.cell_id for cell in cells))
-        f.write("\n")
-        for clone_id in clone_ids:
-            f.write(clone_id)
-            f.write(",")
-            values = [lic.get(clone_id, 0) for lic in all_counts]
-            f.write(",".join(str(v) for v in values))
-            f.write("\n")
