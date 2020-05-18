@@ -19,7 +19,7 @@ class Clone:
     def __init__(self, cells: List[Cell]):
         self.cells = cells
         self.cell_ids = tuple(sorted(c.cell_id for c in cells))
-        self.clone_id_counts = sum((Counter(c.clone_id_counts) for c in cells), Counter())
+        self.counts = sum((Counter(c.counts) for c in cells), Counter())
         self.n = len(cells)
         self.cell_id = 'M-' + min(self.cell_ids)
         self._hash = hash(self.cell_ids)
@@ -42,7 +42,7 @@ class CloneGraph:
         """Put cells that have identical sets of clone IDs into a clone"""
         cell_lists = defaultdict(list)
         for cell in cells:
-            clone_ids = tuple(sorted(cell.clone_id_counts))
+            clone_ids = tuple(sorted(cell.counts))
             cell_lists[clone_ids].append(cell)
 
         clones = []
@@ -55,7 +55,7 @@ class CloneGraph:
         Create graph of clones; add edges between pre-clustered clones that
         share at least one clone id. Return created graph.
         """
-        clones = [clone for clone in self._clones if clone.clone_id_counts]
+        clones = [clone for clone in self._clones if clone.counts]
         graph = Graph(clones)
         n = 0
         for i in range(len(clones)):
@@ -74,8 +74,8 @@ class CloneGraph:
 
     def _is_similar(self, clone1, clone2):
         # TODO compute a weighted index using counts?
-        a = set(clone1.clone_id_counts)
-        b = set(clone2.clone_id_counts)
+        a = set(clone1.counts)
+        b = set(clone2.counts)
         index = self.jaccard_index(a, b)
         return index > self._jaccard_threshold
 
@@ -133,7 +133,7 @@ class CloneGraph:
         def most_abundant_clone_id(cells: List[Cell]):
             counts = Counter()
             for cell in cells:
-                counts.update(cell.clone_id_counts)
+                counts.update(cell.counts)
             return max(counts, key=lambda k: (counts[k], k))
 
         return [(most_abundant_clone_id(cells), cells) for cells in clusters]
@@ -203,10 +203,10 @@ class CloneGraph:
                     highlighting = '+'
                 else:
                     highlighting = ''
-                clone_ids = sorted(cell.clone_id_counts.keys())
+                clone_ids = sorted(cell.counts.keys())
                 print(
                     cell.cell_id, highlighting, *clone_ids, sep='\t', file=s)
-                counter.update(cell.clone_id_counts.keys())
+                counter.update(cell.counts.keys())
         print(f'# {n_complete} complete components', file=s)
         return s.getvalue()
 
@@ -226,25 +226,25 @@ class UncompressedCloneGraph:
         Create graph of cells; add edges between cells that
         share at least one barcode. Return created graph.
         """
-        cells = [cell for cell in self._cells if cell.clone_id_counts]
+        cells = [cell for cell in self._cells if cell.counts]
         graph = Graph(cells)
         for i in range(len(cells)):
             for j in range(i + 1, len(cells)):
-                if set(cells[i].clone_id_counts) & set(cells[j].clone_id_counts):
+                if set(cells[i].counts) & set(cells[j].counts):
                     # Cell i and j share a clone id
                     graph.add_edge(cells[i], cells[j])
         return graph
 
     def _make_barcode_graph(self):
-        clone_id_counts: Dict[str, int] = Counter()
+        counts: Dict[str, int] = Counter()
         for cell in self._cells:
-            clone_id_counts.update(cell.clone_id_counts)
-        all_clone_ids = list(clone_id_counts)
+            counts.update(cell.counts)
+        all_clone_ids = list(counts)
 
         # Create a graph of barcodes; add an edge for barcodes occuring in the same cell
         graph = Graph(all_clone_ids)
         for cell in self._cells:
-            barcodes = list(cell.clone_id_counts)
+            barcodes = list(cell.counts)
             for other in barcodes[1:]:
                 graph.add_edge(barcodes[0], other)
         return graph
@@ -258,7 +258,7 @@ class UncompressedCloneGraph:
         def most_abundant_clone_id(cells: List[Cell]):
             counts = Counter()
             for cell in cells:
-                counts.update(cell.clone_id_counts)
+                counts.update(cell.counts)
             return max(counts, key=lambda k: (counts[k], k))
 
         return {most_abundant_clone_id(cells): cells for cells in clusters}
