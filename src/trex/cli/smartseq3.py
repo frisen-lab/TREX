@@ -5,16 +5,16 @@ import sys
 import logging
 from pathlib import Path
 from collections import Counter
-from typing import List
+from typing import List, Iterable
 
 from .run10x import read_allowed_cellids, correct_clone_ids
 from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
 from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
 from ..clone import CloneGraph
-from ..molecule import Molecule, compute_molecules
-from ..cell import Cell, compute_cells
+from ..molecule import Molecule
 from ..error import TrexError
+from ..cell import Cell, compute_cells
 from ..dataset import DatasetReader
 
 
@@ -79,7 +79,7 @@ def main(args):
             max_hamming=args.max_hamming,
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
-            keep_single_reads=args.keep_single_reads,
+            readcount_threshold=args.readcount_threshold,
             should_write_read_matrix=args.read_matrix,
             should_plot=args.plot,
             highlight_cell_ids=highlight_cell_ids,
@@ -130,8 +130,9 @@ def add_arguments(parser):
         help='CSV file containing cell IDs to keep in the analysis.'
              ' This flag enables to remove cells e.g. doublets',
         default=None)
-    parser.add_argument('--keep-single-reads', action='store_true', default=False,
-        help='Keep clone IDs supported by only a single read. Default: Discard them')
+    parser.add_argument('--readcount-threshold', default=2, type=int,
+        help='Minimum number of reads supporting a clone ID in order to keep it for downstream analysis. '
+        'Default: %(default)s')
     parser.add_argument('--highlight',
         help='Highlight cell IDs listed in FILE in the clone graph')
     parser.add_argument('--samples',
@@ -161,7 +162,7 @@ def run_smartseq3(
     max_hamming: int,
     min_length: int,
     jaccard_threshold: float,
-    keep_single_reads: bool,
+    readcount_threshold: int,
     should_write_read_matrix: bool,
     should_plot: bool,
     highlight_cell_ids: List[str],
@@ -196,9 +197,9 @@ def run_smartseq3(
     logger.info(f'Detected {len(cells)} cells')
     write_cells(output_dir / 'cells.txt', cells)
 
-    #cells = filter_cells(cells, corrected_reads, keep_single_reads)
-    #logger.info(f'{len(cells)} filtered cells remain')
-    #write_cells(output_dir / 'cells_filtered.txt', cells)
+    cells = filter_smartseq(cells, corrected_molecules, readcount_threshold)
+    logger.info(f'{len(cells)} filtered cells remain')
+    write_cells(output_dir / 'cells_filtered.txt', cells)
 
     if should_write_read_matrix:
         logger.info("Writing read matrix")
@@ -234,3 +235,22 @@ def run_smartseq3(
     number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
     logger.debug('No. of cells in clones: %d', number_of_cells_in_clones)
     assert len(cells) == number_of_cells_in_clones
+
+
+def filter_smartseq(
+    cells: Iterable[Cell],
+    molecules: Iterable[Molecule],
+    readcount_threshold: int
+) -> List[Cell]:
+    """
+    Removes clone IDs that are supported by less reads than the given readcount_threshold
+    """
+    new_cells = []
+    for cell in cells:
+        counts = cell.counts.copy()
+        for clone_id, count in cell.counts.items():
+            if count < readcount_threshold:
+                del counts[clone_id]
+        if counts:
+            new_cells.append(Cell(cell_id=cell.cell_id, counts=counts))
+    return new_cells
