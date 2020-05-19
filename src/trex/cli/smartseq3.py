@@ -2,33 +2,20 @@
 Run on Smart-seq3 data
 """
 import sys
-import operator
-import shutil
-import warnings
 import logging
 from pathlib import Path
 from collections import Counter
-from typing import List, Dict, Iterable
-
-from tinyalign import hamming_distance
-import numpy as np
-import pandas as pd
-with warnings.catch_warnings():
-    warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
-    import loompy
+from typing import List
 
 from .run10x import read_allowed_cellids, correct_clone_ids
 from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
-from ..utils import NiceFormatter
 from ..writers import write_count_matrix, write_cells, write_reads
-from ..clustering import cluster_sequences
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
 from ..error import TrexError
 from ..dataset import DatasetReader
-from ..bam import Read
 
 
 __author__ = 'leonie.von.berlin@ki.se'
@@ -43,9 +30,8 @@ def main(args):
     try:
         make_output_dir(output_dir, args.delete)
     except FileExistsError:
-        logger.error(f'Output directory "{output_dir}" already exists '
+        raise CommandLineError(f'Output directory "{output_dir}" already exists '
                      '(use --delete to force deleting an existing output directory)')
-        sys.exit(1)
 
     add_file_logging(output_dir / 'log.txt')
     logger.info(f'trex {__version__}')
@@ -63,13 +49,12 @@ def main(args):
         sample_names = [path.name for path in transcriptome_inputs]
         logger.info("Using these sample names: %s", ", ".join(sample_names))
     if len(sample_names) != len(transcriptome_inputs):
-        logger.error("The number of sample names (--samples) must match the number of "
+        raise CommandLineError("The number of sample names (--samples) must match the number of "
             "provided transcriptome datasets")
-        sys.exit(1)
     if args.amplicon:
         amplicon_inputs = args.amplicon
         if len(transcriptome_inputs) != len(amplicon_inputs):
-            logger.error("As many amplicon as transcriptome datasets must be provided")
+            raise CommandLineError("As many amplicon as transcriptome datasets must be provided")
             sys.exit(1)
     else:
         amplicon_inputs = []
@@ -78,7 +63,7 @@ def main(args):
     if args.highlight:
         with open(args.highlight) as f:
             highlight_cell_ids = [line.strip() for line in f]
-    
+
     try:
         run_smartseq3(
             output_dir,
@@ -100,7 +85,7 @@ def main(args):
             highlight_cell_ids=highlight_cell_ids,
         )
     except TrexError as e:
-        logger.error("%s", e)
+        raise CommandLineError("%s", e)
         sys.exit(1)
 
 
@@ -216,7 +201,7 @@ def run_smartseq3(
     #write_cells(output_dir / 'cells_filtered.txt', cells)
 
     if should_write_read_matrix:
-        logger.info(f"Writing read matrix")
+        logger.info("Writing read matrix")
         write_count_matrix(output_dir / "read_count_matrix.csv", cells)
 
     clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
