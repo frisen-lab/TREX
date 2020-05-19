@@ -3,7 +3,6 @@ Run on 10X data
 """
 import sys
 import operator
-import shutil
 import warnings
 import logging
 from pathlib import Path
@@ -202,7 +201,7 @@ def run_braintrace(
         f'({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)')
 
     write_reads(output_dir / "reads.txt", reads)
- 
+
     molecules = compute_molecules(reads)
     clone_ids = [
         m.clone_id for m in molecules if '-' not in m.clone_id and '0' not in m.clone_id]
@@ -232,7 +231,7 @@ def run_braintrace(
         write_cells(output_dir / 'cells_filtered.txt', cells)
 
     if should_write_umi_matrix:
-        logger.info(f"Writing UMI matrix")
+        logger.info("Writing UMI matrix")
         write_count_matrix(output_dir / "umi_count_matrix.csv", cells)
 
     clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
