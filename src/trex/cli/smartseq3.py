@@ -10,7 +10,7 @@ from typing import List
 from .run10x import read_allowed_cellids, correct_clone_ids
 from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
-from ..writers import write_count_matrix, write_cells, write_reads
+from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
@@ -180,7 +180,7 @@ def run_smartseq3(
     logger.info(f'Read {len(reads)} reads containing (parts of) the clone ID '
         f'({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)')
 
-    write_reads(output_dir / "reads.txt", reads, require_umis=False)
+    write_reads_or_molecules(output_dir / "reads.txt", reads, require_umis=False)
 
     # We do not have multiple reads per molecule, so we treat each read as one molecule
     molecules = reads
@@ -190,7 +190,7 @@ def run_smartseq3(
         if '-' not in m.clone_id and '0' not in m.clone_id]
     logger.info(f'After clone ID correction, {len(set(clone_ids))} unique clone IDs remain')
 
-    write_reads(output_dir / 'molecules_corrected.txt', corrected_molecules, require_umis=False)
+    write_reads_or_molecules(output_dir / 'molecules_corrected.txt', corrected_molecules, require_umis=False, sort=False)
 
     cells = compute_cells(corrected_molecules, min_length)
     logger.info(f'Detected {len(cells)} cells')

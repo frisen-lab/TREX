@@ -2,24 +2,18 @@
 Run on 10X data
 """
 import sys
-import operator
-import warnings
 import logging
 from pathlib import Path
 from collections import Counter
 from typing import List, Dict, Iterable
 
 from tinyalign import hamming_distance
-import numpy as np
 import pandas as pd
-with warnings.catch_warnings():
-    warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
-    import loompy
 
 from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
 from ..cellranger import make_cellranger, CellRangerError
-from ..writers import write_count_matrix, write_cells, write_reads, write_molecules
+from ..writers import write_count_matrix, write_cells, write_reads_or_molecules, write_loom
 from ..clustering import cluster_sequences
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
@@ -200,22 +194,22 @@ def run_trex(
     logger.info(f'Read {len(reads)} reads containing (parts of) the clone ID '
         f'({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)')
 
-    write_reads(output_dir / "reads.txt", reads)
+    write_reads_or_molecules(output_dir / "reads.txt", reads)
 
     molecules = compute_molecules(reads)
     clone_ids = [
         m.clone_id for m in molecules if '-' not in m.clone_id and '0' not in m.clone_id]
     logger.info(f'Detected {len(molecules)} molecules ({len(clone_ids)} full clone IDs, '
-        f'{len(set(clone_ids))} unique)')
+        f'{len(set(clone_ids))} unique)') 
 
-    write_molecules(output_dir / 'molecules.txt', molecules)
+    write_reads_or_molecules(output_dir / 'molecules.txt', molecules, sort=False)
 
     corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
     clone_ids = [m.clone_id for m in corrected_molecules
         if '-' not in m.clone_id and '0' not in m.clone_id]
     logger.info(f'After clone ID correction, {len(set(clone_ids))} unique clone IDs remain')
 
-    write_molecules(output_dir / 'molecules_corrected.txt', corrected_molecules)
+    write_reads_or_molecules(output_dir / 'molecules_corrected.txt', corrected_molecules, sort=False)
 
     cells = compute_cells(corrected_molecules, min_length)
     logger.info(f'Detected {len(cells)} cells')
@@ -417,49 +411,3 @@ def filter_cells(
             new_cells.append(Cell(cell_id=cell.cell_id, counts=counts))
     return new_cells
 
-
-def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
-    """
-    Create a loom file from a Cell Ranger result directory and augment it with information about
-    the most abundant clone IDs and their counts.
-    """
-    # For each cell, collect the most abundant clone IDs and their counts
-    # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant clone IDs.
-    most_abundant = dict()
-    for cell in cells:
-        if not cell.counts:
-            continue
-        counts = sorted(cell.counts.items(), key=operator.itemgetter(1))
-        counts.reverse()
-        counts = counts[:top_n]
-        most_abundant[cell.cell_id] = counts
-
-    loompy.create_from_cellranger(cellranger.sample_dir, outdir=output_dir)
-    # create_from_cellranger() does not tell us the name of the created file,
-    # so we need to re-derive it from the sample name.
-    sample_name = cellranger.sample_dir.name
-    loom_path = output_dir / (sample_name + '.loom')
-
-    with loompy.connect(loom_path) as ds:
-        # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
-        loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
-
-        # Transform clone IDs and count data
-        # brings clone ID data into correct format for loom file.
-        # Array must have same shape as all_cellIDs
-        clone_id_lists = [[] for _ in range(top_n)]
-        count_lists = [[] for _ in range(top_n)]
-        for cell_id in loom_cell_ids:
-            clone_id_counts = most_abundant.get(cell_id, [])
-            # Fill up to a constant length
-            while len(clone_id_counts) < top_n:
-                clone_id_counts.append(('-', 0))
-
-            for i, (clone_id, count) in enumerate(clone_id_counts):
-                clone_id_lists[i].append(clone_id)
-                count_lists[i].append(count)
-
-        # Add clone ID and count information to loom file
-        for i in range(top_n):
-            ds.ca[f'cloneid_{i+1}'] = np.array(clone_id_lists[i], dtype='S%r' % clone_id_length)
-            ds.ca[f'cloneid_count_{i+1}'] = np.array(count_lists[i], dtype=int)
