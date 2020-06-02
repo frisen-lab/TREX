@@ -61,10 +61,10 @@ class DatasetReader:
             datasets = []
             for *paths, name in zip_longest(transcriptome_inputs, amplicon_inputs, names):
                 assert name is not None
-                reads = self.read_one(paths[0], self.output_dir / (name + "_entries.bam"))
+                reads = self.read_one(paths[0], self.output_dir / (name + "_entries.bam"), cell_id_tag, require_umis)
                 if paths[1]:
                     reads.extend(
-                        self.read_one(paths[1], self.output_dir / (name + "_amplicon_entries.bam"))
+                        self.read_one(paths[1], self.output_dir / (name + "_amplicon_entries.bam"), cell_id_tag, require_umis)
                     )
                 datasets.append(reads)
             reads = self.merge_datasets(datasets, names)
