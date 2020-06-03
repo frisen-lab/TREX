@@ -2,7 +2,6 @@ import logging
 
 from braintrace.utils import NiceFormatter
 from pathlib import Path
-import logging
 import shutil
 
 logger = logging.getLogger(__name__)
