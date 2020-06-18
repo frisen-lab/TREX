@@ -1,8 +1,8 @@
 venv/
 *.egg-info/
-braintrace_run/
+trex_run/
 .mypy_cache/
 __pycache__/
 .snakemake/
 pip-wheel-metadata/
-src/braintrace/_version.py
+src/trex/_version.py
