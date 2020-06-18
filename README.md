@@ -29,4 +29,4 @@ Running the tool
 On the minimal test dataset:
 
     rm -r lineage_run/
-    braintrace -s 695 -e 724 mini/
+    trex -s 695 -e 724 mini/

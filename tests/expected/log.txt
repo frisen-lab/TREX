@@ -1,4 +1,4 @@
-Braintrace 0.4.dev103+gc0afa54.d20200428
+Trex 0.4.dev125+gb6b76db.d20200617
 Command line arguments: run10x --delete --loom --umi-matrix -s 695 -e 724 tests/data/
 Reading clone ids from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
 Found 3857 reads with usable clone ids. Skipped 1692 without cell id, 3 without UMI.

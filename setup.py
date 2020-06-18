@@ -6,13 +6,13 @@ if sys.version_info[:2] < (3, 6):
     sys.exit(1)
 
 setup(
-    name='braintrace',
-    use_scm_version={'write_to': 'src/braintrace/_version.py'},
+    name='trex',
+    use_scm_version={'write_to': 'src/trex/_version.py'},
     setup_requires=['setuptools_scm'],  # Support pip versions that don't know about pyproject.toml
     author='',
     author_email='',
     url='',
-    description='',
+    description='simultaneous lineage TRacking and EXpression profiling of single cells using RNA-seq',
     long_description='',
     license='MIT',
     package_dir={'': 'src'},
@@ -26,7 +26,7 @@ setup(
         'pandas',
     ],
     python_requires='>=3.6',
-    entry_points={'console_scripts': ['braintrace = braintrace.__main__:main']},
+    entry_points={'console_scripts': ['trex = trex.__main__:main']},
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',

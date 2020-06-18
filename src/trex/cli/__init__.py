@@ -1,6 +1,10 @@
 import logging
 
-from braintrace.utils import NiceFormatter
+from trex.utils import NiceFormatter
+from pathlib import Path
+import shutil
+
+logger = logging.getLogger(__name__)
 
 
 class CommandLineError(Exception):

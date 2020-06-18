@@ -24,7 +24,7 @@ from ..clustering import cluster_sequences
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
-from ..error import BraintraceError
+from ..error import TrexError
 from ..dataset import DatasetReader
 
 
@@ -44,7 +44,7 @@ def main(args):
             "(use --delete to force deleting an existing output directory)")
 
     add_file_logging(output_dir / 'log.txt')
-    logger.info(f'Braintrace {__version__}')
+    logger.info(f'Trex {__version__}')
     logger.info('Command line arguments: %s', ' '.join(sys.argv[1:]))
 
     allowed_cell_ids = None
@@ -74,7 +74,7 @@ def main(args):
             highlight_cell_ids = [line.strip() for line in f]
 
     try:
-        run_braintrace(
+        run_trex(
             output_dir,
             genome_name=args.genome_name,
             allowed_cell_ids=allowed_cell_ids,
@@ -95,7 +95,7 @@ def main(args):
             highlight_cell_ids=highlight_cell_ids,
             should_write_loom=args.loom,
         )
-    except (CellRangerError, BraintraceError) as e:
+    except (CellRangerError, TrexError) as e:
         raise CommandLineError(e)
 
 
@@ -113,7 +113,7 @@ def add_arguments(parser):
         default=None)
     parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
         help='name of the run and directory created by program. Default: %(default)s',
-        default=Path('braintrace_run'))
+        default=Path('trex_run'))
     parser.add_argument('--delete', action='store_true',
         help='Delete output directory if it exists')
     parser.add_argument('--start', '-s',
@@ -157,7 +157,7 @@ def add_arguments(parser):
     parser.add_argument('--umi-matrix', default=False, action='store_true',
         help='Creates a umi count matrix with cells as columns and clone IDs as rows')
     parser.add_argument('-v', '--visium', default=False, action='store_true',
-        help='Adapt braintrace run to 10x Visium data: Filter out clone IDs only based on 1 read,'
+        help='Adapt trex run to 10x Visium data: Filter out clone IDs only based on 1 read,'
              ' but keep those with only one UMI')
     parser.add_argument('--plot', dest='plot', default=False, action='store_true',
         help='Plot the clone graph')
@@ -183,7 +183,7 @@ def make_output_dir(path, delete_if_exists):
             raise
 
 
-def run_braintrace(
+def run_trex(
     output_dir: Path,
     genome_name: str,
     allowed_cell_ids: List[str],
@@ -205,13 +205,13 @@ def run_braintrace(
     should_write_loom: bool,
 ):
     if len(sample_names) != len(set(sample_names)):
-        raise BraintraceError("The sample names need to be unique")
+        raise TrexError("The sample names need to be unique")
 
     dataset_reader = DatasetReader(output_dir, genome_name, chromosome, start, end, prefix)
     reads = dataset_reader.read_all(
         transcriptome_inputs, amplicon_inputs, sample_names, allowed_cell_ids)
     if not reads:
-        raise BraintraceError("No reads left after --filter-cellids filtering")
+        raise TrexError("No reads left after --filter-cellids filtering")
 
     clone_ids = [
         r.clone_id for r in reads if '-' not in r.clone_id and '0' not in r.clone_id]
@@ -308,7 +308,7 @@ def read_allowed_cellids(path):
     filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
     for cell_id in filtered_df.iloc[:, 0]:
         if cell_id.endswith("-1"):
-            raise BraintraceError("Cell ids in the list of allowed cell IDs must not end in '-1'")
+            raise TrexError("Cell ids in the list of allowed cell IDs must not end in '-1'")
         allowed_ids.append(cell_id)
     logger.info(f'Restricting analysis to {len(allowed_ids)} allowed cells')
     return set(allowed_ids)

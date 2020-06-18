@@ -1,5 +1,5 @@
 """
-Extract and filter random barcodes from single-cell sequencing data
+Simultaneous lineage TRacking and EXpression profiling of single cells using RNA-seq
 """
 import sys
 import logging
@@ -30,7 +30,7 @@ class HelpfulArgumentParser(ArgumentParser):
 
 
 def main(arguments=None):
-    parser = HelpfulArgumentParser(description=__doc__, prog='braintrace')
+    parser = HelpfulArgumentParser(description=__doc__, prog='trex')
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
 
     subparsers = parser.add_subparsers()
