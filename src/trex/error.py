@@ -1,0 +1,2 @@
+class TrexError(Exception):
+    pass

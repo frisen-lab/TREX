@@ -1,4 +1,4 @@
-from braintrace.molecule import compute_consensus
+from trex.molecule import compute_consensus
 
 
 def test_consensus_small():

@@ -14,7 +14,7 @@ from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
 from ..clone import CloneGraph
 from ..cell import Cell, compute_cells
 from ..molecule import Molecule
-from ..error import BraintraceError
+from ..error import TrexError
 from ..dataset import DatasetReader
 
 
@@ -34,7 +34,7 @@ def main(args):
                      '(use --delete to force deleting an existing output directory)')
 
     add_file_logging(output_dir / 'log.txt')
-    logger.info(f'Braintrace {__version__}')
+    logger.info(f'Trex {__version__}')
     logger.info('Command line arguments: %s', ' '.join(sys.argv[1:]))
 
     allowed_cell_ids = None
@@ -84,7 +84,7 @@ def main(args):
             should_plot=args.plot,
             highlight_cell_ids=highlight_cell_ids,
         )
-    except (BraintraceError) as e:
+    except (TrexError) as e:
         raise CommandLineError("%s", e)
 
 
@@ -102,7 +102,7 @@ def add_arguments(parser):
         default=None)
     parser.add_argument('--output', '-o', '--name', '-n', metavar='DIRECTORY', type=Path,
         help='name of the run and directory created by program. Default: %(default)s',
-        default=Path('braintrace_run'))
+        default=Path('trex_run'))
     parser.add_argument('--delete', action='store_true',
         help='Delete output directory if it exists')
     parser.add_argument('--start', '-s',
@@ -167,13 +167,13 @@ def run_smartseq3(
     highlight_cell_ids: List[str],
 ):
     if len(sample_names) != len(set(sample_names)):
-        raise BraintraceError("The sample names need to be unique")
+        raise TrexError("The sample names need to be unique")
 
     dataset_reader = DatasetReader(output_dir, genome_name, chromosome, start, end, prefix)
     reads = dataset_reader.read_all(
         transcriptome_inputs, amplicon_inputs, sample_names, allowed_cell_ids, require_umis=False, cell_id_tag = "BC")
     if not reads:
-        raise BraintraceError("No reads left after --filter-cellids filtering")
+        raise TrexError("No reads left after --filter-cellids filtering")
 
     clone_ids = [
         r.clone_id for r in reads if '-' not in r.clone_id and '0' not in r.clone_id]
