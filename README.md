@@ -29,22 +29,13 @@ You can also choose to run `source trex-venv/bin/activate`, which will make the 
 Running TREX on a minimal test dataset
 --------------------------------------
 
-`mini/` contains a small test dataset. The BAM file was created by downsampling
-a full dataset:
+Clone the Git repository or [download it as a ZIP file](https://github.com/frisen-lab/TREX/archive/master.zip) and unpack it.
+The directory `tests/data/` contains a test dataset in the proper format. Run TREX on it:
 
-    samtools view -s 0.1 -b /proj/uppstore2018019/P10306/pMR439_clone16_P10306_1002/10x_14_pMR439_clone16/outs/possorted_genome_bam.bam chrTomato-N > new.bam
+    trex run10x -s 695 -e 724 tests/data/
 
-`barcodes.tsv` is a copy of `/proj/uppstore2018019/P10306/pMR439_clone16_P10306_1002/10x_14_pMR439_clone16/outs/filtered_gene_bc_matrices/hg38_Tomato-N/barcodes.tsv`
+This will create a folder `trex_run/` in the current directory (use the `-o` option to choose a different folder) with the results.
 
-`chrTomato-N.fa` is a copy of `/proj/uppstore2018019/hg38_tdTomato-N/chrTomato-N.fa`,
-with an `A` appended at the end of each line to counter the problem that the
-original file had DOS line breaks, which STAR interpreted as extra nucleotides.
+The input directory for TREX must be a Cell Ranger output directory. See the contents of the `tests/data/outs` directory to learn which are the minimum files necessary. Cell Ranger must have been configured to map against a reference augmented by an extra chromosome that contains the cloneID. By default, that extra chromosome is assumed to be the last in the BAM file (use `--chromosome` to choose a different one). The options the options `-s` and `-e` set where on the extra chromosome the cloneID is located (`-s` gives start and `-e` gives end in 1-based coordinates).
 
-
-Running the tool
-----------------
-
-On the minimal test dataset:
-
-    rm -r lineage_run/
-    trex -s 695 -e 724 mini/
+Please also run `trex run10x --help` to see the other available command-line options.
