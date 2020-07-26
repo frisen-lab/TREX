@@ -14,15 +14,20 @@ Currently, TREX is compatible with common RNA-sequencing library preparation met
 Installation
 ------------
 
-This makes the dependencies available:
+TREX requires Python 3.6 or newer.
+We recommend that you install TREX into a "virtual environment", which can be done by running the following commands:
 
-    python3 -m venv venv
-    venv/bin/pip install -e .
-    source venv/bin/activate
+    python3 -m venv trex-venv
+    trex-venv/bin/pip install git+https://github.com/frisen-lab/TREX.git
 
+`trex-venv` is the name of the directory that will be created and which will contain the virtual environment.
+You can choose a different name.
 
-Minimal test dataset
---------------------
+Test the installation by running `trex-venv/bin/trex --version`.
+You can also choose to run `source trex-venv/bin/activate`, which will make the command directly available, that is, you can then simply type `trex` to run it. (Examples below assume you have done this.)
+
+Running TREX on a minimal test dataset
+--------------------------------------
 
 `mini/` contains a small test dataset. The BAM file was created by downsampling
 a full dataset:
