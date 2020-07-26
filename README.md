@@ -1,3 +1,5 @@
+![CI status](https://github.com/frisen-lab/TREX/workflows/CI/badge.svg)
+
 Overview
 --------
 
