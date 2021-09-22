@@ -34,7 +34,7 @@ def main(args):
                      '(use --delete to force deleting an existing output directory)')
 
     add_file_logging(output_dir / 'log.txt')
-    logger.info(f'trex {__version__}')
+    logger.info(f'Trex {__version__}')
     logger.info('Command line arguments: %s', ' '.join(sys.argv[1:]))
 
     allowed_cell_ids = None
@@ -55,7 +55,6 @@ def main(args):
         amplicon_inputs = args.amplicon
         if len(transcriptome_inputs) != len(amplicon_inputs):
             raise CommandLineError("As many amplicon as transcriptome datasets must be provided")
-            sys.exit(1)
     else:
         amplicon_inputs = []
 
@@ -86,7 +85,6 @@ def main(args):
         )
     except TrexError as e:
         raise CommandLineError("%s", e)
-        sys.exit(1)
 
 
 def add_arguments(parser):

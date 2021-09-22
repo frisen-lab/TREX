@@ -1,4 +1,4 @@
-Braintrace 0.4.dev121+gf5e834d.d20200602
+Trex 0.4.dev121+gf5e834d.d20200602
 Command line arguments: smartseq3 --delete --chr EGFP-30N --output trex_smartseq3_run --start 2330 --end 2359 --read-matrix --readcount-threshold 1 tests/data/smartseq3_test.bam
 Reading clone ids from EGFP-30N:2330-2359 in tests/data/smartseq3_test.bam
 Found 286 reads with usable clone ids. Skipped 0 without cell id
