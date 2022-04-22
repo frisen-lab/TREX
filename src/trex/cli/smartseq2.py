@@ -1,5 +1,5 @@
 """
-Run on Smart-seq3 data
+Run on Smart-Seq2 data
 """
 import sys
 import logging
@@ -64,7 +64,7 @@ def main(args):
             highlight_cell_ids = [line.strip() for line in f]
 
     try:
-        run_smartseq3(
+        run_smartseq2(
             output_dir,
             genome_name=args.genome_name,
             allowed_cell_ids=allowed_cell_ids,
@@ -146,7 +146,7 @@ def add_arguments(parser):
         help='Path to a united bam file for all cells or path to a folder with one bam file per cell.')
 
 
-def run_smartseq3(
+def run_smartseq2(
     output_dir: Path,
     genome_name: str,
     allowed_cell_ids: List[str],
