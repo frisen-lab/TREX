@@ -45,7 +45,7 @@ Reproducing results from the Nature Neuroscience paper
 
 See the manuscript at <https://doi.org/10.1038/s41593-022-01011-x>.
 This section lists some details not available in the paper.
-See the `annotations/` directory for the necessary files.
+See the `references/` directory for the necessary files.
 
 The FASTA reference used with CellRanger was created by appending
 `H2b-EGFP-30N-LTR.fa` to the end of the GRCm38 (mm10) reference FASTA:
