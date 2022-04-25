@@ -115,7 +115,7 @@ def add_arguments(parser):
     parser.add_argument(
         "--genome-name",
         metavar="NAME",
-        help="Name of the genome as indicated in Cell Ranger count run with the flag --genome. "
+        help="Name of the genome as indicated in 'cellranger count' run with the flag --genome. "
         "Default: Auto-detected",
         default=None,
     )
@@ -133,7 +133,7 @@ def add_arguments(parser):
         "-n",
         metavar="DIRECTORY",
         type=Path,
-        help="name of the run and directory created by program. Default: %(default)s",
+        help="Name of the run directory created by program. Default: %(default)s",
         default=Path("trex_run"),
     )
     parser.add_argument(
@@ -142,15 +142,17 @@ def add_arguments(parser):
     parser.add_argument(
         "--start",
         "-s",
-        help="Position of first clone ID nucleotide. Default: Auto-detected",
+        help="Position of first clone ID nucleotide (1-based). Default: Auto-detected",
         type=int,
+        metavar="INT",
         default=None,
     )
     parser.add_argument(
         "--end",
         "-e",
-        help="Position of last clone ID nucleotide. Default: Auto-detected",
+        help="Position of last clone ID nucleotide (1-based). Default: Auto-detected",
         type=int,
+        metavar="INT",
         default=None,
     )
     parser.add_argument(
@@ -158,6 +160,7 @@ def add_arguments(parser):
         "-m",
         help="Minimum number of nucleotides a clone ID must have. Default: %(default)s",
         type=int,
+        metavar="INT",
         default=20,
     )
     parser.add_argument(
@@ -165,6 +168,7 @@ def add_arguments(parser):
         help="Maximum hamming distance allowed for two clone IDs to be called similar. "
         "Default: %(default)s",
         type=int,
+        metavar="INT",
         default=5,
     )
     parser.add_argument(
@@ -182,7 +186,7 @@ def add_arguments(parser):
         metavar="DIRECTORY",
         help='Path to Cell Ranger result directory (a subdirectory "outs" must exist) '
         "containing sequencing of the clone ID amplicon library. Provide these in "
-        "same order as transcriptome datasets",
+        "the same order as transcriptome datasets",
         default=None,
     )
     parser.add_argument(
@@ -208,7 +212,7 @@ def add_arguments(parser):
         action="store_true",
     )
     parser.add_argument(
-        "--highlight", help="Highlight cell IDs listed in FILE in the clone graph"
+        "--highlight", metavar="FILE", help="Highlight cell IDs listed in FILE in the clone graph"
     )
     parser.add_argument(
         "--samples",
@@ -225,15 +229,14 @@ def add_arguments(parser):
         "--umi-matrix",
         default=False,
         action="store_true",
-        help="Creates a umi count matrix with cells as columns and clone IDs as rows",
+        help="Create a UMI count matrix with cells as columns and clone IDs as rows",
     )
     parser.add_argument(
-        "-v",
         "--visium",
         default=False,
         action="store_true",
-        help="Adapt trex run to 10x Visium data: Filter out clone IDs only based on 1 read,"
-        " but keep those with only one UMI",
+        help="Adjust filter settings for 10x Visium data: Filter out clone IDs only based on"
+             "one read, but keep those with only one UMI",
     )
     parser.add_argument(
         "--plot",
@@ -247,7 +250,7 @@ def add_arguments(parser):
         type=Path,
         nargs="+",
         metavar="DIRECTORY",
-        help='Path to a Cell Ranger directory with an "outs" subdirectory.',
+        help="Path to a Cell Ranger directory with an 'outs' subdirectory",
     )
 
 
