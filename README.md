@@ -102,8 +102,8 @@ This is an overview of the steps that the `trex run10x` command performs.
 
 ## Output files
 
-`trex run` by default writes its results to a newly created directory named
-`trex_run`.
+`trex run10x` by default writes its results to a newly created directory
+named `trex_run`.
 The name of the output directory can be changed with `--output` (or `-o`).
 The files created in the output directory are described below.
 They are listed in the order in which the program creates them,
