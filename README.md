@@ -77,7 +77,15 @@ Please also run `trex run10x --help` to see the other available command-line opt
 
 This is an overview of the steps that the `trex run10x` command performs.
 
-1. Retrieve all reads from the input BAM file that cover the clone ID locus.
+1. Retrieve usable reads from the input BAM file.
+   A usable read fulfills these requirements:
+   - It aligns to the region specified with the `--chr`, `-s` and
+     `-e` flags or, if the flags are not given, to the region that
+     has been automatically identified to be the region containing
+     the variable CloneID sequence,
+   - it has both an associated cell ID and UMI (SAM tags `CB` and `UB`),
+   - its cell ID is included in the list of allowed cell IDs
+     (if such a list is provided with `--filter-cellid` or `-f`).
 2. Group reads with identical cell ID and UMI into *molecules*.
    The clone ID of the molecule is taken to be the consensus of the clone IDs.
 3. Error-correct clone IDs of the molecules.
@@ -111,6 +119,11 @@ or in comma-separated values (CSV) format.
 This file contains a copy of the output that `trex run10x` prints to the
 terminal.
 
+### `entries.bam`
+
+All usable reads from the input BAM file.
+(See the pipeline steps overview for a description of "usable reads".)
+
 
 ### `reads.txt`
 
@@ -119,12 +132,6 @@ Example:
 
     #cell_id          umi         clone_id
     TGACGGCGTTACCAGT  AAAAAACTGT  TGTCAATCGTTCGGTTGAGCAAGATCTTAG
-
-
-### `entries.bam`
-
-The actual reads used when creating `reads.txt`,
-copied over from the input BAM file.
 
 
 ### `molecules.txt`
