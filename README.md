@@ -207,6 +207,13 @@ identifies the clone.
 
 ### `clone_sequences.txt`
 
+A table listing the 30N sequence of each clone ID.
+The columns are *clone_id* and *clone_seq* where *clone_id* is a number
+that identifies the clone and *clone_seq* its nucleotide sequence.
+
+    #clone_id,clone_seq
+    1,ACTAGGAGATTGACGGATCACCTTTGGTCG
+
 
 ### `data.loom`
 
