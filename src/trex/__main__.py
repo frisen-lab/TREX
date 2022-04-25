@@ -19,19 +19,21 @@ class HelpfulArgumentParser(ArgumentParser):
     """An ArgumentParser that prints full help on errors."""
 
     def __init__(self, *args, **kwargs):
-        if 'formatter_class' not in kwargs:
-            kwargs['formatter_class'] = RawDescriptionHelpFormatter
+        if "formatter_class" not in kwargs:
+            kwargs["formatter_class"] = RawDescriptionHelpFormatter
         super().__init__(*args, **kwargs)
 
     def error(self, message):
         self.print_help(sys.stderr)
-        args = {'prog': self.prog, 'message': message}
-        self.exit(2, '%(prog)s: error: %(message)s\n' % args)
+        args = {"prog": self.prog, "message": message}
+        self.exit(2, "%(prog)s: error: %(message)s\n" % args)
 
 
 def main(arguments=None):
-    parser = HelpfulArgumentParser(description=__doc__, prog='trex')
-    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    parser = HelpfulArgumentParser(description=__doc__, prog="trex")
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + __version__
+    )
 
     subparsers = parser.add_subparsers()
 
@@ -41,15 +43,16 @@ def main(arguments=None):
     modules = pkgutil.iter_modules(cli_package.__path__)
     for _, module_name, _ in modules:
         module = importlib.import_module("." + module_name, cli_package.__name__)
-        subparser = subparsers.add_parser(module_name,
-            help=module.__doc__.split('\n')[1], description=module.__doc__)
+        subparser = subparsers.add_parser(
+            module_name, help=module.__doc__.split("\n")[1], description=module.__doc__
+        )
         subparser.set_defaults(func=module.main)
         module.add_arguments(subparser)
 
     args = parser.parse_args(arguments)
-    subcommand = getattr(args, 'func', None)
+    subcommand = getattr(args, "func", None)
     if not subcommand:
-        parser.error('Please provide the name of a subcommand to run')
+        parser.error("Please provide the name of a subcommand to run")
     try:
         subcommand(args)
     except CommandLineError as e:
@@ -57,5 +60,5 @@ def main(arguments=None):
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

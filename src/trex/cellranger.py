@@ -13,16 +13,18 @@ class CellRangerError(Exception):
 
 class CellRangerDir2:
     """CellRanger 2 "outs/" directory structure"""
-    MATRICES = 'filtered_gene_bc_matrices'
-    BARCODES = 'barcodes.tsv'
-    BAM = 'possorted_genome_bam.bam'
+
+    MATRICES = "filtered_gene_bc_matrices"
+    BARCODES = "barcodes.tsv"
+    BAM = "possorted_genome_bam.bam"
 
     def __init__(self, path: Path, genome_name: str = None):
         self.path = path / "outs"
         matrices_path = self.path / self.MATRICES
         if not matrices_path.exists():
             raise CellRangerError(
-                f"Directory 'outs/{self.MATRICES}/' must exist in the given directory")
+                f"Directory 'outs/{self.MATRICES}/' must exist in the given directory"
+            )
         self.matrices_path: Path = matrices_path
         self.bam = self.path / self.BAM
         self.sample_dir = path
@@ -36,12 +38,15 @@ class CellRangerDir2:
         genomes = [p for p in self.matrices_path.iterdir() if p.is_dir()]
         if not genomes:
             raise CellRangerError(
-                f"No subfolders found in the '{self.matrices_path}' folder")
+                f"No subfolders found in the '{self.matrices_path}' folder"
+            )
         if len(genomes) > 1:
-            message = "Exactly one genome folder expected in the " \
+            message = (
+                "Exactly one genome folder expected in the "
                 f"'{self.matrices_path}' folder, but found:"
+            )
             for g in genomes:
-                message += f'\n  {g!r}'
+                message += f"\n  {g!r}"
             raise CellRangerError(message)
         return genomes[0]
 
@@ -55,14 +60,14 @@ class CellRangerDir2:
         with xopen(self.barcodes_path) as f:
             ids = []
             for line in f:
-                line = line.strip('\n')
+                line = line.strip("\n")
                 ids.append(line)
         return set(ids)
 
 
 class CellRangerDir3(CellRangerDir2):
-    MATRICES = 'filtered_feature_bc_matrix'
-    BARCODES = 'barcodes.tsv.gz'
+    MATRICES = "filtered_feature_bc_matrix"
+    BARCODES = "barcodes.tsv.gz"
 
     def _detect_genome_dir(self, _genome_name):
         return self.matrices_path

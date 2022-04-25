@@ -8,7 +8,8 @@ class NiceFormatter(logging.Formatter):
 
     Based on http://stackoverflow.com/a/9218261/715090 .
     """
+
     def format(self, record):
         if record.levelno != logging.INFO:
-            record.msg = '{}: {}'.format(record.levelname, record.msg)
+            record.msg = "{}: {}".format(record.levelname, record.msg)
         return super().format(record)

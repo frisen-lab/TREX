@@ -3,8 +3,9 @@ from typing import List
 from .cell import Cell
 import operator
 import warnings
+
 with warnings.catch_warnings():
-    warnings.filterwarnings('ignore', 'Conversion of the second argument of issubdtype')
+    warnings.filterwarnings("ignore", "Conversion of the second argument of issubdtype")
     import loompy
 import numpy as np
 
@@ -30,34 +31,60 @@ def write_count_matrix(path: Path, cells: List[Cell]):
 
 def write_cells(path: Path, cells: List[Cell]) -> None:
     """Write cells to a tab-separated file"""
-    with open(path, 'w') as f:
+    with open(path, "w") as f:
         print(
-            "#cell_id", ":", "clone_id1", "count1", "clone_id2", "count2", "...", sep="\t", file=f)
+            "#cell_id",
+            ":",
+            "clone_id1",
+            "count1",
+            "clone_id2",
+            "count2",
+            "...",
+            sep="\t",
+            file=f,
+        )
         for cell in cells:
-            row = [cell.cell_id, ':']
+            row = [cell.cell_id, ":"]
             sorted_clone_ids = sorted(
-                cell.counts, key=lambda x: cell.counts[x], reverse=True)
+                cell.counts, key=lambda x: cell.counts[x], reverse=True
+            )
             if not sorted_clone_ids:
                 continue
             for clone_id in sorted_clone_ids:
                 row.extend([clone_id, cell.counts[clone_id]])
-            print(*row, sep='\t', file=f)
+            print(*row, sep="\t", file=f)
 
 
 def write_reads_or_molecules(path, mols_or_reads, require_umis=True, sort=True):
-    with open(path, 'w') as f:
+    with open(path, "w") as f:
         if require_umis:
             if sort:
-                mols_or_reads = sorted(mols_or_reads, key=lambda mol_or_read: (mol_or_read.umi, mol_or_read.cell_id, mol_or_read.clone_id))
+                mols_or_reads = sorted(
+                    mols_or_reads,
+                    key=lambda mol_or_read: (
+                        mol_or_read.umi,
+                        mol_or_read.cell_id,
+                        mol_or_read.clone_id,
+                    ),
+                )
             print("#cell_id", "umi", "clone_id", sep="\t", file=f)
             for mol_or_read in mols_or_reads:
-                print(mol_or_read.cell_id, mol_or_read.umi, mol_or_read.clone_id, sep='\t', file=f)
+                print(
+                    mol_or_read.cell_id,
+                    mol_or_read.umi,
+                    mol_or_read.clone_id,
+                    sep="\t",
+                    file=f,
+                )
         else:
             if sort:
-                mols_or_reads = sorted(mols_or_reads, key=lambda mol_or_read: (mol_or_read.clone_id, mol_or_read.cell_id)) 
+                mols_or_reads = sorted(
+                    mols_or_reads,
+                    key=lambda mol_or_read: (mol_or_read.clone_id, mol_or_read.cell_id),
+                )
             print("#cell_id", "clone_id", sep="\t", file=f)
             for mol_or_read in mols_or_reads:
-                print(mol_or_read.cell_id, mol_or_read.clone_id, sep='\t', file=f)
+                print(mol_or_read.cell_id, mol_or_read.clone_id, sep="\t", file=f)
 
 
 def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
@@ -80,11 +107,11 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
     # create_from_cellranger() does not tell us the name of the created file,
     # so we need to re-derive it from the sample name.
     sample_name = cellranger.sample_dir.name
-    loom_path = output_dir / (sample_name + '.loom')
+    loom_path = output_dir / (sample_name + ".loom")
 
     with loompy.connect(loom_path) as ds:
         # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
-        loom_cell_ids = [cell_id[len(sample_name)+1:] for cell_id in ds.ca.CellID]
+        loom_cell_ids = [cell_id[len(sample_name) + 1 :] for cell_id in ds.ca.CellID]
 
         # Transform clone IDs and count data
         # brings clone ID data into correct format for loom file.
@@ -95,7 +122,7 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
             clone_id_counts = most_abundant.get(cell_id, [])
             # Fill up to a constant length
             while len(clone_id_counts) < top_n:
-                clone_id_counts.append(('-', 0))
+                clone_id_counts.append(("-", 0))
 
             for i, (clone_id, count) in enumerate(clone_id_counts):
                 clone_id_lists[i].append(clone_id)
@@ -103,5 +130,7 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
 
         # Add clone ID and count information to loom file
         for i in range(top_n):
-            ds.ca[f'cloneid_{i+1}'] = np.array(clone_id_lists[i], dtype='S%r' % clone_id_length)
-            ds.ca[f'cloneid_count_{i+1}'] = np.array(count_lists[i], dtype=int)
+            ds.ca[f"cloneid_{i+1}"] = np.array(
+                clone_id_lists[i], dtype="S%r" % clone_id_length
+            )
+            ds.ca[f"cloneid_count_{i+1}"] = np.array(count_lists[i], dtype=int)

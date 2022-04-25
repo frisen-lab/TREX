@@ -40,15 +40,21 @@ def read_bam(
         # TODO move out of here
         if clone_id_start is None or clone_id_end is None:
             if clone_id_start is not None or clone_id_end is not None:
-                raise ValueError('Either both or none of clone id start and end must be provided')
-            clone_id_start, clone_id_end = detect_clone_id_location(alignment_file, chr_name)
-        logger.info(f"Reading clone ids from {chr_name}:{clone_id_start + 1}-{clone_id_end} "
-            f"in {bam_path}")
+                raise ValueError(
+                    "Either both or none of clone id start and end must be provided"
+                )
+            clone_id_start, clone_id_end = detect_clone_id_location(
+                alignment_file, chr_name
+            )
+        logger.info(
+            f"Reading clone ids from {chr_name}:{clone_id_start + 1}-{clone_id_end} "
+            f"in {bam_path}"
+        )
         if clone_id_end - clone_id_start < 10:
-            raise ValueError('Auto-detected clone id too short, something is wrong')
+            raise ValueError("Auto-detected clone id too short, something is wrong")
 
         clone_id_extractor = CachedCloneIdExtractor(clone_id_start, clone_id_end)
-        with AlignmentFile(output_bam_path, 'wb', template=alignment_file) as out_bam:
+        with AlignmentFile(output_bam_path, "wb", template=alignment_file) as out_bam:
             # Fetches those reads aligning to the artifical, clone-id-containing chromosome
             reads = []
             no_cell_id = no_umi = 0
@@ -70,7 +76,7 @@ def read_bam(
                     continue
                 umi = None
                 if cell_id_tag == "CB":
-                    umi = read.get_tag('UB')
+                    umi = read.get_tag("UB")
                     if not cell_id.endswith("-1"):
                         raise ValueError(
                             f"A cell id ({cell_id!r}) was found that does not end in '-1'. "
@@ -88,12 +94,15 @@ def read_bam(
     if require_umis:
         logger.info(
             f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id, "
-            f"{no_umi} without UMI.")
+            f"{no_umi} without UMI."
+        )
     else:
         logger.info(
-            f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id")
+            f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id"
+        )
     logger.debug(
-        f"Cache hits: {clone_id_extractor.hits}. Cache misses: {clone_id_extractor.misses}")
+        f"Cache hits: {clone_id_extractor.hits}. Cache misses: {clone_id_extractor.misses}"
+    )
     return reads
 
 
@@ -102,6 +111,7 @@ class CachedCloneIdExtractor:
     Caching clone id extraction results helps when there are many identical reads
     (amplicon data)
     """
+
     def __init__(self, clone_id_start, clone_id_end):
         self._cache = dict()
         self._start = clone_id_start
@@ -129,7 +139,7 @@ class CachedCloneIdExtractor:
         query_align_start = read.query_alignment_start
         query_sequence = read.query_sequence
         # Extract clone id
-        clone_id = ['-'] * (self._end - self._start)
+        clone_id = ["-"] * (self._end - self._start)
         bases = 0
         for query_pos, ref_pos in read.get_aligned_pairs():
             # Replace soft-clipping with an ungapped alignment extending into the
@@ -148,7 +158,7 @@ class CachedCloneIdExtractor:
             if ref_pos is not None and self._start <= ref_pos < self._end:
                 if query_pos is None:
                     # Deletion or intron skip
-                    query_base = '0'
+                    query_base = "0"
                 else:
                     # Match or mismatch
                     query_base = query_sequence[query_pos]
@@ -203,4 +213,6 @@ def detect_clone_id_location(alignment_file, reference_name):
         if clone_id_end - clone_id_start >= 5:
             # Good enough
             return (clone_id_start, clone_id_end)
-    raise ValueError(f'Could not detect clone id location on chromosome {reference_name}')
+    raise ValueError(
+        f"Could not detect clone id location on chromosome {reference_name}"
+    )

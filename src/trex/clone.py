@@ -21,11 +21,11 @@ class Clone:
         self.cell_ids = tuple(sorted(c.cell_id for c in cells))
         self.counts = sum((Counter(c.counts) for c in cells), Counter())
         self.n = len(cells)
-        self.cell_id = 'M-' + min(self.cell_ids)
+        self.cell_id = "M-" + min(self.cell_ids)
         self._hash = hash(self.cell_ids)
 
     def __repr__(self):
-        return f'Clone(cells={self.cells!r})'
+        return f"Clone(cells={self.cells!r})"
 
     def __hash__(self):
         return self._hash
@@ -127,8 +127,10 @@ class CloneGraph:
         # Expand the Clone instances into cells
         clusters = [self._expand_clones(cluster) for cluster in compressed_clusters]
 
-        logger.debug('CloneGraph.clones() called. %s connected components (clones) found',
-            len(clusters))
+        logger.debug(
+            "CloneGraph.clones() called. %s connected components (clones) found",
+            len(clusters),
+        )
 
         def most_abundant_clone_id(cells: List[Cell]):
             counts = Counter()
@@ -150,44 +152,56 @@ class CloneGraph:
             highlight = set(highlight)
         max_width = 10
         edge_scaling = (max_width - 1) / math.log(
-            max((node1.n * node2.n for node1, node2 in self._graph.edges()), default=math.exp(1)))
-        node_scaling = (max_width - 1) / math.log(max(node.n for node in self._graph.nodes()))
+            max(
+                (node1.n * node2.n for node1, node2 in self._graph.edges()),
+                default=math.exp(1),
+            )
+        )
+        node_scaling = (max_width - 1) / math.log(
+            max(node.n for node in self._graph.nodes())
+        )
         s = StringIO()
-        print('graph g {', file=s)
+        print("graph g {", file=s)
         # Using overlap=false would be nice here, but that does not work with some Graphviz builds
-        print('  graph [outputorder=edgesfirst];', file=s)
-        print('  edge [color=blue];', file=s)
+        print("  graph [outputorder=edgesfirst];", file=s)
+        print("  edge [color=blue];", file=s)
         print('  node [style=filled, fillcolor=white, fontname="Roboto"];', file=s)
         for node in self._graph.nodes():
             if self._graph.neighbors(node):
                 width = int(1 + node_scaling * math.log(node.n))
                 intersection = set(node.cell_ids) & highlight
-                hl = ',fillcolor=yellow' if intersection else ''
-                hl_label = f' ({len(intersection)})' if intersection else ''
+                hl = ",fillcolor=yellow" if intersection else ""
+                hl_label = f" ({len(intersection)})" if intersection else ""
                 print(
                     f'  "{node.cell_id}" [penwidth={width}{hl},label="{node.cell_id}'
                     f'\\n{node.n}{hl_label}"];',
-                    file=s)
+                    file=s,
+                )
         for node1, node2 in self._graph.edges():
             width = int(1 + edge_scaling * math.log(node1.n * node2.n))
             neighbors1 = self._graph.neighbors(node1)
             neighbors2 = self._graph.neighbors(node2)
             common_neighbors = set(neighbors1) & set(neighbors2)
-            bridge = ''
+            bridge = ""
             if (len(neighbors1) > 1 or len(neighbors2) > 1) and not common_neighbors:
-                bridge = ', style=dashed, color=red'
+                bridge = ", style=dashed, color=red"
                 width = 2
-            print(f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}{bridge}];', file=s)
+            print(
+                f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}{bridge}];',
+                file=s,
+            )
 
-        print('}', file=s)
+        print("}", file=s)
         return s.getvalue()
 
     def components_txt(self, highlight=None):
         s = StringIO()
-        print('# Clone graph components (only incomplete/density<1)', file=s)
+        print("# Clone graph components (only incomplete/density<1)", file=s)
         n_complete = 0
         for subgraph in self.graph.connected_components():
-            cells = sorted(self._expand_clones(subgraph.nodes()), key=lambda c: c.cell_id)
+            cells = sorted(
+                self._expand_clones(subgraph.nodes()), key=lambda c: c.cell_id
+            )
             n_nodes = len(cells)
             n_edges = sum(n1.n * n2.n for n1, n2 in subgraph.edges())
             n_edges += sum(node.n * (node.n - 1) // 2 for node in subgraph.nodes())
@@ -196,18 +210,17 @@ class CloneGraph:
                 n_complete += 1
                 continue
             density = n_edges / possible_edges
-            print(f'## {n_nodes} nodes, {n_edges} edges, density {density:.3f}', file=s)
+            print(f"## {n_nodes} nodes, {n_edges} edges, density {density:.3f}", file=s)
             counter = Counter()
             for cell in cells:
                 if highlight is not None and cell.cell_id in highlight:
-                    highlighting = '+'
+                    highlighting = "+"
                 else:
-                    highlighting = ''
+                    highlighting = ""
                 clone_ids = sorted(cell.counts.keys())
-                print(
-                    cell.cell_id, highlighting, *clone_ids, sep='\t', file=s)
+                print(cell.cell_id, highlighting, *clone_ids, sep="\t", file=s)
                 counter.update(cell.counts.keys())
-        print(f'# {n_complete} complete components', file=s)
+        print(f"# {n_complete} complete components", file=s)
         return s.getvalue()
 
     @property
@@ -265,10 +278,10 @@ class UncompressedCloneGraph:
 
     def dot(self, highlight=None):
         s = StringIO()
-        print('graph g {', file=s)
+        print("graph g {", file=s)
         for node1, node2 in self._graph.edges():
             print(f'"{node1.cell_id}" -- "{node2.cell_id}"', file=s)
-        print('}', file=s)
+        print("}", file=s)
         return s.getvalue()
 
     @property

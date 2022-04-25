@@ -12,11 +12,11 @@ def kmers(s: str, k: int):
     ['hel', 'ell', 'llo']
     """
     for i in range(len(s) - k + 1):
-        yield s[i:i+k]
+        yield s[i : i + k]
 
 
 def cluster_sequences(
-        sequences: List[str], is_similar: Callable[[str, str], bool], k: int = 6
+    sequences: List[str], is_similar: Callable[[str, str], bool], k: int = 6
 ) -> List[List[str]]:
     """
     Cluster sequences by Hamming distance.
@@ -47,7 +47,7 @@ def cluster_sequences(
                     graph.add_edge(bc, other)
     else:
         for i, x in enumerate(sequences):
-            for j in range(i+1, len(sequences)):
+            for j in range(i + 1, len(sequences)):
                 y = sequences[j]
                 assert len(x) == len(y)
                 if is_similar(x, y):
