@@ -249,7 +249,7 @@ def run_trex(
         write_cells(output_dir / 'cells_filtered.txt', cells)
 
     if should_write_umi_matrix:
-        logger.info(f"Writing UMI matrix")
+        logger.info("Writing UMI matrix")
         write_umi_matrix(output_dir, cells)
 
     clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)

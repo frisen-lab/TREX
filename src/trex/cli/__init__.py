@@ -1,8 +1,6 @@
 import logging
 
 from trex.utils import NiceFormatter
-from pathlib import Path
-import shutil
 
 logger = logging.getLogger(__name__)
 
