@@ -272,8 +272,8 @@ def add_arguments(parser):
         type=Path,
         nargs="+",
         metavar="DIRECTORY",
-        help="Path to the input Cell Ranger directory. "
-        "There must be an 'outs' subdirectory in that directory.",
+        help="Path to the input Cell Ranger directories. "
+        "There must be an 'outs' subdirectory in each of these directories.",
     )
 
 
