@@ -49,7 +49,7 @@ This section lists some details not available in the paper.
 See the `references/` directory for the necessary files.
 
 The FASTA reference used with CellRanger was created by appending
-`H2b-EGFP-30N-LTR.fa` to the end of the GRCm38 (mm10) reference FASTA:
+`chrH2B-EGFP-N.fa` to the end of the GRCm38 (mm10) reference FASTA:
 
     cat genome.fa chrH2B-EGFP-N.fa > mm10_H2B-EGFP-30N_genome.fa
 
