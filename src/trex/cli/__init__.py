@@ -184,7 +184,7 @@ def add_common_arguments(parser, smartseq: bool):
         dest="plot",
         default=False,
         action="store_true",
-        help="Plot the clone graph",
+        help="Plot the clone graph. This requires GraphViz to be installed.",
     )
     optional_group.add_argument(
         "--highlight",
