@@ -101,7 +101,7 @@ def add_arguments(parser):
         "--readcount-threshold",
         default=2,
         type=int,
-        help="Minimum number of reads supporting a clone ID "
+        help="Minimum number of reads supporting a cloneID "
         "in order to keep it for downstream analysis. "
         "Default: %(default)s",
     )
@@ -110,7 +110,7 @@ def add_arguments(parser):
         default=False,
         action="store_true",
         help="Create a read count matrix 'read_count_matrix.csv' "
-             "with cells as columns and clone IDs as rows",
+             "with cells as columns and cloneIDs as rows",
     )
 
 
@@ -154,8 +154,8 @@ def run_smartseq2(
         r.clone_id for r in reads if "-" not in r.clone_id and "0" not in r.clone_id
     ]
     logger.info(
-        f"Read {len(reads)} reads containing (parts of) the clone ID "
-        f"({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)"
+        f"Read {len(reads)} reads containing (parts of) the cloneID "
+        f"({len(clone_ids)} full cloneIDs, {len(set(clone_ids))} unique)"
     )
 
     write_reads_or_molecules(output_dir / "reads.txt", reads, require_umis=False)
@@ -170,7 +170,7 @@ def run_smartseq2(
         if "-" not in m.clone_id and "0" not in m.clone_id
     ]
     logger.info(
-        f"After clone ID correction, {len(set(clone_ids))} unique clone IDs remain"
+        f"After cloneID correction, {len(set(clone_ids))} unique cloneIDs remain"
     )
 
     write_reads_or_molecules(
@@ -234,7 +234,7 @@ def filter_smartseq(
     cells: Iterable[Cell], molecules: Iterable[Molecule], readcount_threshold: int
 ) -> List[Cell]:
     """
-    Removes clone IDs that are supported by less reads than the given readcount_threshold
+    Remove cloneIDs that are supported by less reads than the given readcount_threshold
     """
     new_cells = []
     for cell in cells:

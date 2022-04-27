@@ -11,7 +11,7 @@ import numpy as np
 
 
 def write_count_matrix(path: Path, cells: List[Cell]):
-    """Create a Read-count matrix with cells as columns and clone IDs as rows"""
+    """Create a Read-count matrix with cells as columns and cloneIDs as rows"""
     clone_ids = set()
     for cell in cells:
         clone_ids.update(clone_id for clone_id in cell.counts)
@@ -90,10 +90,10 @@ def write_reads_or_molecules(path, mols_or_reads, require_umis=True, sort=True):
 def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
     """
     Create a loom file from a Cell Ranger result directory and augment it with information about
-    the most abundant clone IDs and their counts.
+    the most abundant cloneIDs and their counts.
     """
-    # For each cell, collect the most abundant clone IDs and their counts
-    # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant clone IDs.
+    # For each cell, collect the most abundant cloneIDs and their counts
+    # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant cloneIDs.
     most_abundant = dict()
     for cell in cells:
         if not cell.counts:
@@ -113,8 +113,8 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
         # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
         loom_cell_ids = [cell_id[len(sample_name) + 1 :] for cell_id in ds.ca.CellID]
 
-        # Transform clone IDs and count data
-        # brings clone ID data into correct format for loom file.
+        # Transform cloneIDs and count data
+        # brings cloneID data into correct format for loom file.
         # Array must have same shape as all_cellIDs
         clone_id_lists = [[] for _ in range(top_n)]
         count_lists = [[] for _ in range(top_n)]
@@ -128,7 +128,7 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
                 clone_id_lists[i].append(clone_id)
                 count_lists[i].append(count)
 
-        # Add clone ID and count information to loom file
+        # Add cloneID and count information to loom file
         for i in range(top_n):
             ds.ca[f"cloneid_{i+1}"] = np.array(
                 clone_id_lists[i], dtype="S%r" % clone_id_length

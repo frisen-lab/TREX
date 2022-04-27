@@ -66,14 +66,14 @@ def add_common_arguments(parser, smartseq: bool):
     input_group.add_argument(
         "--chromosome",
         "--chr",
-        help="Name of chromosome on which clone ID is located. "
+        help="Name of chromosome on which cloneID is located. "
         "Default: Last chromosome in BAM file",
         default=None,
     )
     input_group.add_argument(
         "--start",
         "-s",
-        help="Position of first clone ID nucleotide (1-based). Default: Auto-detected",
+        help="Position of first cloneID nucleotide (1-based). Default: Auto-detected",
         type=int,
         metavar="INT",
         default=None,
@@ -81,7 +81,7 @@ def add_common_arguments(parser, smartseq: bool):
     input_group.add_argument(
         "--end",
         "-e",
-        help="Position of last clone ID nucleotide (1-based). Default: Auto-detected",
+        help="Position of last cloneID nucleotide (1-based). Default: Auto-detected",
         type=int,
         metavar="INT",
         default=None,
@@ -89,12 +89,12 @@ def add_common_arguments(parser, smartseq: bool):
     if smartseq:
         help = (
             "Path to united BAM file for all cells or path to a folder with one BAM file "
-            "per cell, containing sequencing of the clone ID amplicon library."
+            "per cell, containing sequencing of the cloneID amplicon library."
         )
     else:
         help = (
             "Path to Cell Ranger result directory (a subdirectory 'outs' must exist) "
-            "containing sequencing of the clone ID amplicon library."
+            "containing sequencing of the cloneID amplicon library."
         )
     input_group.add_argument(
         "--amplicon",
@@ -125,14 +125,14 @@ def add_common_arguments(parser, smartseq: bool):
     filter_group.add_argument(
         "--min-length",
         "-m",
-        help="Minimum number of nucleotides a clone ID must have. Default: %(default)s",
+        help="Minimum number of nucleotides a cloneID must have. Default: %(default)s",
         type=int,
         metavar="INT",
         default=20,
     )
     filter_group.add_argument(
         "--max-hamming",
-        help="Maximum hamming distance allowed for two clone IDs to be called similar. "
+        help="Maximum hamming distance allowed for two cloneIDs to be called similar. "
         "Default: %(default)s",
         type=int,
         metavar="INT",
@@ -143,7 +143,7 @@ def add_common_arguments(parser, smartseq: bool):
         type=float,
         default=0,
         metavar="VALUE",
-        help="If the Jaccard index between clone IDs of two cells is higher than VALUE, they "
+        help="If the Jaccard index between cloneIDs of two cells is higher than VALUE, they "
         "are considered similar. Default: %(default)s",
     )
     filter_group.add_argument(

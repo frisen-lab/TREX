@@ -1,12 +1,12 @@
-Trex 0.4.dev125+gb6b76db.d20200617
+Trex 0.4.dev150+g2e002b0.d20220427
 Command line arguments: run10x --delete --loom --umi-matrix -s 695 -e 724 tests/data/
-Reading clone ids from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
-Found 3857 reads with usable clone ids. Skipped 1692 without cell id, 3 without UMI.
-Read 3857 reads containing (parts of) the clone ID (2703 full clone IDs, 71 unique)
-Detected 3800 molecules (2676 full clone IDs, 70 unique)
-After clone ID correction, 6 unique clone IDs remain
+Reading cloneIDs from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
+Found 3857 reads with usable cloneIDs. Skipped 1692 without cell id, 3 without UMI.
+Read 3857 reads containing (parts of) the cloneID (2703 full cloneIDs, 71 unique)
+Detected 3800 molecules (2676 full cloneIDs, 70 unique)
+After cloneID correction, 6 unique cloneIDs remain
 Detected 1921 cells
-Found 41 single-read clone IDs
+Found 41 single-read cloneIDs
 763 filtered cells remain
 Writing UMI matrix
 Removing 0 bridges from the graph

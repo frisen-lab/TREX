@@ -41,17 +41,17 @@ def read_bam(
         if clone_id_start is None or clone_id_end is None:
             if clone_id_start is not None or clone_id_end is not None:
                 raise ValueError(
-                    "Either both or none of clone id start and end must be provided"
+                    "Either both or none of cloneID start and end must be provided"
                 )
             clone_id_start, clone_id_end = detect_clone_id_location(
                 alignment_file, chr_name
             )
         logger.info(
-            f"Reading clone ids from {chr_name}:{clone_id_start + 1}-{clone_id_end} "
+            f"Reading cloneIDs from {chr_name}:{clone_id_start + 1}-{clone_id_end} "
             f"in {bam_path}"
         )
         if clone_id_end - clone_id_start < 10:
-            raise ValueError("Auto-detected clone id too short, something is wrong")
+            raise ValueError("Auto-detected cloneID too short, something is wrong")
 
         clone_id_extractor = CachedCloneIdExtractor(clone_id_start, clone_id_end)
         with AlignmentFile(output_bam_path, "wb", template=alignment_file) as out_bam:
@@ -85,7 +85,7 @@ def read_bam(
                     cell_id = cell_id[:-2]
                 clone_id = clone_id_extractor.extract(read)
                 if clone_id is None:
-                    # Read does not cover the clone id
+                    # Read does not cover the cloneID
                     continue
                 reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
                 # Write the passing alignments to a separate file
@@ -93,12 +93,12 @@ def read_bam(
 
     if require_umis:
         logger.info(
-            f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id, "
+            f"Found {len(reads)} reads with usable cloneIDs. Skipped {no_cell_id} without cell id, "
             f"{no_umi} without UMI."
         )
     else:
         logger.info(
-            f"Found {len(reads)} reads with usable clone ids. Skipped {no_cell_id} without cell id"
+            f"Found {len(reads)} reads with usable cloneIDs. Skipped {no_cell_id} without cell id"
         )
     logger.debug(
         f"Cache hits: {clone_id_extractor.hits}. Cache misses: {clone_id_extractor.misses}"
@@ -108,7 +108,7 @@ def read_bam(
 
 class CachedCloneIdExtractor:
     """
-    Caching clone id extraction results helps when there are many identical reads
+    Caching cloneID extraction results helps when there are many identical reads
     (amplicon data)
     """
 
@@ -138,12 +138,12 @@ class CachedCloneIdExtractor:
         query_align_end = read.query_alignment_end
         query_align_start = read.query_alignment_start
         query_sequence = read.query_sequence
-        # Extract clone id
+        # Extract cloneID
         clone_id = ["-"] * (self._end - self._start)
         bases = 0
         for query_pos, ref_pos in read.get_aligned_pairs():
             # Replace soft-clipping with an ungapped alignment extending into the
-            # soft-clipped region, assuming the clipping occurred because the clone id
+            # soft-clipped region, assuming the clipping occurred because the cloneID
             # region was encountered.
             if ref_pos is None:
                 # Soft clip or insertion
@@ -173,7 +173,7 @@ class CachedCloneIdExtractor:
 
 def detect_clone_id_location(alignment_file, reference_name):
     """
-    Detect where the clone id is located on the reference by inspecting the alignments.
+    Detect where the cloneID is located on the reference by inspecting the alignments.
 
     Return (clone_id_start, clone_id_end)
     """
@@ -186,9 +186,9 @@ def detect_clone_id_location(alignment_file, reference_name):
             starts[alignment.reference_end] += 1
 
     for clone_id_start, freq in starts.most_common(5):
-        # Soft-clipping at the 5' end cannot be used to find the clone id end when
-        # the clone id region is too far at the 3' end of the contig. Instead,
-        # look at pileups and check base frequencies (over the clone id, bases should
+        # Soft-clipping at the 5' end cannot be used to find the cloneID end when
+        # the cloneID region is too far at the 3' end of the contig. Instead,
+        # look at pileups and check base frequencies (over the cloneID, bases should
         # be roughly uniformly distributed).
         if clone_id_start >= reference_length:
             # The most common reference position that is soft clipped is often the 3' end
@@ -207,12 +207,12 @@ def detect_clone_id_location(alignment_file, reference_name):
             counter = Counter(bases)
             # Check whether one base dominates
             if counter.most_common()[0][1] / len(bases) > 0.95:
-                # We appear to have found the end of the clone id
+                # We appear to have found the end of the cloneID
                 clone_id_end = column.reference_pos
                 break
         if clone_id_end - clone_id_start >= 5:
             # Good enough
             return (clone_id_start, clone_id_end)
     raise ValueError(
-        f"Could not detect clone id location on chromosome {reference_name}"
+        f"Could not detect cloneID location on chromosome {reference_name}"
     )
