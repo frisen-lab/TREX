@@ -10,7 +10,13 @@ from typing import List, Dict, Iterable
 from tinyalign import hamming_distance
 import pandas as pd
 
-from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
+from . import (
+    setup_logging,
+    CommandLineError,
+    add_file_logging,
+    make_output_dir,
+    add_common_arguments,
+)
 from .. import __version__
 from ..cellranger import make_cellranger, CellRangerError
 from ..writers import (
@@ -105,110 +111,15 @@ def main(args):
 
 
 def add_arguments(parser):
-    parser.add_argument("--version", action="version", version=__version__)
-    parser.add_argument(
-        "--debug",
-        default=False,
-        action="store_true",
-        help="Print some extra debugging messages",
-    )
+    groups = add_common_arguments(parser, smartseq=False)
 
-    group = parser.add_argument_group("Input")
-
-    group.add_argument(
-        "--genome-name",
-        metavar="NAME",
-        help="Name of the genome as indicated in 'cellranger count' run with the flag --genome. "
-        "Default: Auto-detected",
-        default=None,
-    )
-    group.add_argument(
-        "--chromosome",
-        "--chr",
-        help="Name of chromosome on which clone ID is located. "
-        "Default: Last chromosome in BAM file",
-        default=None,
-    )
-    group.add_argument(
-        "--start",
-        "-s",
-        help="Position of first clone ID nucleotide (1-based). Default: Auto-detected",
-        type=int,
-        metavar="INT",
-        default=None,
-    )
-    group.add_argument(
-        "--end",
-        "-e",
-        help="Position of last clone ID nucleotide (1-based). Default: Auto-detected",
-        type=int,
-        metavar="INT",
-        default=None,
-    )
-    group.add_argument(
-        "--amplicon",
-        "-a",
-        nargs="+",
-        metavar="DIRECTORY",
-        help="Path to Cell Ranger result directory (a subdirectory 'outs' must exist) "
-        "containing sequencing of the clone ID amplicon library. Provide these in "
-        "the same order as transcriptome datasets",
-        default=None,
-    )
-    group.add_argument(
-        "--samples",
-        help="Sample names separated by comma, in the same order as Cell Ranger directories",
-        default=None,
-    )
-    group.add_argument(
-        "--prefix",
-        default=False,
-        action="store_true",
-        help="Add sample name as prefix to cell IDs. Default: Add as suffix",
-    )
-
-    group = parser.add_argument_group("Filter settings")
-
-    group.add_argument(
-        "--min-length",
-        "-m",
-        help="Minimum number of nucleotides a clone ID must have. Default: %(default)s",
-        type=int,
-        metavar="INT",
-        default=20,
-    )
-    group.add_argument(
-        "--max-hamming",
-        help="Maximum hamming distance allowed for two clone IDs to be called similar. "
-        "Default: %(default)s",
-        type=int,
-        metavar="INT",
-        default=5,
-    )
-    group.add_argument(
-        "--jaccard-threshold",
-        type=float,
-        default=0,
-        metavar="VALUE",
-        help="If the Jaccard index between clone IDs of two cells is higher than VALUE, they "
-        "are considered similar. Default: %(default)s",
-    )
-    group.add_argument(
-        "--filter-cellids",
-        "-f",
-        metavar="CSV",
-        type=Path,
-        help="CSV file containing cell IDs to keep in the analysis. "
-        "This flag enables to remove cells e.g. doublets",
-        default=None,
-    )
-    group.add_argument(
+    groups.filter.add_argument(
         "--keep-single-reads",
         action="store_true",
         default=False,
         help="Keep clone IDs supported by only a single read. Default: Discard them",
     )
-    group.add_argument(
+    groups.filter.add_argument(
         "--visium",
         default=False,
         action="store_true",
@@ -216,64 +127,19 @@ def add_arguments(parser):
         "one read, but keep those with only one UMI",
     )
 
-    parser.add_argument_group("Output directory")
-
-    group.add_argument(
-        "--output",
-        "-o",
-        "--name",
-        "-n",
-        metavar="DIRECTORY",
-        type=Path,
-        help="Name of the run directory to be created by the program. Default: %(default)s",
-        default=Path("trex_run"),
-    )
-    group.add_argument(
-        "--delete",
-        action="store_true",
-        help="Delete the run directory if it already exists",
-    )
-
-    group = parser.add_argument_group(
-        "Optional output files",
-        description="Use these options to enable creation "
-        "of additional files in the output directory",
-    )
-    group.add_argument(
+    groups.output.add_argument(
         "-l",
         "--loom",
         help="Create also a loom-file from Cell Ranger and clone data. "
         "File will have the same name as the run. Default: do not create a loom file",
         action="store_true",
     )
-    group.add_argument(
+    groups.output.add_argument(
         "--umi-matrix",
         default=False,
         action="store_true",
         help="Create a UMI count matrix 'umi_count_matrix.csv' with "
-             "cells as columns and clone IDs as rows",
-    )
-    group.add_argument(
-        "--plot",
-        dest="plot",
-        default=False,
-        action="store_true",
-        help="Plot the clone graph",
-    )
-    group.add_argument(
-        "--highlight",
-        metavar="FILE",
-        help="Highlight cell IDs listed in FILE "
-        "(text file with one cell ID per line) in the clone graph",
-    )
-
-    parser.add_argument(
-        "path",
-        type=Path,
-        nargs="+",
-        metavar="DIRECTORY",
-        help="Path to the input Cell Ranger directories. "
-        "There must be an 'outs' subdirectory in each of these directories.",
+        "cells as columns and clone IDs as rows",
     )
 
 
