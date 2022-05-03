@@ -39,7 +39,7 @@ class CloneGraph:
 
     @staticmethod
     def _precluster_cells(cells):
-        """Put cells that have identical sets of clone IDs into a clone"""
+        """Put cells that have identical sets of cloneIDs into a clone"""
         cell_lists = defaultdict(list)
         for cell in cells:
             clone_ids = tuple(sorted(cell.counts))
@@ -53,7 +53,7 @@ class CloneGraph:
     def _make_graph(self):
         """
         Create graph of clones; add edges between pre-clustered clones that
-        share at least one clone id. Return created graph.
+        share at least one cloneID. Return created graph.
         """
         clones = [clone for clone in self._clones if clone.counts]
         graph = Graph(clones)
@@ -121,7 +121,7 @@ class CloneGraph:
 
     def clones(self) -> List[Tuple[str, List[Cell]]]:
         """
-        Compute clones. Return a dict that maps a clone id to a list of cells.
+        Compute clones. Return a dict that maps a cloneID to a list of cells.
         """
         compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
         # Expand the Clone instances into cells
@@ -244,7 +244,7 @@ class UncompressedCloneGraph:
         for i in range(len(cells)):
             for j in range(i + 1, len(cells)):
                 if set(cells[i].counts) & set(cells[j].counts):
-                    # Cell i and j share a clone id
+                    # Cell i and j share a cloneID
                     graph.add_edge(cells[i], cells[j])
         return graph
 
@@ -264,7 +264,7 @@ class UncompressedCloneGraph:
 
     def clones(self) -> Dict[str, List[Cell]]:
         """
-        Compute clones. Return a dict that maps a representative clone id to a list of cells.
+        Compute clones. Return a dict that maps a representative cloneID to a list of cells.
         """
         clusters = [g.nodes() for g in self._graph.connected_components()]
 

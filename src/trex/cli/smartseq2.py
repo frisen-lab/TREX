@@ -7,6 +7,7 @@ from pathlib import Path
 from collections import Counter
 from typing import List, Iterable
 
+import trex.cli
 from .run10x import read_allowed_cellids, correct_clone_ids
 from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
@@ -94,135 +95,22 @@ def main(args):
 
 
 def add_arguments(parser):
-    parser.add_argument("--version", action="version", version=__version__)
-    parser.add_argument(
-        "--debug",
-        default=False,
-        action="store_true",
-        help="Print some extra debugging messages",
-    )
-    parser.add_argument(
-        "--genome-name",
-        metavar="NAME",
-        help="Name of the genome as indicated in Cell Ranger count run with the flag --genome. "
-        "Default: None",
-        default=None,
-    )
-    parser.add_argument(
-        "--chromosome",
-        "--chr",
-        help="Name of chromosome on which clone ID is located."
-        " Default: Last chromosome in BAM file",
-        default=None,
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        "--name",
-        "-n",
-        metavar="DIRECTORY",
-        type=Path,
-        help="name of the run and directory created by program. Default: %(default)s",
-        default=Path("trex_run"),
-    )
-    parser.add_argument(
-        "--delete", action="store_true", help="Delete output directory if it exists"
-    )
-    parser.add_argument(
-        "--start",
-        "-s",
-        help="Position of first clone ID nucleotide. Default: Auto-detected",
-        type=int,
-        default=None,
-    )
-    parser.add_argument(
-        "--end",
-        "-e",
-        help="Position of last clone ID nucleotide. Default: Auto-detected",
-        type=int,
-        default=None,
-    )
-    parser.add_argument(
-        "--min-length",
-        "-m",
-        help="Minimum number of nucleotides a clone ID must have. Default: %(default)s",
-        type=int,
-        default=20,
-    )
-    parser.add_argument(
-        "--max-hamming",
-        help="Maximum hamming distance allowed for two clone IDs to be called similar. "
-        "Default: %(default)s",
-        type=int,
-        default=5,
-    )
-    parser.add_argument(
-        "--jaccard-threshold",
-        type=float,
-        default=0,
-        metavar="VALUE",
-        help="If the Jaccard index between clone IDs of two cells is higher than VALUE, the cells "
-        "are considered similar. Default: %(default)s",
-    )
-    parser.add_argument(
-        "--amplicon",
-        "-a",
-        nargs="+",
-        metavar="DIRECTORY",
-        help="Path to united bam file for all cells or path to a folder with one bam file per cell,"
-        "containing sequencing of the clone ID amplicon library. Provide these in "
-        "same order as transcriptome datasets",
-        default=None,
-    )
-    parser.add_argument(
-        "--filter-cellids",
-        "-f",
-        metavar="CSV",
-        type=Path,
-        help="CSV file containing cell IDs to keep in the analysis."
-        " This flag enables to remove cells e.g. doublets",
-        default=None,
-    )
-    parser.add_argument(
+    groups = trex.cli.add_common_arguments(parser, smartseq=True)
+
+    groups.filter.add_argument(
         "--readcount-threshold",
         default=2,
         type=int,
-        help="Minimum number of reads supporting a clone ID in order to keep it for downstream analysis. "
+        help="Minimum number of reads supporting a cloneID "
+        "in order to keep it for downstream analysis. "
         "Default: %(default)s",
     )
-    parser.add_argument(
-        "--highlight", help="Highlight cell IDs listed in FILE in the clone graph"
-    )
-    parser.add_argument(
-        "--samples",
-        help="Sample names separated by comma, in the same order as bam files/bam file directories",
-        default=None,
-    )
-    parser.add_argument(
-        "--prefix",
-        default=False,
-        action="store_true",
-        help="Add sample name as prefix to cell IDs (instead of as suffix)",
-    )
-    parser.add_argument(
+    groups.output.add_argument(
         "--read-matrix",
         default=False,
         action="store_true",
-        help="Creates a read count matrix with cells as columns and clone IDs as rows",
-    )
-    parser.add_argument(
-        "--plot",
-        dest="plot",
-        default=False,
-        action="store_true",
-        help="Plot the clone graph",
-    )
-    parser.add_argument(
-        "path",
-        type=Path,
-        nargs="+",
-        metavar="DIRECTORY",
-        help="Path to a united bam file for all cells or path to a folder with one bam file per cell.",
+        help="Create a read count matrix 'read_count_matrix.csv' "
+             "with cells as columns and cloneIDs as rows",
     )
 
 
@@ -266,8 +154,8 @@ def run_smartseq2(
         r.clone_id for r in reads if "-" not in r.clone_id and "0" not in r.clone_id
     ]
     logger.info(
-        f"Read {len(reads)} reads containing (parts of) the clone ID "
-        f"({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)"
+        f"Read {len(reads)} reads containing (parts of) the cloneID "
+        f"({len(clone_ids)} full cloneIDs, {len(set(clone_ids))} unique)"
     )
 
     write_reads_or_molecules(output_dir / "reads.txt", reads, require_umis=False)
@@ -282,7 +170,7 @@ def run_smartseq2(
         if "-" not in m.clone_id and "0" not in m.clone_id
     ]
     logger.info(
-        f"After clone ID correction, {len(set(clone_ids))} unique clone IDs remain"
+        f"After cloneID correction, {len(set(clone_ids))} unique cloneIDs remain"
     )
 
     write_reads_or_molecules(
@@ -346,7 +234,7 @@ def filter_smartseq(
     cells: Iterable[Cell], molecules: Iterable[Molecule], readcount_threshold: int
 ) -> List[Cell]:
     """
-    Removes clone IDs that are supported by less reads than the given readcount_threshold
+    Remove cloneIDs that are supported by less reads than the given readcount_threshold
     """
     new_cells = []
     for cell in cells:

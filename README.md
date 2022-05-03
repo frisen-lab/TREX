@@ -6,7 +6,7 @@ TREX is an experimental workflow that enables simultaneous lineage TRacking and 
 
 An essential part of this workflow is presented here: the extraction of genetic barcodes or "cloneIDs" from single-cell transcriptomes and the reconstruction of related cells.
 
-The computational tool uses BAM files of one or multiple sequencing libraries as an input for the generation of cloneID count matrices and identifies clonally related cells based on Jaccard similarity between each pair of cloneID+cells. 
+The tool uses BAM files of one or multiple sequencing libraries as an input for the generation of cloneID count matrices and identifies clonally related cells based on Jaccard similarity between each pair of cloneID+cells.
 
 Currently, TREX is compatible with common RNA-sequencing library preparation methods and data formats provided by 10X Chromium and 10X Visium.
 
@@ -82,17 +82,17 @@ This is an overview of the steps that the `trex run10x` command performs.
    - It aligns to the region specified with the `--chr`, `-s` and
      `-e` flags or, if the flags are not given, to the region that
      has been automatically identified to be the region containing
-     the variable CloneID sequence,
+     the variable cloneID sequence,
    - it has both an associated cell ID and UMI (SAM tags `CB` and `UB`),
    - its cell ID is included in the list of allowed cell IDs
      (if such a list is provided with `--filter-cellid` or `-f`).
 2. Group reads with identical cell ID and UMI into *molecules*.
-   The clone ID of the molecule is taken to be the consensus of the clone IDs.
-3. Error-correct clone IDs of the molecules.
+   The cloneID of the molecule is taken to be the consensus of the cloneIDs.
+3. Error-correct cloneIDs of the molecules.
 4. Group molecules by cell ID into cells.
-5. Filter bad clone IDs in each cell:
-   Rare clone IDs also found in another cell are considered to be contaminants.
-   Clone IDs supported by only a single read are removed.
+5. Filter bad cloneIDs in each cell:
+   Rare cloneIDs also found in another cell are considered to be contaminants.
+   CloneIDs supported by only a single read are removed.
 6. Cluster the cells into clones by creating a *clone graph*.
    Edges are drawn between cells that appear to belong to the same clone.
    The connected components of the graph are considered to be the clones.
@@ -145,7 +145,7 @@ Example:
 
 ### `molecules_corrected.txt`
 
-A table with molecules where clone IDs have been error corrected.
+A table with molecules where cloneIDs have been error corrected.
 
 The file is the same as `molecules.txt` with some changes in the *clone_id*
 column.
@@ -155,7 +155,7 @@ column.
 
 A table listing the detected cells.
 The fields are *cell_id*, a colon (`:`) and then
-pairs of columns *clone_id1* and *count1* for each clone ID found in that cell.
+pairs of columns *clone_id1* and *count1* for each cloneID found in that cell.
 Example:
 
     #cell_id          :  clone_id1                       count1  clone_id2 count2  ...
@@ -165,13 +165,13 @@ Example:
 
 ### `cells_filtered.txt`
 
-The same as `cells.txt`, but with error-corrected clone ID counts.
-Cells that end up without any clone IDs after error correction are removed.
+The same as `cells.txt`, but with error-corrected cloneID counts.
+Cells that end up without any cloneIDs after error correction are removed.
 
 
 ### `umi_count_matrix.csv`
 
-A matrix of UMI counts with cells as columns and clone IDs as rows.
+A matrix of UMI counts with cells as columns and cloneIDs as rows.
 
 Only created if option `--umi-matrix` is used.
 
@@ -207,7 +207,7 @@ identifies the clone.
 
 ### `clone_sequences.txt`
 
-A table listing the 30N sequence of each clone ID.
+A table listing the 30N sequence of each cloneID.
 The columns are *clone_id* and *clone_seq* where *clone_id* is a number
 that identifies the clone and *clone_seq* its nucleotide sequence.
 

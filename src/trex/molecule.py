@@ -19,7 +19,7 @@ def compute_molecules(reads: List[Read]) -> List[Molecule]:
     """
     Group reads by cell ID and UMI into molecules.
 
-    The clone id of the molecule is the consensus of the clone ids in the group.
+    The cloneID of the molecule is the consensus of the cloneIDs in the group.
     """
     groups = defaultdict(list)
     for read in reads:

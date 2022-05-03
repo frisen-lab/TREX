@@ -10,7 +10,13 @@ from typing import List, Dict, Iterable
 from tinyalign import hamming_distance
 import pandas as pd
 
-from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
+from . import (
+    setup_logging,
+    CommandLineError,
+    add_file_logging,
+    make_output_dir,
+    add_common_arguments,
+)
 from .. import __version__
 from ..cellranger import make_cellranger, CellRangerError
 from ..writers import (
@@ -105,175 +111,35 @@ def main(args):
 
 
 def add_arguments(parser):
-    parser.add_argument("--version", action="version", version=__version__)
-    parser.add_argument(
-        "--debug",
-        default=False,
-        action="store_true",
-        help="Print some extra debugging messages",
-    )
+    groups = add_common_arguments(parser, smartseq=False)
 
-    group = parser.add_argument_group("Input")
-
-    group.add_argument(
-        "--genome-name",
-        metavar="NAME",
-        help="Name of the genome as indicated in 'cellranger count' run with the flag --genome. "
-        "Default: Auto-detected",
-        default=None,
-    )
-    group.add_argument(
-        "--chromosome",
-        "--chr",
-        help="Name of chromosome on which clone ID is located. "
-        "Default: Last chromosome in BAM file",
-        default=None,
-    )
-    group.add_argument(
-        "--start",
-        "-s",
-        help="Position of first clone ID nucleotide (1-based). Default: Auto-detected",
-        type=int,
-        metavar="INT",
-        default=None,
-    )
-    group.add_argument(
-        "--end",
-        "-e",
-        help="Position of last clone ID nucleotide (1-based). Default: Auto-detected",
-        type=int,
-        metavar="INT",
-        default=None,
-    )
-    group.add_argument(
-        "--amplicon",
-        "-a",
-        nargs="+",
-        metavar="DIRECTORY",
-        help="Path to Cell Ranger result directory (a subdirectory 'outs' must exist) "
-        "containing sequencing of the clone ID amplicon library. Provide these in "
-        "the same order as transcriptome datasets",
-        default=None,
-    )
-    group.add_argument(
-        "--samples",
-        help="Sample names separated by comma, in the same order as Cell Ranger directories",
-        default=None,
-    )
-    group.add_argument(
-        "--prefix",
-        default=False,
-        action="store_true",
-        help="Add sample name as prefix to cell IDs. Default: Add as suffix",
-    )
-
-    group = parser.add_argument_group("Filter settings")
-
-    group.add_argument(
-        "--min-length",
-        "-m",
-        help="Minimum number of nucleotides a clone ID must have. Default: %(default)s",
-        type=int,
-        metavar="INT",
-        default=20,
-    )
-    group.add_argument(
-        "--max-hamming",
-        help="Maximum hamming distance allowed for two clone IDs to be called similar. "
-        "Default: %(default)s",
-        type=int,
-        metavar="INT",
-        default=5,
-    )
-    group.add_argument(
-        "--jaccard-threshold",
-        type=float,
-        default=0,
-        metavar="VALUE",
-        help="If the Jaccard index between clone IDs of two cells is higher than VALUE, they "
-        "are considered similar. Default: %(default)s",
-    )
-    group.add_argument(
-        "--filter-cellids",
-        "-f",
-        metavar="CSV",
-        type=Path,
-        help="CSV file containing cell IDs to keep in the analysis. "
-        "This flag enables to remove cells e.g. doublets",
-        default=None,
-    )
-    group.add_argument(
+    groups.filter.add_argument(
         "--keep-single-reads",
         action="store_true",
         default=False,
-        help="Keep clone IDs supported by only a single read. Default: Discard them",
+        help="Keep cloneIDs supported by only a single read. Default: Discard them",
     )
-    group.add_argument(
+    groups.filter.add_argument(
         "--visium",
         default=False,
         action="store_true",
-        help="Adjust filter settings for 10x Visium data: Filter out clone IDs only based on "
+        help="Adjust filter settings for 10x Visium data: Filter out cloneIDs only based on "
         "one read, but keep those with only one UMI",
     )
 
-    parser.add_argument_group("Output directory")
-
-    group.add_argument(
-        "--output",
-        "-o",
-        "--name",
-        "-n",
-        metavar="DIRECTORY",
-        type=Path,
-        help="Name of the run directory to be created by the program. Default: %(default)s",
-        default=Path("trex_run"),
-    )
-    group.add_argument(
-        "--delete",
-        action="store_true",
-        help="Delete the run directory if it already exists",
-    )
-
-    group = parser.add_argument_group(
-        "Optional output files",
-        description="Use these options to enable creation "
-        "of additional files in the output directory",
-    )
-    group.add_argument(
+    groups.output.add_argument(
         "-l",
         "--loom",
         help="Create also a loom-file from Cell Ranger and clone data. "
         "File will have the same name as the run. Default: do not create a loom file",
         action="store_true",
     )
-    group.add_argument(
+    groups.output.add_argument(
         "--umi-matrix",
         default=False,
         action="store_true",
         help="Create a UMI count matrix 'umi_count_matrix.csv' with "
-             "cells as columns and clone IDs as rows",
-    )
-    group.add_argument(
-        "--plot",
-        dest="plot",
-        default=False,
-        action="store_true",
-        help="Plot the clone graph",
-    )
-    group.add_argument(
-        "--highlight",
-        metavar="FILE",
-        help="Highlight cell IDs listed in FILE "
-        "(text file with one cell ID per line) in the clone graph",
-    )
-
-    parser.add_argument(
-        "path",
-        type=Path,
-        nargs="+",
-        metavar="DIRECTORY",
-        help="Path to the input Cell Ranger directories. "
-        "There must be an 'outs' subdirectory in each of these directories.",
+        "cells as columns and cloneIDs as rows",
     )
 
 
@@ -314,8 +180,8 @@ def run_trex(
         r.clone_id for r in reads if "-" not in r.clone_id and "0" not in r.clone_id
     ]
     logger.info(
-        f"Read {len(reads)} reads containing (parts of) the clone ID "
-        f"({len(clone_ids)} full clone IDs, {len(set(clone_ids))} unique)"
+        f"Read {len(reads)} reads containing (parts of) the cloneID "
+        f"({len(clone_ids)} full cloneIDs, {len(set(clone_ids))} unique)"
     )
 
     write_reads_or_molecules(output_dir / "reads.txt", reads)
@@ -325,7 +191,7 @@ def run_trex(
         m.clone_id for m in molecules if "-" not in m.clone_id and "0" not in m.clone_id
     ]
     logger.info(
-        f"Detected {len(molecules)} molecules ({len(clone_ids)} full clone IDs, "
+        f"Detected {len(molecules)} molecules ({len(clone_ids)} full cloneIDs, "
         f"{len(set(clone_ids))} unique)"
     )
 
@@ -338,7 +204,7 @@ def run_trex(
         if "-" not in m.clone_id and "0" not in m.clone_id
     ]
     logger.info(
-        f"After clone ID correction, {len(set(clone_ids))} unique clone IDs remain"
+        f"After cloneID correction, {len(set(clone_ids))} unique cloneIDs remain"
     )
 
     write_reads_or_molecules(
@@ -438,12 +304,12 @@ def correct_clone_ids(
     molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
 ) -> List[Molecule]:
     """
-    Attempt to correct sequencing errors in the clone ID sequences of all molecules
+    Attempt to correct sequencing errors in the cloneID sequences of all molecules
     """
-    # Obtain all clone IDs (including those with '-' and '0')
+    # Obtain all cloneIDs (including those with '-' and '0')
     clone_ids = [m.clone_id for m in molecules]
 
-    # Count the full-length clone IDs
+    # Count the full-length cloneIDs
     counts = Counter(clone_ids)
 
     # Cluster them by Hamming distance
@@ -463,16 +329,16 @@ def correct_clone_ids(
 
     clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
 
-    # Map non-singleton clone IDs to a cluster representative
+    # Map non-singleton cloneIDs to a cluster representative
     clone_id_map = dict()
     for cluster in clusters:
         if len(cluster) > 1:
-            # Pick most frequent clone ID as representative
+            # Pick most frequent cloneID as representative
             representative = max(cluster, key=lambda bc: (counts[bc], bc))
             for clone_id in cluster:
                 clone_id_map[clone_id] = representative
 
-    # Create a new list of molecules in which the clone IDs have been replaced
+    # Create a new list of molecules in which the cloneIDs have been replaced
     # by their representatives
     new_molecules = []
     for molecule in molecules:
@@ -486,7 +352,7 @@ def filter_visium(
     molecules: Iterable[Molecule],
 ) -> List[Cell]:
     """
-    Filter: clone IDs that have only a count of one and are also only based on one read are  removed
+    Filter: cloneIDs that have only a count of one and are also only based on one read are  removed
     """
     new_cells = []
     del_cells = 0
@@ -496,7 +362,7 @@ def filter_visium(
         counts = cell.counts.copy()
         for clone_id, count in cell.counts.items():
             if count > 1:
-                # This clone ID occurs more than once in this cell - keep it
+                # This cloneID occurs more than once in this cell - keep it
                 continue
             for molecule in molecules:
                 if (
@@ -504,7 +370,7 @@ def filter_visium(
                     and molecule.clone_id == clone_id
                     and molecule.read_count == 1
                 ):
-                    # This clone ID has only a read count of 1 - remove it
+                    # This cloneID has only a read count of 1 - remove it
                     del_cloneids += 1
                     del counts[clone_id]
         if counts:
@@ -513,7 +379,7 @@ def filter_visium(
             del_cells += 1
 
     logger.info(
-        f"Found {del_cloneids} single-read clone IDs and removed {del_cells} cells"
+        f"Found {del_cloneids} single-read cloneIDs and removed {del_cells} cells"
     )
     return new_cells
 
@@ -524,11 +390,11 @@ def filter_cells(
     keep_single_reads: bool = False,
 ) -> List[Cell]:
     """
-    Filter clone IDs according to two criteria:
+    Filter cloneIDs according to two criteria:
 
-    - Clone ids that have only a count of one and can be found in another cell are most
+    - CloneIDs that have only a count of one and can be found in another cell are most
       likely results of contamination and are removed,
-    - If keep_single_reads is False, clone IDs that have only a count of one and are also only based
+    - If keep_single_reads is False, cloneIDs that have only a count of one and are also only based
       on one read are also removed
     """
     overall_counts: Dict[str, int] = Counter()
@@ -539,18 +405,18 @@ def filter_cells(
     for molecule in molecules:
         if molecule.read_count == 1:
             single_read_clone_ids.add(molecule.clone_id)
-    logger.info(f"Found {len(single_read_clone_ids)} single-read clone IDs")
+    logger.info(f"Found {len(single_read_clone_ids)} single-read cloneIDs")
 
-    # filters out clone IDs with a count of one that appear in another cell
+    # Filter out cloneIDs with a count of one that appear in another cell
     new_cells = []
     for cell in cells:
         counts = cell.counts.copy()
         for clone_id, count in cell.counts.items():
             if count > 1:
-                # This clone ID occurs more than once in this cell - keep it
+                # This cloneID occurs more than once in this cell - keep it
                 continue
             if overall_counts[clone_id] > 1:
-                # This clone ID occurs also in other cells - remove it
+                # This cloneID occurs also in other cells - remove it
                 del counts[clone_id]
             elif clone_id in single_read_clone_ids and not keep_single_reads:
                 del counts[clone_id]
