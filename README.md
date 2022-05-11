@@ -172,6 +172,7 @@ Cells that end up without any cloneIDs after error correction are removed.
 ### `umi_count_matrix.csv`
 
 A matrix of UMI counts with cells as columns and cloneIDs as rows.
+This is a different representation of the data written to `cells_filtered.txt`.
 
 Only created if option `--umi-matrix` is used.
 
