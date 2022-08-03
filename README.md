@@ -42,25 +42,86 @@ This will create a folder `trex_run/` in the current directory
 See the "Runnning TREX" section below for further details.
 
 
-# Reproducing results from the Nature Neuroscience paper
+# Running TREX on data from the Nature Neuroscience paper
 
-See the manuscript at <https://doi.org/10.1038/s41593-022-01011-x>.
-This section lists some details not available in the paper.
-See the `references/` directory for the necessary files.
+Here we show how to run TREX on the data we analyzed in our Nature Neuroscience paper (<https://doi.org/10.1038/s41593-022-01011-x>).
 
-The FASTA reference used with CellRanger was created by appending
-`chrH2B-EGFP-N.fa` to the end of the GRCm38 (mm10) reference FASTA:
+These instructions have been tested with Cell Ranger 6.1.2, but the original analysis was done with Cell Ranger 2.2.0.
 
-    cat genome.fa chrH2B-EGFP-N.fa > mm10_H2B-EGFP-30N_genome.fa
 
-The GTF annotations file was created by appending `chrH2B-EGFP-N.gtf`
-to the existing annotations:
+## Data
 
-    cat genes.gtf chrH2B-EGFP-N.gtf > mm10_H2B-EGFP-30N_genes.gtf
+The data is available under GEO accession [GSE153424](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE153424). The instructions below analyze sample [GSM4644060](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM4644060) because it is relatively small.
 
-Then a new CellRanger reference can be created:
+GSM4644060 is also called "brain1_str" (*str* stands for striatum) in the GEO description, and it has the ID "10X_41" in [Supplementary Table 4](https://static-content.springer.com/esm/art%3A10.1038%2Fs41593-022-01011-x/MediaObjects/41593_2022_1011_MOESM6_ESM.xlsx) in the paper.
 
-    cellranger mkref --genome=mm10_H2B-EGFP-30N --fasta=mm10_H2B-EGFP-30N_genome.fa --genes=mm10_H2B-EGFP-30N_genes.gtf > mkref_mm10_H2B-EGFP-30N.out
+As can be seen on the [overview page for GSM4644060](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM4644060), reads for the dataset are available from [SRA experiment accession SRX8627776](https://www.ncbi.nlm.nih.gov/sra?term=SRX8627776), which in turn links to two run accessions:
+* [SRR12103475](https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=SRR12103475)
+* [SRR12103476](https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=SRR12103476)
+
+We use the run accessions to retrieve the data.
+
+
+## Prerequisites
+
+- Go to the [Cell Ranger download page](https://support.10xgenomics.com/single-cell-gene-expression/software/downloads/latest). Download and install Cell Ranger.
+- Download and extract the mouse reference dataset `refdata-gex-mm10-2020-A.tar.gz`:
+
+       curl -O https://cf.10xgenomics.com/supp/cell-exp/refdata-gex-mm10-2020-A.tar.gz
+       tar xvf refdata-gex-mm10-2020-A.tar.gz
+
+- Create a custom reference by adding an extra chrH2B-EGFP-N contig (EGFP-cloneID virus) to the above mouse reference dataset.
+  `references/` refers to the directory in this repository. `cellranger mkref` takes about one hour.
+  You may choose to continue to the next step (downloading reads) while this is running.
+
+      cat refdata-gex-mm10-2020-A/fasta/genome.fa references/chrH2B-EGFP-N.fa > mm10_H2B-EGFP-30N_genome.fa
+      cat refdata-gex-mm10-2020-A/genes/genes.gtf references/chrH2B-EGFP-N.gtf > mm10_H2B-EGFP-30N_genes.gtf
+      cellranger mkref --genome=mm10_H2B-EGFP-30N --fasta=mm10_H2B-EGFP-30N_genome.fa --genes=mm10_H2B-EGFP-30N_genes.gtf > mkref_mm10_H2B-EGFP-30N.out
+
+
+## Downloads reads
+
+Create a `fastq` directory and change into it:
+
+    mkdir fastq
+    cd fastq
+
+If you do not have it, install `fastq-dump`. For example, if you have [Conda](https://docs.conda.io/) (with the [Bioconda channels activated](http://bioconda.github.io/user/install.html#set-up-channels)), run
+
+    conda create -n trex sra-tools
+    conda activate trex
+
+Download the reads:
+
+    fastq-dump --gzip --split-3 --defline-qual '+' --defline-seq '@$ac.$sn' SRR12103475 SRR12103476
+
+Rename the files so that Cell Ranger can find them:
+
+    mv SRR12103475_1.fastq.gz SRR12103475_S1_L001_R1_001.fastq.gz
+    mv SRR12103475_2.fastq.gz SRR12103475_S1_L001_R2_001.fastq.gz
+    mv SRR12103476_1.fastq.gz SRR12103476_S1_L001_R1_001.fastq.gz
+    mv SRR12103476_2.fastq.gz SRR12103476_S1_L001_R2_001.fastq.gz
+
+    cd ..
+
+
+## Run Cell Ranger
+
+Continue with this step only when the above steps have finished.
+Run `cellranger count`:
+
+    cellranger count --transcriptome=mm10_H2B-EGFP-30N --id=brain1_str --fastqs=fastq/ --sample=SRR12103475 --sample=SRR12103476 --expect-cells=2299
+
+The `--expect-cells` parameter is set to the number of cells loaded per well in the 10X chip used for droplet generation (4000 in this case, see the "cells recovered for 10X" column in Suppl. Table 4) divided by 1.74.
+
+
+## Run TREX
+
+With `trex` installed (as described above), run
+
+    trex run10x -o trex_brain1_str brain1_str
+
+Results will be written to a new directory named `trex_brain1_str`.
 
 
 # Running TREX
