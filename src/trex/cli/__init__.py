@@ -44,7 +44,7 @@ def make_output_dir(path, delete_if_exists):
 
 
 def add_common_arguments(parser, smartseq: bool):
-    """Add arguments to an ArgumentParser common to both run10x and smartseq2"""
+    """Add arguments to an ArgumentParser common to both run10x and smartseq2/3"""
 
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument(

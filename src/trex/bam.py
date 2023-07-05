@@ -63,6 +63,9 @@ def read_bam(
                 # Skip reads without cellID or UMI
                 has_cell_id = read.has_tag(cell_id_tag)
                 has_umi = read.has_tag("UB")
+                if has_umi:
+                    if len(read.get_tag("UB")) == 0:
+                        no_umi +=1
                 if not has_cell_id or not has_umi:
                     if not has_cell_id:
                         no_cell_id += 1
@@ -74,9 +77,11 @@ def read_bam(
                 if allowed_cell_ids and cell_id not in allowed_cell_ids:
                     no_cell_id += 1
                     continue
-                umi = None
+                
+                umi = read.get_tag("UB")
+                if umi == '':
+                    umi = None
                 if cell_id_tag == "CB":
-                    umi = read.get_tag("UB")
                     if not cell_id.endswith("-1"):
                         raise ValueError(
                             f"A cell id ({cell_id!r}) was found that does not end in '-1'. "
@@ -87,13 +92,17 @@ def read_bam(
                 if clone_id is None:
                     # Read does not cover the cloneID
                     continue
+                if require_umis and not umi:
+                    #Read does not have a umi
+                    continue
                 reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
                 # Write the passing alignments to a separate file
                 out_bam.write(read)
+            print("The amount of reads with no_umi: ", no_umi)
 
     if require_umis:
         logger.info(
-            f"Found {len(reads)} reads with usable cloneIDs. Skipped {no_cell_id} without cell id, "
+            f"Found {len(reads)} reads with usable cloneIDs and UMIs. Skipped {no_cell_id} without cell id, "
             f"{no_umi} without UMI."
         )
     else:
