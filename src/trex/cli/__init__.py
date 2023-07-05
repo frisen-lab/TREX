@@ -149,10 +149,11 @@ def add_common_arguments(parser, smartseq: bool):
     filter_group.add_argument(
         "--filter-cellids",
         "-f",
-        metavar="CSV",
+        metavar="TSV",
         type=Path,
-        help="CSV file containing cell IDs to keep in the analysis. "
-        "This flag enables to remove cells e.g. doublets",
+        help="TSV file containing cell IDs to keep in the analysis. "
+        "This flag enables to remove cells e.g. doublets. "
+        "Expected format: see documentation",
         default=None,
     )
 

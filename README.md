@@ -160,6 +160,19 @@ This is an overview of the steps that the `trex run10x` command performs.
    (A clone is thus simply a set of cells.)
 7. Error-correct the clone graph by removing spurious edges ("bridges").
 
+## Input files
+
+
+### Filter cellids
+
+Tab-separated file of cell IDs to keep in the trex run. Adding this file via 
+the `--filter-cellid` or `-f` allows to focus the analysis on specific cells
+and to filter out low quality cells or doublets.
+Example:
+	x
+0	CACTCGTGGTACACACTCCG
+1	CACTCGTGGTACCACAAGCA
+
 
 ## Output files
 
