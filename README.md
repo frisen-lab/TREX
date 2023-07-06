@@ -276,7 +276,7 @@ A table listing the cell IDs belonging to each clone.
 The columns are *clone_id* and *cell_id* where *clone_id* is a number that
 identifies the clone.
 
-    #clone_id   cell_id
+    clone#   cell_id
     1   TGGCGCAAGAATAGGG
 
 
@@ -286,7 +286,7 @@ A table listing the 30N sequence of each cloneID.
 The columns are *clone_id* and *clone_seq* where *clone_id* is a number
 that identifies the clone and *clone_seq* its nucleotide sequence.
 
-    #clone_id   clone_seq
+    clone#   clone_seq
     1   ACTAGGAGATTGACGGATCACCTTTGGTCG
 
 
