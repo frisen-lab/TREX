@@ -107,17 +107,17 @@ class CloneGraph:
 
     @staticmethod
     def write_clones(file, clones):
-        print("#clone_id", "cell_id", sep=",", file=file)
+        print("#clone_id", "cell_id", sep="\t", file=file)
         for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
             cells = sorted(cells)
             for cell in cells:
-                print(index, cell.cell_id, sep=",", file=file)
+                print(index, cell.cell_id, sep="\t", file=file)
 
     @staticmethod
     def write_clone_sequences(file, clones):
-        print("#clone_id", "clone_seq", sep=",", file=file)
+        print("#clone_id", "clone_seq", sep="\t", file=file)
         for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
-            print(index, clone_id, sep=",", file=file)
+            print(index, clone_id, sep="\t", file=file)
 
     def clones(self) -> List[Tuple[str, List[Cell]]]:
         """
