@@ -1,5 +1,5 @@
 """
-Run on Smart-Seq3 data
+Run on Smart-seq3 data processed by zUMIs software.
 """
 import sys
 import logging

@@ -1,5 +1,5 @@
 """
-Run on 10X data
+Run on single cell 10X Chromium or spatial Visium data processed by Cell / Space Ranger software
 """
 import sys
 import logging

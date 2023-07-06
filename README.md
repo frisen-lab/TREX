@@ -4,11 +4,11 @@
 
 TREX is an experimental workflow that enables simultaneous lineage TRacking and EXpression profiling of single cells using RNA-sequencing. The method is described in the paper [Clonal relations in the mouse brain revealed by single-cell and spatial transcriptomics](https://doi.org/10.1038/s41593-022-01011-x).
 
-An essential part of this workflow is presented here: the extraction of genetic barcodes or "cloneIDs" from single-cell transcriptomes and the reconstruction of related cells.
+An essential part of this workflow is presented here: the extraction of genetic barcodes or "cloneIDs" from single-cell or spatial transcriptomes and the reconstruction of related cells/spots.
 
 The tool uses BAM files of one or multiple sequencing libraries as an input for the generation of cloneID count matrices and identifies clonally related cells based on Jaccard similarity between each pair of cloneID+cells.
 
-Currently, TREX is compatible with common RNA-sequencing library preparation methods and data formats provided by 10X Chromium and 10X Visium.
+Currently, TREX is compatible with common RNA-sequencing library preparation methods and data formats provided by 10X Chromium, 10X Visium, Smart-seq2 and 3.
 
 
 # Installation
@@ -126,17 +126,17 @@ Results will be written to a new directory named `trex_brain1_str`.
 
 # Running TREX
 
-The input directory for TREX must be a Cell Ranger output directory.
-See the contents of the `tests/data/outs` directory to learn which are the minimum files necessary.
-Cell Ranger must have been configured to map against a reference augmented by an extra chromosome that contains the cloneID. By default, that extra chromosome is assumed to be the last in the BAM file (use `--chromosome` to choose a different one).
+The input directory for TREX must be a Cell Ranger output directory. In case of Smart-Seq2 / 3 data, one .bam file with all cells or a folder with one .bam file per cell is expected (see zUMIs output)
+See the contents of the `tests/data/` directory to learn which are the minimum files necessary.
+Cell Ranger/zUMIs must have been configured to map against a reference augmented by an extra chromosome that contains the cloneID. By default, that extra chromosome is assumed to be the last in the BAM file (use `--chromosome` to choose a different one).
 The options `-s` and `-e` set where on the extra chromosome the cloneID is located (`-s` gives start and `-e` gives end in 1-based coordinates).
 
-Please also run `trex run10x --help` to see the other available command-line options.
+Please also run `trex run10x --help` (or `trex smartseq2 --help` and `trex smartseq3 --help` respectively ) to see the other available command-line options.
 
 
 ## Pipeline steps overview
 
-This is an overview of the steps that the `trex run10x` command performs.
+This is an overview of the steps that the `trex run10x`/ `trex smartseq3` command performs. 
 
 1. Retrieve usable reads from the input BAM file.
    A usable read fulfills these requirements:
@@ -144,7 +144,8 @@ This is an overview of the steps that the `trex run10x` command performs.
      `-e` flags or, if the flags are not given, to the region that
      has been automatically identified to be the region containing
      the variable cloneID sequence,
-   - it has both an associated cell ID and UMI (SAM tags `CB` and `UB`),
+   - it has both an associated cell ID and UMI (SAM tags `CB` and `UB` 
+     in case of 10x data , SAM tags `BC` and `UB` in case of Smart-seq3 data),
    - its cell ID is included in the list of allowed cell IDs
      (if such a list is provided with `--filter-cellid` or `-f`).
 2. Group reads with identical cell ID and UMI into *molecules*.
@@ -159,6 +160,11 @@ This is an overview of the steps that the `trex run10x` command performs.
    The connected components of the graph are considered to be the clones.
    (A clone is thus simply a set of cells.)
 7. Error-correct the clone graph by removing spurious edges ("bridges").
+
+`trex smartseq2` follows a similar pipeline with the following differences:
+- A useable read does not require a UMI
+- Reads do not get grouped into molecules and their cloneIDs not collapsed 
+  and error-corrected into consensus sequences
 
 ## Input files
 
@@ -176,7 +182,7 @@ Example:
 
 ## Output files
 
-`trex run10x` by default writes its results to a newly created directory
+TREX by default writes its results to a newly created directory
 named `trex_run`.
 The name of the output directory can be changed with `--output` (or `-o`).
 The files created in the output directory are described below.
@@ -190,7 +196,7 @@ or in comma-separated values (CSV) format.
 
 ### `log.txt`
 
-This file contains a copy of the output that `trex run10x` prints to the
+This file contains a copy of the output that a trex run prints to the
 terminal.
 
 ### `entries.bam`
@@ -249,6 +255,14 @@ A matrix of UMI counts with cells as columns and cloneIDs as rows.
 This is a different representation of the data written to `cells_filtered.txt`.
 
 Only created if option `--umi-matrix` is used.
+
+
+### `read_count_matrix.csv`
+
+Instead of UMI count matrix, running `trex smartseq2` produces matrix of read counts with cells as columns and cloneIDs as rows.
+This is a different representation of the data written to `cells_filtered.txt`.
+
+Only created if option `--read-matrix` is used.
 
 
 ### `components.txt`
