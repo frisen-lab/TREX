@@ -126,7 +126,7 @@ Results will be written to a new directory named `trex_brain1_str`.
 
 # Running TREX
 
-The input directory for TREX must be a Cell Ranger output directory. In case of Smart-Seq2 / 3 data, one .bam file with all cells or a folder with one .bam file per cell is expected (see zUMIs output)
+The input directory for TREX must be a Cell Ranger output directory. In case of Smart-Seq2 / 3 data, one BAM file with all cells or a folder with one BAM file per cell is expected (see zUMIs output)
 See the contents of the `tests/data/` directory to learn which are the minimum files necessary.
 Cell Ranger/zUMIs must have been configured to map against a reference augmented by an extra chromosome that contains the cloneID. By default, that extra chromosome is assumed to be the last in the BAM file (use `--chromosome` to choose a different one).
 The options `-s` and `-e` set where on the extra chromosome the cloneID is located (`-s` gives start and `-e` gives end in 1-based coordinates).
@@ -163,7 +163,7 @@ This is an overview of the steps that the `trex run10x`/ `trex smartseq3` comman
 
 `trex smartseq2` follows a similar pipeline with the following differences:
 - A useable read does not require a UMI
-- Reads do not get grouped into molecules and their cloneIDs not collapsed 
+- Reads do not get grouped into molecules and their cloneIDs are not collapsed 
   and error-corrected into consensus sequences
 
 ## Input files
@@ -172,7 +172,7 @@ This is an overview of the steps that the `trex run10x`/ `trex smartseq3` comman
 ### Filter cellids
 
 Tab-separated file of cell IDs to keep in the trex run. Adding this file via 
-the `--filter-cellid` or `-f` allows to focus the analysis on specific cells
+the `--filter-cellid` or `-f` option allows to focus the analysis on specific cells
 and to filter out low quality cells or doublets.
 Example:
 	x
@@ -291,17 +291,17 @@ The columns are *clone_id* and *cell_id* where *clone_id* is a number that
 identifies the clone.
 
     clone#   cell_id
-    1   TGGCGCAAGAATAGGG
+    1        TGGCGCAAGAATAGGG
 
 
 ### `clone_sequences.txt`
 
 A table listing the 30N sequence of each cloneID.
-The columns are *clone_id* and *clone_seq* where *clone_id* is a number
+The columns are *clone#* and *clone_seq* where *clone_id* is a number
 that identifies the clone and *clone_seq* its nucleotide sequence.
 
-    clone#   clone_seq
-    1   ACTAGGAGATTGACGGATCACCTTTGGTCG
+    clone#  clone_seq
+    1       ACTAGGAGATTGACGGATCACCTTTGGTCG
 
 
 ### `data.loom`
