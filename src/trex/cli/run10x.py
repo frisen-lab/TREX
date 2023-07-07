@@ -280,16 +280,14 @@ def read_allowed_cellids(path):
 
     Example:
 
-        z
     1   ACGTACGTACGTACGT_10x99
 
     or:
 
-        z
     1   ACGTACGTACGTACGT
     """
     allowed_ids = []
-    filtered_df = pd.read_csv(Path(path), sep="\t", index_col=0)
+    filtered_df = pd.read_csv(Path(path), sep="\t", index_col=0, header=None)
     for cell_id in filtered_df.iloc[:, 0]:
         if cell_id.endswith("-1"):
             raise TrexError(

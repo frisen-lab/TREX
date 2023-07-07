@@ -171,14 +171,15 @@ This is an overview of the steps that the `trex run10x`/ `trex smartseq3` comman
 
 ### Filter cellids
 
-Tab-separated file of cell IDs to keep in the trex run. Adding this file via 
+Tab-separated file of cell IDs to keep in the TREX run. Adding this file via 
 the `--filter-cellid` or `-f` option allows to focus the analysis on specific cells
 and to filter out low quality cells or doublets.
 Example:
-	x
+
+```
 0	CACTCGTGGTACACACTCCG
 1	CACTCGTGGTACCACAAGCA
-
+```
 
 ## Output files
 
@@ -196,7 +197,7 @@ or in comma-separated values (CSV) format.
 
 ### `log.txt`
 
-This file contains a copy of the output that a trex run prints to the
+This file contains a copy of the output that a TREX run prints to the
 terminal.
 
 ### `entries.bam`
