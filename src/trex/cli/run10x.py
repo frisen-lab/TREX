@@ -1,5 +1,5 @@
 """
-Run on 10X data
+Run on single cell 10X Chromium or spatial Visium data processed by Cell / Space Ranger software
 """
 import sys
 import logging
@@ -280,16 +280,14 @@ def read_allowed_cellids(path):
 
     Example:
 
-    "X","z"
-    1,"ACGTACGTACGTACGT_10x99"
+    1   ACGTACGTACGTACGT_10x99
 
     or:
 
-    "X","z"
-    1,"ACGTACGTACGTACGT"
+    1   ACGTACGTACGTACGT
     """
     allowed_ids = []
-    filtered_df = pd.read_csv(Path(path), sep=",", index_col=0)
+    filtered_df = pd.read_csv(Path(path), sep="\t", index_col=0, header=None)
     for cell_id in filtered_df.iloc[:, 0]:
         if cell_id.endswith("-1"):
             raise TrexError(
