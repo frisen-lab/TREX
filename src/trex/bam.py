@@ -29,7 +29,7 @@ def read_bam(
     cell_id_tag="CB",
 ):
     """
-    bam_path -- path to input BAM file
+    bam_path -- path to input BAM file or folder with input bam files
     output_dir -- path to an output directory into which a BAM file is written that contais all
         reads on the chromosome that have the required tags.
     """
