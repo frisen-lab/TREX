@@ -2,7 +2,7 @@
 Dealing with CellRanger "outs/" files
 """
 from pathlib import Path
-from typing import Set
+from typing import Set, Optional
 
 from xopen import xopen
 
@@ -18,7 +18,7 @@ class CellRangerDir2:
     BARCODES = "barcodes.tsv"
     BAM = "possorted_genome_bam.bam"
 
-    def __init__(self, path: Path, genome_name: str = None):
+    def __init__(self, path: Path, genome_name: Optional[str] = None):
         self.path = path / "outs"
         matrices_path = self.path / self.MATRICES
         if not matrices_path.exists():
