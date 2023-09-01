@@ -1,14 +1,16 @@
 """
 A molecule is a DNA/RNA fragment that has potentially been sequenced multiple times
 """
-from typing import NamedTuple, List
+from dataclasses import dataclass
+from typing import List
 from collections import defaultdict
 import numpy as np
 
 from .bam import Read
 
 
-class Molecule(NamedTuple):
+@dataclass
+class Molecule:
     umi: str
     cell_id: str
     clone_id: str

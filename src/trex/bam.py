@@ -3,8 +3,9 @@ Extract reads from BAM files
 """
 import logging
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple, List
+from typing import List
 from typing import Optional
 
 from pysam import AlignmentFile
@@ -12,7 +13,8 @@ from pysam import AlignmentFile
 logger = logging.getLogger(__name__)
 
 
-class Read(NamedTuple):
+@dataclass(frozen=True)
+class Read:
     umi: Optional[str]
     cell_id: str
     clone_id: str
