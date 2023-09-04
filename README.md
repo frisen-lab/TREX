@@ -175,10 +175,10 @@ This is an overview of the steps that the `trex run10x`/ `trex smartseq3` comman
 The Jaccard index measures the similarity of two sample sets, in this case 
 the similarity of two sets of cloneIDs. It is calculated by dividing
 the number of overlapping, unique cloneIDs between cell A and B by the total 
-number of unique cloneIDs in cell A and B. An index of `0` indicates no 
-overlapping cloneIDs and an index of `1` a perfect match. The Jaccard 
+number of unique cloneIDs in cell A and B. An index of 0.0 indicates no 
+overlapping cloneIDs and an index of 1.0 a perfect match. The Jaccard 
 threshold is the Jaccard index above which two cells are merged into one
-clone. It can be set with the `--jaccard-threshold` flag and is `0` 
+clone. It can be set with the `--jaccard-threshold` flag and is 0.0 
 by default, meaning cell A and B are merged into one clone if they have
 at least one cloneID in common. 
 
