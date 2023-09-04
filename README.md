@@ -156,7 +156,8 @@ This is an overview of the steps that the `trex run10x`/ `trex smartseq3` comman
    Rare cloneIDs also found in another cell are considered to be contaminants.
    CloneIDs supported by only a single read are removed.
 6. Cluster the cells into clones by creating a *clone graph*.
-   Edges are drawn between cells that appear to belong to the same clone.
+   Edges are drawn between cells that appear to belong to the same clone
+   based on the set Jaccard index threshold.
    The connected components of the graph are considered to be the clones.
    (A clone is thus simply a set of cells.)
 7. Error-correct the clone graph by removing spurious edges ("bridges").
@@ -166,7 +167,20 @@ This is an overview of the steps that the `trex run10x`/ `trex smartseq3` comman
 - Reads do not get grouped into molecules and their cloneIDs are not collapsed 
   and error-corrected into consensus sequences
 
-## Input files
+
+## Input parameters
+
+### Jaccard index threshold
+
+The Jaccard index measures the similarity of two sample sets, in this case 
+the similarity of two sets of cloneIDs. It is calculated by dividing
+the number of overlapping, unique cloneIDs between cell A and B by the total 
+number of unique cloneIDs in cell A and B. An index of 0.0 indicates no 
+overlapping cloneIDs and an index of 1.0 a perfect match. The Jaccard 
+threshold is the Jaccard index above which two cells are merged into one
+clone. It can be set with the `--jaccard-threshold` flag and is 0.0 
+by default, meaning cell A and B are merged into one clone if they have
+at least one cloneID in common. 
 
 
 ### Filter cellids
@@ -180,6 +194,7 @@ Example:
 0	CACTCGTGGTACACACTCCG
 1	CACTCGTGGTACCACAAGCA
 ```
+
 
 ## Output files
 
@@ -199,6 +214,7 @@ or in comma-separated values (CSV) format.
 
 This file contains a copy of the output that a TREX run prints to the
 terminal.
+
 
 ### `entries.bam`
 

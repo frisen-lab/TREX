@@ -1,4 +1,4 @@
-clone#	cell_id
+clone_nr	cell_id
 1	CTCTGTACTTGTCTCC
 2	TGATTGCCTTCAGGCT
 3	TTCGCTCTTTCCATCG
