@@ -28,6 +28,11 @@ You need to repeat this step in every new shell in order to be able to run TREX.
 Finally, test the installation by running `trex --version`.
 
 
+# Changelog
+
+See [Changelog](CHANGES.md).
+
+
 # Running TREX on a minimal test dataset
 
 Clone the Git repository or [download it as a ZIP file](https://github.com/frisen-lab/TREX/archive/main.zip) and unpack it.
