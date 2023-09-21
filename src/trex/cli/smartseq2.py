@@ -8,12 +8,12 @@ from collections import Counter
 from typing import List, Iterable
 
 import trex.cli
-from .run10x import read_allowed_cellids, correct_clone_ids
+from .run10x import read_allowed_cellids
 from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
 from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
 from ..clone import CloneGraph
-from ..molecule import Molecule
+from ..molecule import Molecule, correct_clone_ids
 from ..error import TrexError
 from ..cell import Cell, compute_cells
 from ..dataset import DatasetReader
