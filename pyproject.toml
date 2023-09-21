@@ -27,7 +27,7 @@ dependencies = [
     "loompy",
     "xopen>=0.5.0",
     "tinyalign",
-    "pandas"
+    "pandas",
     "matplotlib"
 ]
 
