@@ -28,7 +28,8 @@ dependencies = [
     "xopen>=0.5.0",
     "tinyalign",
     "pandas",
-    "matplotlib"
+    "matplotlib",
+    "seaborn"
 ]
 
 [project.urls]
