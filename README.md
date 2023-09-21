@@ -4,7 +4,7 @@
 
 TREX is an experimental workflow that enables simultaneous lineage TRacking and EXpression profiling of single cells using RNA-sequencing. The method is described in the paper [Clonal relations in the mouse brain revealed by single-cell and spatial transcriptomics](https://doi.org/10.1038/s41593-022-01011-x).
 
-An essential part of this workflow is presented here: the extraction of genetic barcodes or "cloneIDs" from single-cell or spatial transcriptomes and the reconstruction of related cells/spots.
+An essential part of this workflow is presented here: the extraction of genetic CloneIDs or "cloneIDs" from single-cell or spatial transcriptomes and the reconstruction of related cells/spots.
 
 The tool uses BAM files of one or multiple sequencing libraries as an input for the generation of cloneID count matrices and identifies clonally related cells based on Jaccard similarity between each pair of cloneID+cells.
 
@@ -337,7 +337,7 @@ trex qc_report DIRECTORY --plot-jaccard-matrix --plot-hamming-distance
 *qc_report* takes as an input the directory (or directories) of trex output.
 Plotting the jaccard similarity matrix between cells, requires some time as jaccard similarity is calculated pairwise amongst all cells.
 This can be activated adding the optional flag `--plot-jaccard-matrix`.
-Hamming distance between all viral barcodes found in the dataset after each step can be plotted by means of the optional flag `--plot-hamming-distance`.
+Hamming distance between all viral CloneIDs found in the dataset after each step can be plotted by means of the optional flag `--plot-hamming-distance`.
 
 This will add a pdf file named *Quality_Report.pdf* describing the quality of the TREX run inside the same folder with the TREX output. 
 
@@ -346,10 +346,10 @@ This report contains:
 ### Overall results
 
 - Histogram of clone sizes
-- Histogram of how many unique barcodes can pe found in each clone
-- Histogram of how many unique barcodes can be found in each cell
+- Histogram of how many unique CloneIDs can pe found in each clone
+- Histogram of how many unique CloneIDs can be found in each cell
 - *(Optional)* A histogram of the Jaccard similarity values between cells and a matrix of the Jaccard similarity between all cells.
-- Histogram of how many reads each detected viral barcode molecule has.
+- Histogram of how many reads each detected viral CloneID molecule has.
 
 
 ### Per step results
@@ -357,7 +357,7 @@ This report contains:
 Each of these plots has four subplots corresponding to different steps of the TREX pipeline.
 
 - Histograms of how many nucleotides have been read in each molecule
-- *(Optional)* Histograms of the Hamming distance between all the viral barcodes found
-- Histograms of how many viral barcode molecules have been found in each cell
-- Histograms of how many molecules of each unique barcode have been found in the dataset
-- Histograms of How many unique barcodes per cell have been found
+- *(Optional)* Histograms of the Hamming distance between all the viral CloneIDs found
+- Histograms of how many viral CloneID molecules have been found in each cell
+- Histograms of how many molecules of each unique CloneID have been found in the dataset
+- Histograms of How many unique CloneIDs per cell have been found
