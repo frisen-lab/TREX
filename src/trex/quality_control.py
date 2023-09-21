@@ -36,18 +36,18 @@ def load_cells(data_dir: pathlib.Path,
     with open(data_dir / filename) as file:
         next(file)
         while line := file.readline():
-            cell_id, barcode_info = line[:-1].split('\t:\t')
-            barcode_info = barcode_info.split('\t')
+            cell_id, clone_id_info = line[:-1].split('\t:\t')
+            clone_id_info = clone_id_info.split('\t')
 
-            barcodes_df = {'barcode': barcode_info[::2],
-                           'counts': barcode_info[1::2]}
-            barcodes_df = pd.DataFrame(barcodes_df,
-                                       index=np.arange(len(barcode_info[::2])))
-            barcodes_df['cell_id'] = cell_id
-            cells_df.append(barcodes_df)
+            clone_ids_df = {'clone_id': clone_id_info[::2],
+                           'counts': clone_id_info[1::2]}
+            clone_ids_df = pd.DataFrame(clone_ids_df,
+                                       index=np.arange(len(clone_id_info[::2])))
+            clone_ids_df['cell_id'] = cell_id
+            cells_df.append(clone_ids_df)
 
     cells_df = pd.concat(cells_df, ignore_index=True)
-    cells_df['barcode'] = cells_df.barcode.astype('category')
+    cells_df['clone_id'] = cells_df.clone_id.astype('category')
     cells_df['counts'] = cells_df.counts.astype(int)
     cells_df['cell_id'] = cells_df.cell_id.astype('category')
 
@@ -97,13 +97,13 @@ def get_length_read(df: pd.DataFrame,
         return df.clone_id.apply(lambda x: len(re.sub("[-0]", "", x)))
     else:
         return df.apply(lambda x: [len(
-            re.sub("[-0]", "", x.barcode)), ] * x.counts,
+            re.sub("[-0]", "", x.clone_id)), ] * x.counts,
                         axis=1).explode()
 
 
-def get_barcodes_per_cell(df: pd.DataFrame,
+def get_clone_ids_per_cell(df: pd.DataFrame,
                           molecules_dataframe: bool = True) -> pd.Series:
-    """Get a pandas Series with the number of barcode molecules found per cell.
+    """Get a pandas Series with the number of CloneID molecules found per cell.
     molecules_dataframe is set to True by default, if a cells DataFrame is being
     used, then this must be False."""
     if molecules_dataframe:
@@ -112,42 +112,42 @@ def get_barcodes_per_cell(df: pd.DataFrame,
         return df.groupby(['cell_id']).counts.sum()
 
 
-def get_molecules_per_barcodes(df: pd.DataFrame,
+def get_molecules_per_clone_ids(df: pd.DataFrame,
                                molecules_dataframe: bool = True) -> pd.Series:
-    """Get a pandas Series with the number of barcode molecules found per unique
-    barcode. molecules_dataframe is set to True by default, if a cells
+    """Get a pandas Series with the number of CloneID molecules found per unique
+    CloneID. molecules_dataframe is set to True by default, if a cells
     DataFrame is being used, then this must be False."""
     if molecules_dataframe:
         return df.groupby(['clone_id']).umi.agg('count')
     else:
-        return df.groupby(['barcode']).counts.sum()
+        return df.groupby(['clone_id']).counts.sum()
 
 
-def get_unique_barcodes_per_cell(df: pd.DataFrame,
+def get_unique_clone_ids_per_cell(df: pd.DataFrame,
                                  molecules_dataframe: bool = True) -> pd.Series:
-    """Get a pandas Series with the number of unique barcode molecules found per
+    """Get a pandas Series with the number of unique CloneID molecules found per
     cell. molecules_dataframe is set to True by default, if a cells DataFrame is
     being used, then this must be False."""
     if molecules_dataframe:
         return df.groupby('#cell_id').clone_id.unique().apply(len)
     else:
-        return df.groupby(['cell_id']).barcode.unique().apply(len)
+        return df.groupby(['cell_id']).clone_id.unique().apply(len)
 
 
-def add_barcodes_per_clone(clones: pd.DataFrame,
+def add_clone_ids_per_clone(clones: pd.DataFrame,
                            cells_filtered: pd.DataFrame) -> pd.DataFrame:
-    """Add  the unique barcode molecules found in each clone to the clones
+    """Add  the unique CloneID molecules found in each clone to the clones
     DataFrame. clones is the clones dataframe from clones.txt and cells_filtered
-    is the dataframe containing barcodes per cell (cells_filtered.txt)."""
-    cells_barcode = cells_filtered.groupby('cell_id').barcode.apply(set)
-    clones['barcodes'] = clones.cell_id.apply(lambda x: cells_barcode[x])
+    is the dataframe containing CloneIDs per cell (cells_filtered.txt)."""
+    cells_clone_id = cells_filtered.groupby('cell_id').clone_id.apply(set)
+    clones['clone_ids'] = clones.cell_id.apply(lambda x: cells_clone_id[x])
     return clones
 
 
-def get_barcodes_per_clone(clones: pd.DataFrame) -> pd.Series:
-    """Get a pandas Series with the number of unique barcodes found per
+def get_clone_ids_per_clone(clones: pd.DataFrame) -> pd.Series:
+    """Get a pandas Series with the number of unique CloneIDs found per
     clone."""
-    return clones.groupby('#clone_id').barcodes.apply(
+    return clones.groupby('#clone_id').clone_ids.apply(
         lambda x: len(set.union(*x)))
 
 
@@ -184,11 +184,11 @@ def plot_discrete_histogram(series: pd.Series,
 def length_read(molecules: pd.DataFrame,
                 ax: plt.Axes = None,
                 add_description: bool = True) -> plt.Axes:
-    """Plot histogram of how many bases were adequately read per barcode."""
-    molecules['stripped_barcode'] = molecules.clone_id.apply(
+    """Plot histogram of how many bases were adequately read per CloneID."""
+    molecules['stripped_clone_id'] = molecules.clone_id.apply(
         lambda x: re.sub("[-0]", "", x))
 
-    ax = sns.histplot(molecules.stripped_barcode.apply(len), discrete=True,
+    ax = sns.histplot(molecules.stripped_clone_id.apply(len), discrete=True,
                       log=True, ax=ax)
     plt.xlabel('Number of detected bases')
     plt.title('Length of computed molecules')
@@ -219,38 +219,38 @@ def molecules_per_cell(molecules: pd.DataFrame,
     return ax
 
 
-def molecules_per_barcode(molecules: pd.DataFrame,
+def molecules_per_clone_id(molecules: pd.DataFrame,
                           ax: plt.Axes = None,
                           add_description : bool = True) -> plt.Axes:
-    """Plot histogram of how many molecules were detected per viral barcode."""
+    """Plot histogram of how many molecules were detected per viral CloneID."""
     count_reads = molecules.groupby(['clone_id']).umi.agg('count')
 
     ax = sns.histplot(count_reads.values, discrete=True, log=True, ax=ax)
-    plt.xlabel('Molecules per barcode')
+    plt.xlabel('Molecules per CloneID')
     plt.title('Number of molecules')
 
     if add_description:
-        txt = 'This plot shows how many molecules were found per barcode. \n' \
-              'Barcodes that appear a few times might not be found in more \n' \
-              'cells. Barcodes that have too many might be result of \n' \
+        txt = 'This plot shows how many molecules were found per CloneID. \n' \
+              'CloneIDs that appear a few times might not be found in more \n' \
+              'cells. CloneIDs that have too many might be result of \n' \
               'contamination or alignment problems or big clones.'
         plt.text(0, -0.3, txt, transform=ax.transAxes, size=12)
     return ax
 
 
-def unique_barcodes_per_cell(molecules: pd.DataFrame,
+def unique_clone_ids_per_cell(molecules: pd.DataFrame,
                              ax: plt.Axes = None,
                              add_description : bool = True) -> plt.Axes:
-    """Plot histogram of how many unique barcodes were detected per cell."""
+    """Plot histogram of how many unique CloneIDs were detected per cell."""
     count_reads = molecules.groupby('#cell_id').clone_id.unique().apply(len)
 
     ax = sns.histplot(count_reads.values, discrete=True, log=True, ax=ax)
-    plt.xlabel('Unique barcodes per cell')
-    plt.title('Number of unique barcodes')
+    plt.xlabel('Unique CloneIDs per cell')
+    plt.title('Number of unique CloneIDs')
 
     if add_description:
-        txt = 'This plot shows how many unique barcodes were detected per cell.\n' \
-              'Cells with many unique barcodes show either lots of infection \n' \
+        txt = 'This plot shows how many unique CloneIDs were detected per cell.\n' \
+              'Cells with many unique CloneIDs show either lots of infection \n' \
               'events or possible unfiltered doublets.'
         plt.text(0, -0.3, txt, transform=ax.transAxes, size=12)
     return ax
@@ -259,16 +259,16 @@ def unique_barcodes_per_cell(molecules: pd.DataFrame,
 def hamming_distance_histogram(molecules: pd.DataFrame,
                                ax: plt.Axes = None,
                                ignore_incomplete: bool = True) -> plt.Axes:
-    """Plot histogram of Hamming distance between barcodes. ignore_incomplete is
-     set to True by default and it removes incomplete barcodes."""
+    """Plot histogram of Hamming distance between CloneIDs. ignore_incomplete is
+     set to True by default and it removes incomplete CloneIDs."""
     if ignore_incomplete:
         molecules = molecules[~molecules.clone_id.str.contains('-|0')]
     this_clone_ids = molecules.clone_id.unique()
     hamming_distances = np.empty([len(this_clone_ids)] * 2)
 
-    def my_iter(barcode_list):
-        for inds in combinations(np.arange(len(barcode_list)), 2):
-            yield inds, barcode_list[inds[0]], barcode_list[inds[1]]
+    def my_iter(clone_id_list):
+        for inds in combinations(np.arange(len(clone_id_list)), 2):
+            yield inds, clone_id_list[inds[0]], clone_id_list[inds[1]]
 
     # Hamming distance function
     def is_similar(args):
@@ -312,7 +312,7 @@ def jaccard_similarity_matrix(umi_count: pd.DataFrame) -> npt.ArrayLike:
     pandas DataFrame.
 
     Note: columns are cell IDs and first column is disregarded as it usually has
-    the index to barcodes"""
+    the index to CloneIDs"""
     this_cell_ids = umi_count.columns[1:]
     jaccard_matrix = np.zeros([len(this_cell_ids)] * 2)
 

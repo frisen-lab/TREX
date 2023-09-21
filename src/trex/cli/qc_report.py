@@ -61,21 +61,21 @@ def make_clone_size_histogram(clones: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def make_unique_barcodes_per_clone(clones: pd.DataFrame,
-                                   cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Plots the number of unique barcodes per clone histogram."""
-    vals = get_barcodes_per_clone(
-        add_barcodes_per_clone(clones, cells_filtered))
+def make_unique_clone_ids_per_clone(clones: pd.DataFrame,
+                                    cells_filtered: pd.DataFrame) -> plt.Figure:
+    """Plots the number of unique CloneIDs per clone histogram."""
+    vals = get_clone_ids_per_clone(
+        add_clone_ids_per_clone(clones, cells_filtered))
     mean = np.mean(vals)
     quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
     this_txt = f'There are {len(vals)} clones. On average, they have {mean:.2f}\n' \
-               f'unique barcodes, with a median of {quantiles[1]} and interquartile range of \n' \
-               f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} clones have a single unique barcode.'
+               f'unique CloneIDs, with a median of {quantiles[1]} and interquartile range of \n' \
+               f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} clones have a single unique CloneID.'
 
     fig, ax = plt.subplots(1, 1)
-    plot_discrete_histogram(vals, xlabel='Number of unique barcodes',
-                            title='Number of unique barcodes per clone',
+    plot_discrete_histogram(vals, xlabel='Number of unique CloneIDs',
+                            title='Number of unique CloneIDs per clone',
                             txt=this_txt, ax=ax)
     plt.subplots_adjust(bottom=0.3)
     return fig
@@ -87,7 +87,7 @@ def make_reads_per_molecule(reads: pd.DataFrame) -> plt.Figure:
     mean = np.mean(vals)
     quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-    this_txt = f'There are {len(vals)} viral barcode molecules. On average, \n' \
+    this_txt = f'There are {len(vals)} viral CloneID molecules. On average, \n' \
                f'they have {mean:.2f} reads, with a median of {quantiles[1]} and \n' \
                f'interquartile range of {quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} molecules have \n' \
                f'only a single read.'
@@ -101,20 +101,20 @@ def make_reads_per_molecule(reads: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def make_unique_barcodes_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Plots the histogram of unique barcodes per cell at the end."""
-    vals = get_unique_barcodes_per_cell(cells_filtered,
+def make_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
+    """Plots the histogram of unique CloneIDs per cell at the end."""
+    vals = get_unique_clone_ids_per_cell(cells_filtered,
                                         molecules_dataframe=False)
     mean = np.mean(vals)
     quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
     this_txt = f'There are {len(vals)} cells in the end. On average, they have {mean:.2f}\n' \
-               f'unique barcodes, with a median of {quantiles[1]} and interquartile range of \n' \
-               f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} cells have only a single unique barcode.'
+               f'unique CloneIDs, with a median of {quantiles[1]} and interquartile range of \n' \
+               f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} cells have only a single unique CloneID.'
 
     fig, ax = plt.subplots(1, 1)
-    plot_discrete_histogram(vals, xlabel='Number of unique barcodes',
-                            title='Number of unique barcodes per cell',
+    plot_discrete_histogram(vals, xlabel='Number of unique CloneIDs',
+                            title='Number of unique CloneIDs per cell',
                             txt=this_txt, ax=ax)
     plt.subplots_adjust(bottom=0.3)
     return fig
@@ -159,7 +159,7 @@ def make_read_length_per_step(molecules: pd.DataFrame,
         vals = get_length_read(this_df, molecules_dataframe=False)
         complete_reads = sum(vals == 30)
         percentage_complete = 100 * complete_reads / len(vals)
-        this_text = f'There are {len(vals)} viral barcode molecules. {complete_reads} have ' \
+        this_text = f'There are {len(vals)} viral CloneID molecules. {complete_reads} have ' \
                     f'been \nread completely, which accounts for ' \
                     f'{percentage_complete:.1f}%'
         plot_discrete_histogram(vals, ax=ax, xlabel='Nucleotides Read',
@@ -175,13 +175,13 @@ def make_molecules_per_cell_per_step(molecules: pd.DataFrame,
                                      molecules_corrected: pd.DataFrame,
                                      cells: pd.DataFrame,
                                      cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Makes the subplots showing barcode molecules per cell for each step in
+    """Makes the subplots showing CloneID molecules per cell for each step in
     the analysis."""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
     for this_df, ax, title in zip([molecules, molecules_corrected], axs[0],
                                   ['Molecules', 'Corrected Molecules']):
-        vals = get_barcodes_per_cell(this_df)
+        vals = get_clone_ids_per_cell(this_df)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
@@ -189,7 +189,7 @@ def make_molecules_per_cell_per_step(molecules: pd.DataFrame,
                    f'{mean:.2f} molecules per cell, with a median of {quantiles[1]} and \n' \
                    f'interquartile range of {quantiles[0]} - {quantiles[2]}'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='Barcode Molecules',
+        plot_discrete_histogram(vals, ax=ax, xlabel='CloneID Molecules',
                                 txt=this_txt, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
@@ -197,7 +197,7 @@ def make_molecules_per_cell_per_step(molecules: pd.DataFrame,
 
     for this_df, ax, title in zip([cells, cells_filtered], axs[1],
                                   ['Cells', 'Filtered Cells']):
-        vals = get_barcodes_per_cell(this_df, molecules_dataframe=False)
+        vals = get_clone_ids_per_cell(this_df, molecules_dataframe=False)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
@@ -205,38 +205,38 @@ def make_molecules_per_cell_per_step(molecules: pd.DataFrame,
                    f'{mean:.2f} molecules per cell, with a median of {quantiles[1]} and \n' \
                    f'interquartile range of {quantiles[0]} - {quantiles[2]}'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='Barcode Molecules',
+        plot_discrete_histogram(vals, ax=ax, xlabel='CloneID Molecules',
                                 txt=this_txt, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
             ax.axvline(x=p, color='black', alpha=0.8, ls='--', lw=0.5)
 
-    plt.suptitle('Barcode Molecules per Cell')
+    plt.suptitle('CloneID Molecules per Cell')
     plt.subplots_adjust(hspace=0.5, bottom=0.2)
 
     return fig
 
 
-def make_molecules_per_barcode_per_step(molecules: pd.DataFrame,
+def make_molecules_per_clone_id_per_step(molecules: pd.DataFrame,
                                         molecules_corrected: pd.DataFrame,
                                         cells: pd.DataFrame,
                                         cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Makes the subplots showing barcode molecules per unique barcode for each
+    """Makes the subplots showing CloneID molecules per unique CloneID for each
     step in the analysis."""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
     for this_df, ax, title in zip([molecules, molecules_corrected], axs[0],
                                   ['Molecules', 'Corrected Molecules']):
-        vals = get_molecules_per_barcodes(this_df)
+        vals = get_molecules_per_clone_ids(this_df)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-        this_txt = f'There are {len(vals)} unique barcodes. On average, there\n' \
-                   f'are {mean:.2f} molecules per unique barcode, with a  \n' \
+        this_txt = f'There are {len(vals)} unique CloneIDs. On average, there\n' \
+                   f'are {mean:.2f} molecules per unique CloneID, with a  \n' \
                    f'median of {quantiles[1]} and interquartile range of {quantiles[0]} - {quantiles[2]}.\n' \
-                   f'{sum(vals == 1)} are barcodes with single molecules.'
+                   f'{sum(vals == 1)} are CloneIDs with single molecules.'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='Barcode Molecules',
+        plot_discrete_histogram(vals, ax=ax, xlabel='CloneID Molecules',
                                 txt=this_txt, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
@@ -244,47 +244,47 @@ def make_molecules_per_barcode_per_step(molecules: pd.DataFrame,
 
     for this_df, ax, title in zip([cells, cells_filtered], axs[1],
                                   ['Cells', 'Filtered Cells']):
-        vals = get_molecules_per_barcodes(this_df, molecules_dataframe=False)
+        vals = get_molecules_per_clone_ids(this_df, molecules_dataframe=False)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-        this_txt = f'There are {len(vals)} unique barcodes. On average, there\n' \
-                   f'are {mean:.2f} molecules per unique barcode, with a  \n' \
+        this_txt = f'There are {len(vals)} unique CloneIDs. On average, there\n' \
+                   f'are {mean:.2f} molecules per unique CloneID, with a  \n' \
                    f'median of {quantiles[1]} and interquartile range of {quantiles[0]} - {quantiles[2]}. \n' \
-                   f'{sum(vals == 1)} are barcodes with single molecules.'
+                   f'{sum(vals == 1)} are CloneIDs with single molecules.'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='Barcode Molecules',
+        plot_discrete_histogram(vals, ax=ax, xlabel='CloneID Molecules',
                                 txt=this_txt, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
             ax.axvline(x=p, color='black', alpha=0.8, ls='--', lw=0.5)
 
-    plt.suptitle('Barcode Molecules per Unique Barcode in Dataset')
+    plt.suptitle('CloneID Molecules per Unique CloneID in Dataset')
     plt.subplots_adjust(hspace=0.6, bottom=0.2)
 
     return fig
 
 
-def make_unique_barcodes_per_cell_per_step(molecules: pd.DataFrame,
+def make_unique_clone_ids_per_cell_per_step(molecules: pd.DataFrame,
                                            molecules_corrected: pd.DataFrame,
                                            cells: pd.DataFrame,
                                            cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Makes the subplots showing unique barcodes per cell for each step in the
+    """Makes the subplots showing unique CloneIDs per cell for each step in the
     analysis."""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
     for this_df, ax, title in zip([molecules, molecules_corrected], axs[0],
                                   ['Molecules', 'Corrected Molecules']):
-        vals = get_unique_barcodes_per_cell(this_df)
+        vals = get_unique_clone_ids_per_cell(this_df)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
         this_txt = f'There are {len(vals)} cells. On average, they have {mean:.2f}\n' \
-                   f'unique barcodes per cell, with a median of {quantiles[1]}\n' \
+                   f'unique CloneIDs per cell, with a median of {quantiles[1]}\n' \
                    f'and interquartile range of {quantiles[0]} - {quantiles[2]}.\n' \
-                   f'{sum(vals == 1)} cells have a single unique barcode.'
+                   f'{sum(vals == 1)} cells have a single unique CloneID.'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='Barcode Molecules',
+        plot_discrete_histogram(vals, ax=ax, xlabel='CLoneID Molecules',
                                 txt=this_txt, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
@@ -292,22 +292,22 @@ def make_unique_barcodes_per_cell_per_step(molecules: pd.DataFrame,
 
     for this_df, ax, title in zip([cells, cells_filtered], axs[1],
                                   ['Cells', 'Filtered Cells']):
-        vals = get_unique_barcodes_per_cell(this_df, molecules_dataframe=False)
+        vals = get_unique_clone_ids_per_cell(this_df, molecules_dataframe=False)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
         this_txt = f'There are {len(vals)} cells. On average, they have {mean:.2f}\n' \
-                   f'unique barcodes per cell, with a median of {quantiles[1]}\n' \
+                   f'unique CloneIDs per cell, with a median of {quantiles[1]}\n' \
                    f'and interquartile range of {quantiles[0]} - {quantiles[2]}.\n' \
-                   f'{sum(vals == 1)} cells have a single unique barcode.'
+                   f'{sum(vals == 1)} cells have a single unique CloneID.'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='Unique Barcodes',
+        plot_discrete_histogram(vals, ax=ax, xlabel='Unique CloneIDs',
                                 txt=this_txt, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
             ax.axvline(x=p, color='black', alpha=0.8, ls='--', lw=0.5)
 
-    plt.suptitle('Unique Barcodes per Cell')
+    plt.suptitle('Unique CloneIDs per Cell')
     plt.subplots_adjust(hspace=0.6, bottom=0.2)
 
     return fig
@@ -317,7 +317,7 @@ def make_hamming_distance_per_step(molecules: pd.DataFrame,
                                    molecules_corrected: pd.DataFrame,
                                    cells: pd.DataFrame,
                                    cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Makes the subplots showing Hamming distance between all barcodes in the
+    """Makes the subplots showing Hamming distance between all CloneIDs in the
     dataset for each step in the analysis."""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
@@ -328,11 +328,10 @@ def make_hamming_distance_per_step(molecules: pd.DataFrame,
 
     for this_df, ax, title in zip([cells, cells_filtered], axs[1],
                                   ['Cells', 'Filtered Cells']):
-        hamming_distance_histogram(
-            this_df.rename(columns={'barcode': 'clone_id'}), ax=ax)
+        hamming_distance_histogram(this_df, ax=ax)
         ax.set_title(title)
 
-    plt.suptitle('Hamming Distance between all Barcodes in the Dataset')
+    plt.suptitle('Hamming Distance between all CloneIDs in the Dataset')
     plt.subplots_adjust(hspace=0.1)
     return fig
 
@@ -352,7 +351,7 @@ def make_qc_report(output_dir: Path, pdf_dir: Path,
         Whether jaccard similarity should be calculated pairwise between cells
         and the matrix and histogram plotted
     plot_hamming: bool; Default: False
-        Whether Hamming distance between all detected barcodes should be
+        Whether Hamming distance between all detected CloneIDs should be
         calculated and the histogram plotted in a per-step basis."""
     logger.info("Loading reads")
     reads = load_reads(output_dir)
@@ -374,13 +373,13 @@ def make_qc_report(output_dir: Path, pdf_dir: Path,
         pp.savefig(fig)
         plt.close()
 
-        logger.info("Plotting unique barcode per clone histogram")
-        fig = make_unique_barcodes_per_clone(clones, cells_filtered)
+        logger.info("Plotting unique CloneID per clone histogram")
+        fig = make_unique_clone_ids_per_clone(clones, cells_filtered)
         pp.savefig(fig)
         plt.close()
 
-        logger.info("Plotting unique barcode per cell histogram")
-        fig = make_unique_barcodes_per_cell(cells_filtered)
+        logger.info("Plotting unique CloneID per cell histogram")
+        fig = make_unique_clone_ids_per_cell(cells_filtered)
         pp.savefig(fig)
         plt.close()
 
@@ -415,15 +414,15 @@ def make_qc_report(output_dir: Path, pdf_dir: Path,
         pp.savefig(fig)
         plt.close()
 
-        logger.info("Plotting molecules per barcode per step histograms")
-        fig = make_molecules_per_barcode_per_step(molecules,
+        logger.info("Plotting molecules per CloneID per step histograms")
+        fig = make_molecules_per_clone_id_per_step(molecules,
                                                   molecules_corrected,
                                                   cells, cells_filtered)
         pp.savefig(fig)
         plt.close()
 
-        logger.info("Plotting unique barcodes per cell per step histograms")
-        fig = make_unique_barcodes_per_cell_per_step(molecules,
+        logger.info("Plotting unique CloneIDs per cell per step histograms")
+        fig = make_unique_clone_ids_per_cell_per_step(molecules,
                                                      molecules_corrected,
                                                      cells, cells_filtered)
         pp.savefig(fig)
