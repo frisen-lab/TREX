@@ -201,13 +201,13 @@ def run_trex(
         f"{len(set(clone_ids))} unique)"
     )
 
-    molecules = remove_odd_barcodes(molecules, min_bases_detected)
+    molecules = remove_odd_clone_ids(molecules, min_bases_detected)
 
     write_reads_or_molecules(output_dir / "molecules.txt", molecules,
                              sort=False)
 
     if per_cell_correction:
-        corrected_molecules = correct_barcodes_per_cell(molecules, max_hamming,
+        corrected_molecules = correct_clone_ids_per_cell(molecules, max_hamming,
                                                         min_length)
     else:
         corrected_molecules = correct_clone_ids(molecules, max_hamming,
