@@ -7,7 +7,6 @@ from pathlib import Path
 from collections import Counter
 from typing import List, Dict, Iterable
 
-from tinyalign import hamming_distance
 import pandas as pd
 
 from . import (
@@ -25,9 +24,12 @@ from ..writers import (
     write_reads_or_molecules,
     write_loom,
 )
-from ..clustering import cluster_sequences
 from ..clone import CloneGraph
-from ..molecule import Molecule, compute_molecules
+from ..molecule import (Molecule, 
+                        compute_molecules, 
+                        correct_clone_ids, 
+                        correct_clone_ids_per_cell, 
+                        remove_odd_clone_ids)
 from ..cell import Cell, compute_cells
 from ..error import TrexError
 from ..dataset import DatasetReader
@@ -96,6 +98,8 @@ def main(args):
             amplicon_inputs=amplicon_inputs,
             sample_names=sample_names,
             prefix=args.prefix,
+            min_bases_detected=args.min_bases_detected,
+            per_cell_correction=args.per_cell,
             max_hamming=args.max_hamming,
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
@@ -154,6 +158,8 @@ def run_trex(
     amplicon_inputs: List[Path],
     sample_names: List[str],
     prefix: bool,
+    min_bases_detected: int,
+    per_cell_correction: bool,
     max_hamming: int,
     min_length: int,
     jaccard_threshold: float,
@@ -195,9 +201,18 @@ def run_trex(
         f"{len(set(clone_ids))} unique)"
     )
 
-    write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
+    molecules = remove_odd_barcodes(molecules, min_bases_detected)
 
-    corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
+    write_reads_or_molecules(output_dir / "molecules.txt", molecules,
+                             sort=False)
+
+    if per_cell_correction:
+        corrected_molecules = correct_barcodes_per_cell(molecules, max_hamming,
+                                                        min_length)
+    else:
+        corrected_molecules = correct_clone_ids(molecules, max_hamming,
+                                                min_length)
+    
     clone_ids = [
         m.clone_id
         for m in corrected_molecules
@@ -232,7 +247,8 @@ def run_trex(
 
     with open(output_dir / "components.txt", "w") as components_file:
         print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+            clone_graph.components_txt(highlight_cell_ids), 
+            file=components_file, end="",
         )
     if should_plot:
         logger.info("Plotting clone graph")
@@ -243,7 +259,8 @@ def run_trex(
     clone_graph.remove_edges(bridges)
     with open(output_dir / "components_corrected.txt", "w") as components_file:
         print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+            clone_graph.components_txt(highlight_cell_ids), 
+            file=components_file, end="",
         )
 
     if should_plot:
@@ -296,53 +313,6 @@ def read_allowed_cellids(path):
         allowed_ids.append(cell_id)
     logger.info(f"Restricting analysis to {len(allowed_ids)} allowed cells")
     return set(allowed_ids)
-
-
-def correct_clone_ids(
-    molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
-) -> List[Molecule]:
-    """
-    Attempt to correct sequencing errors in the cloneID sequences of all molecules
-    """
-    # Obtain all cloneIDs (including those with '-' and '0')
-    clone_ids = [m.clone_id for m in molecules]
-
-    # Count the full-length cloneIDs
-    counts = Counter(clone_ids)
-
-    # Cluster them by Hamming distance
-    def is_similar(s, t):
-        # m = max_hamming
-        if "-" in s or "-" in t:
-            # Remove suffix and/or prefix where sequences do not overlap
-            s = s.lstrip("-")
-            t = t[-len(s) :]
-            s = s.rstrip("-")
-            if len(s) < min_overlap:
-                return False
-            t = t[: len(s)]
-            # TODO allowed Hamming distance should be reduced relative to the overlap length
-            # m = max_hamming * len(s) / len(original_length_of_s)
-        return hamming_distance(s, t) <= max_hamming
-
-    clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
-
-    # Map non-singleton cloneIDs to a cluster representative
-    clone_id_map = dict()
-    for cluster in clusters:
-        if len(cluster) > 1:
-            # Pick most frequent cloneID as representative
-            representative = max(cluster, key=lambda bc: (counts[bc], bc))
-            for clone_id in cluster:
-                clone_id_map[clone_id] = representative
-
-    # Create a new list of molecules in which the cloneIDs have been replaced
-    # by their representatives
-    new_molecules = []
-    for molecule in molecules:
-        clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
-        new_molecules.append(molecule._replace(clone_id=clone_id))
-    return new_molecules
 
 
 def filter_visium(
