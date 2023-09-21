@@ -326,3 +326,38 @@ that identifies the clone and *clone_seq* its nucleotide sequence.
 A [loom file](http://linnarssonlab.org/loompy/).
 
 This file is created only if option `--loom` (or `-l`) is used.
+
+
+# Running Quality Control Report
+
+```shell
+trex qc_report DIRECTORY --plot-jaccard-matrix --plot-hamming-distance
+```
+
+*qc_report* takes as an input the directory (or directories) of trex output.
+Plotting the jaccard similarity matrix between cells, requires some time as jaccard similarity is calculated pairwise amongst all cells.
+This can be activated adding the optional flag `--plot-jaccard-matrix`.
+Hamming distance between all viral barcodes found in the dataset after each step can be plotted by means of the optional flag `--plot-hamming-distance`.
+
+This will add a pdf file named *Quality_Report.pdf* describing the quality of the TREX run inside the same folder with the TREX output. 
+
+This report contains:
+
+### Overall results
+
+- Histogram of clone sizes
+- Histogram of how many unique barcodes can pe found in each clone
+- Histogram of how many unique barcodes can be found in each cell
+- *(Optional)* A histogram of the Jaccard similarity values between cells and a matrix of the Jaccard similarity between all cells.
+- Histogram of how many reads each detected viral barcode molecule has.
+
+
+### Per step results
+
+Each of these plots has four subplots corresponding to different steps of the TREX pipeline.
+
+- Histograms of how many nucleotides have been read in each molecule
+- *(Optional)* Histograms of the Hamming distance between all the viral barcodes found
+- Histograms of how many viral barcode molecules have been found in each cell
+- Histograms of how many molecules of each unique barcode have been found in the dataset
+- Histograms of How many unique barcodes per cell have been found
