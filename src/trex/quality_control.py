@@ -57,7 +57,7 @@ def load_cells(data_dir: pathlib.Path,
 def load_umi_count_matrix(data_dir: pathlib.Path):
     """Loads saved UMI count matrix into a DataFrame."""
     umi_dir = data_dir / 'umi_count_matrix.csv'
-    return pd.read_csv(UMI_DIR)
+    return pd.read_csv(umi_dir)
 
 
 def load_clone_ids(data_dir: pathlib.Path):
