@@ -63,8 +63,8 @@ def add_arguments(parser):
     )
 
 
-def make_clone_size_histogram(clones: pd.DataFrame) -> plt.Figure:
-    """Plots the clone size histogram."""
+def plot_clone_size_histogram(clones: pd.DataFrame) -> plt.Figure:
+    """Plot the clone size histogram."""
     vals = get_clone_sizes(clones)
     mean = np.mean(vals)
     quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
@@ -81,9 +81,9 @@ def make_clone_size_histogram(clones: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def make_unique_clone_ids_per_clone(clones: pd.DataFrame,
+def plot_unique_clone_ids_per_clone(clones: pd.DataFrame,
                                     cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Plots the number of unique CloneIDs per clone histogram."""
+    """Plot the number of unique CloneIDs per clone histogram."""
     vals = get_clone_ids_per_clone(
         add_clone_ids_per_clone(clones, cells_filtered))
     mean = np.mean(vals)
@@ -101,8 +101,8 @@ def make_unique_clone_ids_per_clone(clones: pd.DataFrame,
     return fig
 
 
-def make_reads_per_molecule(reads: pd.DataFrame) -> plt.Figure:
-    """Plots the histogram of reads per molecule."""
+def plot_reads_per_molecule(reads: pd.DataFrame) -> plt.Figure:
+    """Plot the histogram of reads per molecule."""
     vals = get_read_per_molecule(reads)
     mean = np.mean(vals)
     quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
@@ -121,8 +121,8 @@ def make_reads_per_molecule(reads: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def make_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Plots the histogram of unique CloneIDs per cell at the end."""
+def plot_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
+    """Plot the histogram of unique CloneIDs per cell at the end."""
     vals = get_unique_clone_ids_per_cell(cells_filtered,
                                         molecules_dataframe=False)
     mean = np.mean(vals)
@@ -140,8 +140,8 @@ def make_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def make_jaccard_similarity_plots(data_dir: Path) -> plt.Figure:
-    """Calculates and plots the jaccard similarity histogram and matrix.
+def plot_jaccard_similarity_plots(data_dir: Path) -> plt.Figure:
+    """Calculate and plot the jaccard similarity histogram and matrix.
     Consider that it is not optimized so it might take a long time."""
     umi_count = load_umi_count_matrix(data_dir)
     jaccard_matrix = jaccard_similarity_matrix(umi_count)
@@ -154,11 +154,11 @@ def make_jaccard_similarity_plots(data_dir: Path) -> plt.Figure:
     return fig
 
 
-def make_read_length_per_step(molecules: pd.DataFrame,
+def plot_read_length_per_step(molecules: pd.DataFrame,
                               molecules_corrected: pd.DataFrame,
                               cells: pd.DataFrame,
                               cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Makes the subplots showing nucleotides read per molecule for each step in
+    """Make the subplots showing nucleotides read per molecule for each step in
     the analysis."""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
@@ -191,11 +191,11 @@ def make_read_length_per_step(molecules: pd.DataFrame,
     return fig
 
 
-def make_molecules_per_cell_per_step(molecules: pd.DataFrame,
+def plot_molecules_per_cell_per_step(molecules: pd.DataFrame,
                                      molecules_corrected: pd.DataFrame,
                                      cells: pd.DataFrame,
                                      cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Makes the subplots showing CloneID molecules per cell for each step in
+    """Make the subplots showing CloneID molecules per cell for each step in
     the analysis."""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
@@ -237,11 +237,11 @@ def make_molecules_per_cell_per_step(molecules: pd.DataFrame,
     return fig
 
 
-def make_molecules_per_clone_id_per_step(molecules: pd.DataFrame,
+def plot_molecules_per_clone_id_per_step(molecules: pd.DataFrame,
                                         molecules_corrected: pd.DataFrame,
                                         cells: pd.DataFrame,
                                         cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Makes the subplots showing CloneID molecules per unique CloneID for each
+    """Make the subplots showing CloneID molecules per unique CloneID for each
     step in the analysis."""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
@@ -285,11 +285,11 @@ def make_molecules_per_clone_id_per_step(molecules: pd.DataFrame,
     return fig
 
 
-def make_unique_clone_ids_per_cell_per_step(molecules: pd.DataFrame,
+def plot_unique_clone_ids_per_cell_per_step(molecules: pd.DataFrame,
                                            molecules_corrected: pd.DataFrame,
                                            cells: pd.DataFrame,
                                            cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Makes the subplots showing unique CloneIDs per cell for each step in the
+    """Make the subplots showing unique CloneIDs per cell for each step in the
     analysis."""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
@@ -333,11 +333,11 @@ def make_unique_clone_ids_per_cell_per_step(molecules: pd.DataFrame,
     return fig
 
 
-def make_hamming_distance_per_step(molecules: pd.DataFrame,
+def plot_hamming_distance_per_step(molecules: pd.DataFrame,
                                    molecules_corrected: pd.DataFrame,
                                    cells: pd.DataFrame,
                                    cells_filtered: pd.DataFrame) -> plt.Figure:
-    """Makes the subplots showing Hamming distance between all CloneIDs in the
+    """Make the subplots showing Hamming distance between all CloneIDs in the
     dataset for each step in the analysis."""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
@@ -389,60 +389,60 @@ def make_qc_report(output_dir: Path, pdf_dir: Path,
     with PdfPages(pdf_dir) as pp:
         # Overall quality plots
         logger.info("Plotting clone size histogram")
-        fig = make_clone_size_histogram(clones)
+        fig = plot_clone_size_histogram(clones)
         pp.savefig(fig)
         plt.close()
 
         logger.info("Plotting unique CloneID per clone histogram")
-        fig = make_unique_clone_ids_per_clone(clones, cells_filtered)
+        fig = plot_unique_clone_ids_per_clone(clones, cells_filtered)
         pp.savefig(fig)
         plt.close()
 
         logger.info("Plotting unique CloneID per cell histogram")
-        fig = make_unique_clone_ids_per_cell(cells_filtered)
+        fig = plot_unique_clone_ids_per_cell(cells_filtered)
         pp.savefig(fig)
         plt.close()
 
         if plot_jaccard:
             logger.info("Calculating and plotting Jaccard similarities")
-            fig = make_jaccard_similarity_plots(output_dir)
+            fig = plot_jaccard_similarity_plots(output_dir)
             pp.savefig(fig)
             plt.close()
 
         logger.info("Plotting reads per molecule histogram")
-        fig = make_reads_per_molecule(reads)
+        fig = plot_reads_per_molecule(reads)
         pp.savefig(fig)
         plt.close()
 
         # per step plots
         logger.info("Plotting read length per step histograms")
-        fig = make_read_length_per_step(molecules, molecules_corrected,
+        fig = plot_read_length_per_step(molecules, molecules_corrected,
                                         cells, cells_filtered)
         pp.savefig(fig)
         plt.close()
 
         if plot_hamming:
             logger.info("Plotting Hamming distance per step histograms")
-            fig = make_hamming_distance_per_step(molecules, molecules_corrected,
+            fig = plot_hamming_distance_per_step(molecules, molecules_corrected,
                                                  cells, cells_filtered)
             pp.savefig(fig)
             plt.close()
 
         logger.info("Plotting molecules per cell per step histograms")
-        fig = make_molecules_per_cell_per_step(molecules, molecules_corrected,
+        fig = plot_molecules_per_cell_per_step(molecules, molecules_corrected,
                                                cells, cells_filtered)
         pp.savefig(fig)
         plt.close()
 
         logger.info("Plotting molecules per CloneID per step histograms")
-        fig = make_molecules_per_clone_id_per_step(molecules,
+        fig = plot_molecules_per_clone_id_per_step(molecules,
                                                   molecules_corrected,
                                                   cells, cells_filtered)
         pp.savefig(fig)
         plt.close()
 
         logger.info("Plotting unique CloneIDs per cell per step histograms")
-        fig = make_unique_clone_ids_per_cell_per_step(molecules,
+        fig = plot_unique_clone_ids_per_cell_per_step(molecules,
                                                      molecules_corrected,
                                                      cells, cells_filtered)
         pp.savefig(fig)
