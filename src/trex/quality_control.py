@@ -56,7 +56,7 @@ def load_cells(data_dir: pathlib.Path,
 
 def load_umi_count_matrix(data_dir: pathlib.Path):
     """Loads saved UMI count matrix into a DataFrame."""
-    UMI_DIR = data_dir / 'umi_count_matrix.csv'
+    umi_dir = data_dir / 'umi_count_matrix.csv'
     return pd.read_csv(UMI_DIR)
 
 
@@ -88,17 +88,14 @@ def get_read_per_molecule(df: pd.DataFrame) -> pd.Series:
     return df.groupby(['#cell_id', 'umi']).clone_id.agg('count')
 
 
-def get_nucleotides_per_molecule(df: pd.DataFrame,
-                    molecules_dataframe: bool = True) -> pd.Series:
-    """Get a pandas Series with the number of nucleotides read per molecule.
-    molecules_dataframe is set to True by default, if a cells DataFrame is being
-    used, then this must be False."""
-    if molecules_dataframe:
-        return df.clone_id.apply(lambda x: len(re.sub("[-0]", "", x)))
-    else:
+def get_nucleotides_per_molecule(df: pd.DataFrame) -> pd.Series:
+    """Get a pandas Series with the number of nucleotides read per molecule."""
+    if 'counts' in df.columns:
         return df.apply(lambda x: [len(
             re.sub("[-0]", "", x.clone_id)), ] * x.counts,
                         axis=1).explode()
+    else:
+        return df.clone_id.apply(lambda x: len(re.sub("[-0]", "", x)))
 
 
 def get_clone_ids_per_cell(df: pd.DataFrame,
