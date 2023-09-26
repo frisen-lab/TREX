@@ -35,7 +35,7 @@ def load_cells(data_dir: pathlib.Path,
 
     with open(data_dir / filename) as file:
         next(file)
-        while line := file.readline():
+        for line in file:
             cell_id, clone_id_info = line[:-1].split('\t:\t')
             clone_id_info = clone_id_info.split('\t')
 
