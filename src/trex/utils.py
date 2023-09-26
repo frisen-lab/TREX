@@ -22,23 +22,28 @@ class NiceFormatter(logging.Formatter):
 
 def molecule_list_to_df(molecules: List[Molecule]) -> pd.DataFrame:
     """Convert list of Molecules to pandas DataFrame"""
-    molecule_dict = {'cell_id': [], 'umi': [], 'clone_id': [], 'read_count': []}
+    molecule_dict = {"cell_id": [], "umi": [], "clone_id": [], "read_count": []}
 
     for molecule in molecules:
-        molecule_dict['cell_id'].append(molecule.cell_id)
-        molecule_dict['umi'].append(molecule.umi)
-        molecule_dict['clone_id'].append(molecule.clone_id)
-        molecule_dict['read_count'].append(getattr(molecule, 'read_count', -1))
+        molecule_dict["cell_id"].append(molecule.cell_id)
+        molecule_dict["umi"].append(molecule.umi)
+        molecule_dict["clone_id"].append(molecule.clone_id)
+        molecule_dict["read_count"].append(getattr(molecule, "read_count", -1))
 
     return pd.DataFrame(molecule_dict)
 
 
 def df_to_molecule_list(df: pd.DataFrame) -> List[Molecule]:
     """Convert pandas DataFrame to list of Molecules"""
-    molecules = [Molecule(umi=mol.umi, cell_id=mol.cell_id, 
-                          clone_id=mol.clone_id, 
-                          read_count=mol.get('read_count', -1)
-                     ) for r, mol in df.iterrows()]
+    molecules = [
+        Molecule(
+            umi=mol.umi,
+            cell_id=mol.cell_id,
+            clone_id=mol.clone_id,
+            read_count=mol.get("read_count", -1),
+        )
+        for r, mol in df.iterrows()
+    ]
 
     sorted_molecules = sorted(
         molecules, key=lambda mol: (mol.cell_id, mol.clone_id, mol.umi)
@@ -50,10 +55,12 @@ def df_to_molecule_list(df: pd.DataFrame) -> List[Molecule]:
 def df_to_cell_list(df: pd.DataFrame) -> List[Cell]:
     """Convert pandas DataFrame to list of Cells"""
     cell_list = []
-    for r, cell in df.groupby('cell_id', observed=True):
+    for r, cell in df.groupby("cell_id", observed=True):
         cell_id = r
-        counts = {clone_id: counts for clone_id, counts in
-                  zip(cell.clone_id.values, cell.counts.values)}
+        counts = {
+            clone_id: counts
+            for clone_id, counts in zip(cell.clone_id.values, cell.counts.values)
+        }
         cell_list.append(Cell(cell_id=cell_id, counts=counts))
 
     return cell_list
