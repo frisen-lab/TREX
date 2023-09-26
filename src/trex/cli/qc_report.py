@@ -7,11 +7,31 @@ import sys
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
 import pandas as pd
 
 from . import setup_logging, CommandLineError, add_file_logging
 from .. import __version__
-from ..quality_control import *
+from ..quality_control import (load_reads,
+                               load_molecules,
+                               load_molecules_corrected,
+                               load_cells,
+                               load_clone_ids,
+                               load_umi_count_matrix,
+                               get_read_per_molecule,
+                               get_length_read,
+                               get_clone_sizes, 
+                               get_molecules_per_clone_ids,
+                               get_clone_ids_per_clone,
+                               get_clone_ids_per_cell,
+                               get_unique_clone_ids_per_cell,
+                               plot_discrete_histogram, 
+                               add_clone_ids_per_clone,
+                               hamming_distance_histogram,
+                               jaccard_similarity_matrix,
+                               jaccard_histogram,
+                               plot_jaccard_matrix,
+                               )
 
 
 logger = logging.getLogger(__name__)
@@ -120,7 +140,7 @@ def make_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
     return fig
 
 
-def make_jaccard_similarity_plots(data_dir: pathlib.Path) -> plt.Figure:
+def make_jaccard_similarity_plots(data_dir: Path) -> plt.Figure:
     """Calculates and plots the jaccard similarity histogram and matrix.
     Consider that it is not optimized so it might take a long time."""
     umi_count = load_umi_count_matrix(data_dir)
