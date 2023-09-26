@@ -337,7 +337,7 @@ trex qc_report --plot-jaccard-matrix --plot-hamming-distance DIRECTORY
 *qc_report* takes as an input the directory (or directories) of trex output.
 Plotting the jaccard similarity matrix between cells requires some time as jaccard similarity is calculated pairwise amongst all cells.
 This can be activated adding the optional flag `--plot-jaccard-matrix`.
-Hamming distance between all viral CloneIDs found in the dataset after each step can be plotted by means of the optional flag `--plot-hamming-distance`.
+Hamming distance between all viral cloneIDs found in the dataset after each step can be plotted by means of the optional flag `--plot-hamming-distance`.
 
 This will add a PDF file named *quality_report.pdf* describing the quality of the TREX run inside the same folder with the TREX output. 
 
@@ -346,10 +346,10 @@ This report contains:
 ### Overall results
 
 - Histogram of clone sizes
-- Histogram of how many unique CloneIDs can pe found in each clone
-- Histogram of how many unique CloneIDs can be found in each cell
+- Histogram of how many unique cloneIDs can pe found in each clone
+- Histogram of how many unique cloneIDs can be found in each cell
 - *(Optional)* A histogram of the Jaccard similarity values between cells and a matrix of the Jaccard similarity between all cells.
-- Histogram of how many reads each detected viral CloneID molecule has.
+- Histogram of how many reads each detected viral cloneID molecule has.
 
 
 ### Per step results
@@ -357,7 +357,7 @@ This report contains:
 Each of these plots has four subplots corresponding to different steps of the TREX pipeline.
 
 - Histograms of how many nucleotides have been read in each molecule
-- *(Optional)* Histograms of the Hamming distance between all the viral CloneIDs found
-- Histograms of how many viral CloneID molecules have been found in each cell
-- Histograms of how many molecules of each unique CloneID have been found in the dataset
-- Histograms of How many unique CloneIDs per cell have been found
+- *(Optional)* Histograms of the Hamming distance between all the viral cloneIDs found
+- Histograms of how many viral cloneID molecules have been found in each cell
+- Histograms of how many molecules of each unique cloneID have been found in the dataset
+- Histograms of How many unique cloneIDs per cell have been found

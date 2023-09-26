@@ -108,7 +108,7 @@ def get_nucleotides_per_molecule(df: pd.DataFrame) -> pd.Series:
 def get_clone_ids_per_cell(
     df: pd.DataFrame, molecules_dataframe: bool = True
 ) -> pd.Series:
-    """Get a pandas Series with the number of CloneID molecules found per cell.
+    """Get a pandas Series with the number of cloneID molecules found per cell.
     molecules_dataframe is set to True by default, if a cells DataFrame is being
     used, then this must be False."""
     if molecules_dataframe:
@@ -120,8 +120,8 @@ def get_clone_ids_per_cell(
 def get_molecules_per_clone_ids(
     df: pd.DataFrame, molecules_dataframe: bool = True
 ) -> pd.Series:
-    """Get a pandas Series with the number of CloneID molecules found per unique
-    CloneID. molecules_dataframe is set to True by default, if a cells
+    """Get a pandas Series with the number of cloneID molecules found per unique
+    cloneID. molecules_dataframe is set to True by default, if a cells
     DataFrame is being used, then this must be False."""
     if molecules_dataframe:
         return df.groupby(["clone_id"]).umi.agg("count")
@@ -132,7 +132,7 @@ def get_molecules_per_clone_ids(
 def get_unique_clone_ids_per_cell(
     df: pd.DataFrame, molecules_dataframe: bool = True
 ) -> pd.Series:
-    """Get a pandas Series with the number of unique CloneID molecules found per
+    """Get a pandas Series with the number of unique cloneID molecules found per
     cell. molecules_dataframe is set to True by default, if a cells DataFrame is
     being used, then this must be False."""
     if molecules_dataframe:
@@ -144,16 +144,16 @@ def get_unique_clone_ids_per_cell(
 def add_clone_ids_per_clone(
     clones: pd.DataFrame, cells_filtered: pd.DataFrame
 ) -> pd.DataFrame:
-    """Add  the unique CloneID molecules found in each clone to the clones
+    """Add  the unique cloneID molecules found in each clone to the clones
     DataFrame. clones is the clones dataframe from clones.txt and cells_filtered
-    is the dataframe containing CloneIDs per cell (cells_filtered.txt)."""
+    is the dataframe containing cloneIDs per cell (cells_filtered.txt)."""
     cells_clone_id = cells_filtered.groupby("cell_id").clone_id.apply(set)
     clones["clone_ids"] = clones.cell_id.apply(lambda x: cells_clone_id[x])
     return clones
 
 
 def get_clone_ids_per_clone(clones: pd.DataFrame) -> pd.Series:
-    """Get a pandas Series with the number of unique CloneIDs found per
+    """Get a pandas Series with the number of unique cloneIDs found per
     clone."""
     return clones.groupby("#clone_id").clone_ids.apply(lambda x: len(set.union(*x)))
 
@@ -222,18 +222,18 @@ def molecules_per_cell(
 def molecules_per_clone_id(
     molecules: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
-    """Plot histogram of how many molecules were detected per viral CloneID."""
+    """Plot histogram of how many molecules were detected per viral cloneID."""
     count_reads = molecules.groupby(["clone_id"]).umi.agg("count")
 
     ax = sns.histplot(count_reads.values, discrete=True, log=True, ax=ax)
-    plt.xlabel("Molecules per CloneID")
+    plt.xlabel("Molecules per cloneID")
     plt.title("Number of molecules")
 
     if add_description:
         txt = (
-            "This plot shows how many molecules were found per CloneID. \n"
-            "CloneIDs that appear a few times might not be found in more \n"
-            "cells. CloneIDs that have too many might be result of \n"
+            "This plot shows how many molecules were found per cloneID. \n"
+            "cloneIDs that appear a few times might not be found in more \n"
+            "cells. cloneIDs that have too many might be result of \n"
             "contamination or alignment problems or big clones."
         )
         plt.text(0, -0.3, txt, transform=ax.transAxes, size=12)
@@ -243,17 +243,17 @@ def molecules_per_clone_id(
 def unique_clone_ids_per_cell(
     molecules: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
-    """Plot histogram of how many unique CloneIDs were detected per cell."""
+    """Plot histogram of how many unique cloneIDs were detected per cell."""
     count_reads = molecules.groupby("#cell_id").clone_id.unique().apply(len)
 
     ax = sns.histplot(count_reads.values, discrete=True, log=True, ax=ax)
-    plt.xlabel("Unique CloneIDs per cell")
-    plt.title("Number of unique CloneIDs")
+    plt.xlabel("Unique cloneIDs per cell")
+    plt.title("Number of unique cloneIDs")
 
     if add_description:
         txt = (
-            "This plot shows how many unique CloneIDs were detected per cell.\n"
-            "Cells with many unique CloneIDs show either lots of infection \n"
+            "This plot shows how many unique cloneIDs were detected per cell.\n"
+            "Cells with many unique cloneIDs show either lots of infection \n"
             "events or possible unfiltered doublets."
         )
         plt.text(0, -0.3, txt, transform=ax.transAxes, size=12)
@@ -263,8 +263,8 @@ def unique_clone_ids_per_cell(
 def hamming_distance_histogram(
     molecules: pd.DataFrame, ax: plt.Axes = None, ignore_incomplete: bool = True
 ) -> plt.Axes:
-    """Plot histogram of Hamming distance between CloneIDs. ignore_incomplete is
-    set to True by default and it removes incomplete CloneIDs."""
+    """Plot histogram of Hamming distance between cloneIDs. ignore_incomplete is
+    set to True by default and it removes incomplete cloneIDs."""
     if ignore_incomplete:
         molecules = molecules[~molecules.clone_id.str.contains("-|0")]
     this_clone_ids = molecules.clone_id.unique()
@@ -315,7 +315,7 @@ def jaccard_similarity_matrix(umi_count: pd.DataFrame) -> npt.ArrayLike:
     pandas DataFrame.
 
     Note: columns are cell IDs and first column is disregarded as it usually has
-    the index to CloneIDs"""
+    the index to cloneIDs"""
     this_cell_ids = umi_count.columns[1:]
     jaccard_matrix = np.zeros([len(this_cell_ids)] * 2)
     bool_umi = pd.DataFrame(
