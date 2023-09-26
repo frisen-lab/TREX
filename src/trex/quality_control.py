@@ -88,7 +88,7 @@ def get_read_per_molecule(df: pd.DataFrame) -> pd.Series:
     return df.groupby(['#cell_id', 'umi']).clone_id.agg('count')
 
 
-def get_length_read(df: pd.DataFrame,
+def get_nucleotides_per_molecule(df: pd.DataFrame,
                     molecules_dataframe: bool = True) -> pd.Series:
     """Get a pandas Series with the number of nucleotides read per molecule.
     molecules_dataframe is set to True by default, if a cells DataFrame is being

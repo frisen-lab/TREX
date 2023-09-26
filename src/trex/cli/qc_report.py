@@ -19,7 +19,7 @@ from ..quality_control import (load_reads,
                                load_clone_ids,
                                load_umi_count_matrix,
                                get_read_per_molecule,
-                               get_length_read,
+                               get_nucleotides_per_molecule,
                                get_clone_sizes, 
                                get_molecules_per_clone_ids,
                                get_clone_ids_per_clone,
@@ -164,7 +164,7 @@ def plot_read_length_per_step(molecules: pd.DataFrame,
 
     for df, ax, title in zip([molecules, molecules_corrected], axes[0],
                                   ['Molecules', 'Corrected Molecules']):
-        vals = get_length_read(df)
+        vals = get_nucleotides_per_molecule(df)
         complete_reads = sum(vals == 30)
         percentage_complete = 100 * complete_reads / len(vals)
         text = f'There are {len(vals)} molecules. {complete_reads} have ' \
@@ -176,7 +176,7 @@ def plot_read_length_per_step(molecules: pd.DataFrame,
 
     for df, ax, title in zip([cells, cells_filtered], axes[1],
                                   ['Cells', 'Filtered Cells']):
-        vals = get_length_read(df, molecules_dataframe=False)
+        vals = get_nucleotides_per_molecule(df, molecules_dataframe=False)
         complete_reads = sum(vals == 30)
         percentage_complete = 100 * complete_reads / len(vals)
         text = f'There are {len(vals)} viral CloneID molecules. {complete_reads} have ' \
