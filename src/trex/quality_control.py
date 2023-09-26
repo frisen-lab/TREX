@@ -181,26 +181,6 @@ def plot_discrete_histogram(series: pd.Series,
     return axes
 
 
-def length_read(molecules: pd.DataFrame,
-                ax: plt.Axes = None,
-                add_description: bool = True) -> plt.Axes:
-    """Plot histogram of how many bases were adequately read per CloneID."""
-    molecules['stripped_clone_id'] = molecules.clone_id.apply(
-        lambda x: re.sub("[-0]", "", x))
-
-    ax = sns.histplot(molecules.stripped_clone_id.apply(len), discrete=True,
-                      log=True, ax=ax)
-    plt.xlabel('Number of detected bases')
-    plt.title('Length of computed molecules')
-
-    if add_description:
-        txt = 'This plot shows how many bases have been read per molecule. \n' \
-              'Ideally all 30 bases have been read. If very few bases are ' \
-              'read, \nwe can not be sure how to complete the missing bases.'
-        plt.text(0, -0.3, txt, transform=ax.transAxes, size=12)
-    return ax
-
-
 def molecules_per_cell(molecules: pd.DataFrame,
                        ax: plt.Axes = None,
                        add_description: bool = True) -> plt.Axes:
