@@ -20,17 +20,17 @@ class NiceFormatter(logging.Formatter):
         return super().format(record)
 
 
-def molecule_list_to_df(mol_list: List[Molecule]) -> pd.DataFrame:
+def molecule_list_to_df(molecules: List[Molecule]) -> pd.DataFrame:
     """Convert list of Molecules to pandas DataFrame"""
-    mol_dict = {'cell_id': [], 'umi': [], 'clone_id': [], 'read_count': []}
+    molecule_dict = {'cell_id': [], 'umi': [], 'clone_id': [], 'read_count': []}
 
-    for mol in mol_list:
-        mol_dict['cell_id'].append(mol.cell_id)
-        mol_dict['umi'].append(mol.umi)
-        mol_dict['clone_id'].append(mol.clone_id)
-        mol_dict['read_count'].append(getattr(mol, 'read_count', -1))
+    for molecule in molecules:
+        molecule_dict['cell_id'].append(molecule.cell_id)
+        molecule_dict['umi'].append(molecule.umi)
+        molecule_dict['clone_id'].append(molecule.clone_id)
+        molecule_dict['read_count'].append(getattr(molecule, 'read_count', -1))
 
-    return pd.DataFrame(mol_dict)
+    return pd.DataFrame(molecule_dict)
 
 
 def df_to_molecule_list(df: pd.DataFrame) -> List[Molecule]:
@@ -50,10 +50,10 @@ def df_to_molecule_list(df: pd.DataFrame) -> List[Molecule]:
 def df_to_cell_list(df: pd.DataFrame) -> List[Cell]:
     """Convert pandas DataFrame to list of Cells"""
     cell_list = []
-    for r, this_cell in df.groupby('cell_id', observed=True):
+    for r, cell in df.groupby('cell_id', observed=True):
         cell_id = r
         counts = {clone_id: counts for clone_id, counts in
-                  zip(this_cell.clone_id.values, this_cell.counts.values)}
+                  zip(cell.clone_id.values, cell.counts.values)}
         cell_list.append(Cell(cell_id=cell_id, counts=counts))
 
     return cell_list
