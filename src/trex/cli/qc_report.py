@@ -212,7 +212,7 @@ def plot_read_length_per_step(
     for df, ax, title in zip(
         [cells, cells_filtered], axes[1], ["Cells", "Filtered Cells"]
     ):
-        vals = get_nucleotides_per_molecule(df, molecules_dataframe=False)
+        vals = get_nucleotides_per_molecule(df)
         complete_reads = sum(vals == 30)
         percentage_complete = 100 * complete_reads / len(vals)
         text = (
