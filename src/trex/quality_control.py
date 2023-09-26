@@ -315,20 +315,14 @@ def jaccard_similarity_matrix(umi_count: pd.DataFrame) -> npt.ArrayLike:
     the index to CloneIDs"""
     this_cell_ids = umi_count.columns[1:]
     jaccard_matrix = np.zeros([len(this_cell_ids)] * 2)
+    bool_umi = pd.DataFrame(umi_count.values > 0, 
+                            columns=umi_count.columns,
+                            index=umi_count.index)
 
-    # Iterator over combinations of cells
-    def my_iter(cell_id_list):
-        for inds in combinations(np.arange(len(cell_id_list)), 2):
-            clones_cell_1 = umi_count[cell_id_list[inds[0]]].values > 0
-            clones_cell_2 = umi_count[cell_id_list[inds[1]]].values > 0
-            yield inds, clones_cell_1, clones_cell_2
-
-    def my_jaccard(args):
-        inds, clones_cell_1, clones_cell_2 = args
-        return inds, jaccard(clones_cell_1, clones_cell_2)
-
-    for ind, val in map(my_jaccard, my_iter(this_cell_ids)):
-        jaccard_matrix[ind[0], ind[1]] = val
+    for id1, id2 in combinations(this_cell_ids, 2):
+        clones_cell_1 = bool_umi[id1].values
+        clones_cell_2 = bool_umi[id2].values
+        jaccard_matrix[id1, id2] = jaccard(clones_cell_1, clones_cell_2)
 
     jaccard_matrix = jaccard_matrix + jaccard_matrix.T
     jaccard_matrix[np.diag_indices_from(jaccard_matrix)] = 1
