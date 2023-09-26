@@ -328,7 +328,7 @@ A [loom file](http://linnarssonlab.org/loompy/).
 This file is created only if option `--loom` (or `-l`) is used.
 
 
-# Running Quality Control Report
+# Creating a quality control report
 
 ```shell
 trex qc_report DIRECTORY --plot-jaccard-matrix --plot-hamming-distance
