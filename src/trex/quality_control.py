@@ -160,25 +160,25 @@ def get_clone_sizes(clones: pd.DataFrame) -> pd.Series:
 def plot_discrete_histogram(series: pd.Series,
                             title: str = None,
                             xlabel: str = None, ylabel: str = None,
-                            txt:str = None,
-                            ax: plt.Axes = None):
+                            text:str = None,
+                            axes: plt.Axes = None):
     """plots a discrete histogram with optional title, x and y labels, and added
      text below."""
-    if ax is None:
-        fig, ax = plt.subplots(1, 1)
+    if axes is None:
+        fig, axes = plt.subplots(1, 1)
 
-    ax = sns.histplot(series, discrete=True, log=True, ax=ax)
+    axes = sns.histplot(series, discrete=True, log=True, ax=axes)
 
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    axes.set_xlabel(xlabel)
+    axes.set_ylabel(ylabel)
+    axes.set_title(title)
 
-    if txt is not None:
-        plt.sca(ax)
-        plt.text(0, -0.2, txt, transform=ax.transAxes, size=12, wrap=True,
+    if text is not None:
+        plt.sca(axes)
+        plt.text(0, -0.2, text, transform=axes.transAxes, size=12, wrap=True,
                  ha='left', va='top')
 
-    return ax
+    return axes
 
 
 def length_read(molecules: pd.DataFrame,
@@ -337,19 +337,19 @@ def jaccard_similarity_matrix(umi_count: pd.DataFrame) -> npt.ArrayLike:
 
 
 def jaccard_histogram(jaccard_matrix: npt.ArrayLike,
-                      ax: plt.Axes = None) -> plt.Axes:
+                      axes: plt.Axes = None) -> plt.Axes:
     """Plots the Jaccard similarity histogram between cells."""
     vals = jaccard_matrix[np.triu_indices_from(jaccard_matrix, 1)]
-    ax = sns.histplot(vals, log=True, ax=ax)
+    axes = sns.histplot(vals, log=True, ax=axes)
 
-    ax.set_title('Jaccard Similarity between cells Histogram')
-    ax.set_xlabel('Jaccard Similarity')
+    axes.set_title('Jaccard Similarity between cells Histogram')
+    axes.set_xlabel('Jaccard Similarity')
 
-    return ax
+    return axes
 
 
 def plot_jaccard_matrix(jaccard_matrix: npt.ArrayLike,
-                        ax: plt.Axes = None) -> plt.Axes:
+                        axes: plt.Axes = None) -> plt.Axes:
     """Orders with reverse Cuthill-McKee algorithm the cells in the Jaccard
      Similarity matrix and plots it for visualization."""
     from scipy.sparse import csr_matrix
@@ -361,15 +361,15 @@ def plot_jaccard_matrix(jaccard_matrix: npt.ArrayLike,
     jaccard_matrix = jaccard_matrix[swaps]
     jaccard_matrix = jaccard_matrix[:, swaps]
 
-    if ax is None:
-        fig, ax = plt.subplots(1, 1, figsize=(11, 10))
-    im = ax.imshow(jaccard_matrix, interpolation='none', cmap='Blues',
+    if axes is None:
+        fig, axes = plt.subplots(1, 1, figsize=(11, 10))
+    im = axes.imshow(jaccard_matrix, interpolation='none', cmap='Blues',
                    rasterized=True, vmin=0, vmax=1)
 
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_ylabel('Cell ID')
-    ax.set_xlabel('Cell ID')
-    plt.colorbar(im, ax=ax)
+    axes.set_xticks([])
+    axes.set_yticks([])
+    axes.set_ylabel('Cell ID')
+    axes.set_xlabel('Cell ID')
+    plt.colorbar(im, ax=axes)
 
-    return ax
+    return axes

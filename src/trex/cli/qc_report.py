@@ -69,14 +69,14 @@ def plot_clone_size_histogram(clones: pd.DataFrame) -> plt.Figure:
     mean = np.mean(vals)
     quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-    this_txt = f'There are {len(vals)} clones. On average, they have {mean:.2f}\n' \
-               f'cells, with a median of {quantiles[1]} and interquartile range of \n' \
-               f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} clones have a single cell.'
+    text = f'There are {len(vals)} clones. On average, they have {mean:.2f}\n' \
+           f'cells, with a median of {quantiles[1]} and interquartile range of \n' \
+           f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} clones have a single cell.'
 
-    fig, ax = plt.subplots(1, 1)
+    fig, axes = plt.subplots(1, 1)
     plot_discrete_histogram(vals, xlabel='Number of cells',
                             title='Number of cells per clone',
-                            txt=this_txt, ax =ax)
+                            text=text, axes =axes)
     plt.subplots_adjust(bottom=0.3)
     return fig
 
@@ -89,14 +89,14 @@ def plot_unique_clone_ids_per_clone(clones: pd.DataFrame,
     mean = np.mean(vals)
     quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-    this_txt = f'There are {len(vals)} clones. On average, they have {mean:.2f}\n' \
-               f'unique CloneIDs, with a median of {quantiles[1]} and interquartile range of \n' \
-               f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} clones have a single unique CloneID.'
+    text = f'There are {len(vals)} clones. On average, they have {mean:.2f}\n' \
+           f'unique CloneIDs, with a median of {quantiles[1]} and interquartile range of \n' \
+           f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} clones have a single unique CloneID.'
 
-    fig, ax = plt.subplots(1, 1)
+    fig, axes = plt.subplots(1, 1)
     plot_discrete_histogram(vals, xlabel='Number of unique CloneIDs',
                             title='Number of unique CloneIDs per clone',
-                            txt=this_txt, ax=ax)
+                            text=text, axes=axes)
     plt.subplots_adjust(bottom=0.3)
     return fig
 
@@ -107,16 +107,16 @@ def plot_reads_per_molecule(reads: pd.DataFrame) -> plt.Figure:
     mean = np.mean(vals)
     quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-    this_txt = f'There are {len(vals)} viral CloneID molecules. On average, \n' \
-               f'they have {mean:.2f} reads, with a median of {quantiles[1]} and \n' \
-               f'interquartile range of {quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} molecules have \n' \
-               f'only a single read.'
+    text = f'There are {len(vals)} viral CloneID molecules. On average, \n' \
+           f'they have {mean:.2f} reads, with a median of {quantiles[1]} and \n' \
+           f'interquartile range of {quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} molecules have \n' \
+           f'only a single read.'
 
-    fig, ax = plt.subplots(1, 1)
+    fig, axes = plt.subplots(1, 1)
     plot_discrete_histogram(vals, xlabel='Number of reads',
                             title='Number of reads per molecule',
-                            txt=this_txt,
-                            ax=ax)
+                            text=text,
+                            axes=axes)
     plt.subplots_adjust(bottom=0.3)
     return fig
 
@@ -128,14 +128,14 @@ def plot_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
     mean = np.mean(vals)
     quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-    this_txt = f'There are {len(vals)} cells in the end. On average, they have {mean:.2f}\n' \
-               f'unique CloneIDs, with a median of {quantiles[1]} and interquartile range of \n' \
-               f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} cells have only a single unique CloneID.'
+    text = f'There are {len(vals)} cells in the end. On average, they have {mean:.2f}\n' \
+           f'unique CloneIDs, with a median of {quantiles[1]} and interquartile range of \n' \
+           f'{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} cells have only a single unique CloneID.'
 
-    fig, ax = plt.subplots(1, 1)
+    fig, axes = plt.subplots(1, 1)
     plot_discrete_histogram(vals, xlabel='Number of unique CloneIDs',
                             title='Number of unique CloneIDs per cell',
-                            txt=this_txt, ax=ax)
+                            text=text, axes=axes)
     plt.subplots_adjust(bottom=0.3)
     return fig
 
@@ -146,10 +146,10 @@ def plot_jaccard_similarity_plots(data_dir: Path) -> plt.Figure:
     umi_count = load_umi_count_matrix(data_dir)
     jaccard_matrix = jaccard_similarity_matrix(umi_count)
 
-    fig, axs = plt.subplots(2, 1, figsize=(11, 12),
+    fig, axes = plt.subplots(2, 1, figsize=(11, 12),
                             gridspec_kw={'height_ratios': (1, 5)})
-    jaccard_histogram(jaccard_matrix, ax=axs[0])
-    plot_jaccard_matrix(jaccard_matrix, ax=axs[1])
+    jaccard_histogram(jaccard_matrix, axes=axes[0])
+    plot_jaccard_matrix(jaccard_matrix, axes=axes[1])
     plt.subplots_adjust(bottom=0.3)
     return fig
 
@@ -160,30 +160,30 @@ def plot_read_length_per_step(molecules: pd.DataFrame,
                               cells_filtered: pd.DataFrame) -> plt.Figure:
     """Make the subplots showing nucleotides read per molecule for each step in
     the analysis."""
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
-    for this_df, ax, title in zip([molecules, molecules_corrected], axs[0],
+    for df, ax, title in zip([molecules, molecules_corrected], axes[0],
                                   ['Molecules', 'Corrected Molecules']):
-        vals = get_length_read(this_df)
+        vals = get_length_read(df)
         complete_reads = sum(vals == 30)
         percentage_complete = 100 * complete_reads / len(vals)
-        this_text = f'There are {len(vals)} molecules. {complete_reads} have ' \
-                    f'been \nread completely, which accounts for ' \
-                    f'{percentage_complete:.1f}%'
-        plot_discrete_histogram(vals, ax=ax, xlabel='Nucleotides Read',
-                                txt=this_text,
+        text = f'There are {len(vals)} molecules. {complete_reads} have ' \
+               f'been \nread completely, which accounts for ' \
+               f'{percentage_complete:.1f}%'
+        plot_discrete_histogram(vals, axes=ax, xlabel='Nucleotides Read',
+                                text=text,
                                 title=title)
 
-    for this_df, ax, title in zip([cells, cells_filtered], axs[1],
+    for df, ax, title in zip([cells, cells_filtered], axes[1],
                                   ['Cells', 'Filtered Cells']):
-        vals = get_length_read(this_df, molecules_dataframe=False)
+        vals = get_length_read(df, molecules_dataframe=False)
         complete_reads = sum(vals == 30)
         percentage_complete = 100 * complete_reads / len(vals)
-        this_text = f'There are {len(vals)} viral CloneID molecules. {complete_reads} have ' \
-                    f'been \nread completely, which accounts for ' \
-                    f'{percentage_complete:.1f}%'
-        plot_discrete_histogram(vals, ax=ax, xlabel='Nucleotides Read',
-                                txt=this_text,
+        text = f'There are {len(vals)} viral CloneID molecules. {complete_reads} have ' \
+               f'been \nread completely, which accounts for ' \
+               f'{percentage_complete:.1f}%'
+        plot_discrete_histogram(vals, axes=ax, xlabel='Nucleotides Read',
+                                text=text,
                                 title=title)
 
     plt.suptitle('Nucleotides Read per Molecule')
@@ -197,36 +197,36 @@ def plot_molecules_per_cell_per_step(molecules: pd.DataFrame,
                                      cells_filtered: pd.DataFrame) -> plt.Figure:
     """Make the subplots showing CloneID molecules per cell for each step in
     the analysis."""
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
-    for this_df, ax, title in zip([molecules, molecules_corrected], axs[0],
+    for df, ax, title in zip([molecules, molecules_corrected], axes[0],
                                   ['Molecules', 'Corrected Molecules']):
-        vals = get_clone_ids_per_cell(this_df)
+        vals = get_clone_ids_per_cell(df)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-        this_txt = f'There are {len(vals)} molecules. On average, there are\n' \
-                   f'{mean:.2f} molecules per cell, with a median of {quantiles[1]} and \n' \
-                   f'interquartile range of {quantiles[0]} - {quantiles[2]}'
+        text = f'There are {len(vals)} molecules. On average, there are\n' \
+               f'{mean:.2f} molecules per cell, with a median of {quantiles[1]} and \n' \
+               f'interquartile range of {quantiles[0]} - {quantiles[2]}'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='CloneID Molecules',
-                                txt=this_txt, title=title)
+        plot_discrete_histogram(vals, axes=ax, xlabel='CloneID Molecules',
+                                text=text, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
             ax.axvline(x=p, color='black', alpha=0.8, ls='--', lw=0.5)
 
-    for this_df, ax, title in zip([cells, cells_filtered], axs[1],
+    for df, ax, title in zip([cells, cells_filtered], axes[1],
                                   ['Cells', 'Filtered Cells']):
-        vals = get_clone_ids_per_cell(this_df, molecules_dataframe=False)
+        vals = get_clone_ids_per_cell(df, molecules_dataframe=False)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-        this_txt = f'There are {len(vals)} molecules. On average, there are\n' \
-                   f'{mean:.2f} molecules per cell, with a median of {quantiles[1]} and \n' \
-                   f'interquartile range of {quantiles[0]} - {quantiles[2]}'
+        text = f'There are {len(vals)} molecules. On average, there are\n' \
+               f'{mean:.2f} molecules per cell, with a median of {quantiles[1]} and \n' \
+               f'interquartile range of {quantiles[0]} - {quantiles[2]}'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='CloneID Molecules',
-                                txt=this_txt, title=title)
+        plot_discrete_histogram(vals, axes=ax, xlabel='CloneID Molecules',
+                                text=text, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
             ax.axvline(x=p, color='black', alpha=0.8, ls='--', lw=0.5)
@@ -243,38 +243,38 @@ def plot_molecules_per_clone_id_per_step(molecules: pd.DataFrame,
                                         cells_filtered: pd.DataFrame) -> plt.Figure:
     """Make the subplots showing CloneID molecules per unique CloneID for each
     step in the analysis."""
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
-    for this_df, ax, title in zip([molecules, molecules_corrected], axs[0],
+    for df, ax, title in zip([molecules, molecules_corrected], axes[0],
                                   ['Molecules', 'Corrected Molecules']):
-        vals = get_molecules_per_clone_ids(this_df)
+        vals = get_molecules_per_clone_ids(df)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-        this_txt = f'There are {len(vals)} unique CloneIDs. On average, there\n' \
-                   f'are {mean:.2f} molecules per unique CloneID, with a  \n' \
-                   f'median of {quantiles[1]} and interquartile range of {quantiles[0]} - {quantiles[2]}.\n' \
-                   f'{sum(vals == 1)} are CloneIDs with single molecules.'
+        text = f'There are {len(vals)} unique CloneIDs. On average, there\n' \
+               f'are {mean:.2f} molecules per unique CloneID, with a  \n' \
+               f'median of {quantiles[1]} and interquartile range of {quantiles[0]} - {quantiles[2]}.\n' \
+               f'{sum(vals == 1)} are CloneIDs with single molecules.'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='CloneID Molecules',
-                                txt=this_txt, title=title)
+        plot_discrete_histogram(vals, axes=ax, xlabel='CloneID Molecules',
+                                text=text, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
             ax.axvline(x=p, color='black', alpha=0.8, ls='--', lw=0.5)
 
-    for this_df, ax, title in zip([cells, cells_filtered], axs[1],
+    for df, ax, title in zip([cells, cells_filtered], axes[1],
                                   ['Cells', 'Filtered Cells']):
-        vals = get_molecules_per_clone_ids(this_df, molecules_dataframe=False)
+        vals = get_molecules_per_clone_ids(df, molecules_dataframe=False)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-        this_txt = f'There are {len(vals)} unique CloneIDs. On average, there\n' \
-                   f'are {mean:.2f} molecules per unique CloneID, with a  \n' \
-                   f'median of {quantiles[1]} and interquartile range of {quantiles[0]} - {quantiles[2]}. \n' \
-                   f'{sum(vals == 1)} are CloneIDs with single molecules.'
+        text = f'There are {len(vals)} unique CloneIDs. On average, there\n' \
+               f'are {mean:.2f} molecules per unique CloneID, with a  \n' \
+               f'median of {quantiles[1]} and interquartile range of {quantiles[0]} - {quantiles[2]}. \n' \
+               f'{sum(vals == 1)} are CloneIDs with single molecules.'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='CloneID Molecules',
-                                txt=this_txt, title=title)
+        plot_discrete_histogram(vals, axes=ax, xlabel='CloneID Molecules',
+                                text=text, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
             ax.axvline(x=p, color='black', alpha=0.8, ls='--', lw=0.5)
@@ -291,38 +291,38 @@ def plot_unique_clone_ids_per_cell_per_step(molecules: pd.DataFrame,
                                            cells_filtered: pd.DataFrame) -> plt.Figure:
     """Make the subplots showing unique CloneIDs per cell for each step in the
     analysis."""
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
-    for this_df, ax, title in zip([molecules, molecules_corrected], axs[0],
+    for df, ax, title in zip([molecules, molecules_corrected], axes[0],
                                   ['Molecules', 'Corrected Molecules']):
-        vals = get_unique_clone_ids_per_cell(this_df)
+        vals = get_unique_clone_ids_per_cell(df)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-        this_txt = f'There are {len(vals)} cells. On average, they have {mean:.2f}\n' \
-                   f'unique CloneIDs per cell, with a median of {quantiles[1]}\n' \
-                   f'and interquartile range of {quantiles[0]} - {quantiles[2]}.\n' \
-                   f'{sum(vals == 1)} cells have a single unique CloneID.'
+        text = f'There are {len(vals)} cells. On average, they have {mean:.2f}\n' \
+               f'unique CloneIDs per cell, with a median of {quantiles[1]}\n' \
+               f'and interquartile range of {quantiles[0]} - {quantiles[2]}.\n' \
+               f'{sum(vals == 1)} cells have a single unique CloneID.'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='CLoneID Molecules',
-                                txt=this_txt, title=title)
+        plot_discrete_histogram(vals, axes=ax, xlabel='CLoneID Molecules',
+                                text=text, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
             ax.axvline(x=p, color='black', alpha=0.8, ls='--', lw=0.5)
 
-    for this_df, ax, title in zip([cells, cells_filtered], axs[1],
+    for df, ax, title in zip([cells, cells_filtered], axes[1],
                                   ['Cells', 'Filtered Cells']):
-        vals = get_unique_clone_ids_per_cell(this_df, molecules_dataframe=False)
+        vals = get_unique_clone_ids_per_cell(df, molecules_dataframe=False)
         mean = np.mean(vals)
         quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
 
-        this_txt = f'There are {len(vals)} cells. On average, they have {mean:.2f}\n' \
-                   f'unique CloneIDs per cell, with a median of {quantiles[1]}\n' \
-                   f'and interquartile range of {quantiles[0]} - {quantiles[2]}.\n' \
-                   f'{sum(vals == 1)} cells have a single unique CloneID.'
+        text = f'There are {len(vals)} cells. On average, they have {mean:.2f}\n' \
+               f'unique CloneIDs per cell, with a median of {quantiles[1]}\n' \
+               f'and interquartile range of {quantiles[0]} - {quantiles[2]}.\n' \
+               f'{sum(vals == 1)} cells have a single unique CloneID.'
 
-        plot_discrete_histogram(vals, ax=ax, xlabel='Unique CloneIDs',
-                                txt=this_txt, title=title)
+        plot_discrete_histogram(vals, axes=ax, xlabel='Unique CloneIDs',
+                                text=text, title=title)
         ax.axvline(x=mean, color='red', alpha=0.8)
         for p in quantiles:
             ax.axvline(x=p, color='black', alpha=0.8, ls='--', lw=0.5)
@@ -339,16 +339,16 @@ def plot_hamming_distance_per_step(molecules: pd.DataFrame,
                                    cells_filtered: pd.DataFrame) -> plt.Figure:
     """Make the subplots showing Hamming distance between all CloneIDs in the
     dataset for each step in the analysis."""
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
-    for this_df, ax, title in zip([molecules, molecules_corrected], axs[0],
+    for df, ax, title in zip([molecules, molecules_corrected], axes[0],
                                   ['Molecules', 'Corrected Molecules']):
-        hamming_distance_histogram(this_df, ax=ax)
+        hamming_distance_histogram(df, ax=ax)
         ax.set_title(title)
 
-    for this_df, ax, title in zip([cells, cells_filtered], axs[1],
+    for df, ax, title in zip([cells, cells_filtered], axes[1],
                                   ['Cells', 'Filtered Cells']):
-        hamming_distance_histogram(this_df, ax=ax)
+        hamming_distance_histogram(df, ax=ax)
         ax.set_title(title)
 
     plt.suptitle('Hamming Distance between all CloneIDs in the Dataset')
@@ -455,7 +455,7 @@ def main(args):
     for output_dir in args.path:
         if not output_dir.exists():
             raise CommandLineError(
-                f"Output directory '{output_dir}' does not exist")
+                f"Directory '{output_dir}' does not exist")
 
         add_file_logging(output_dir / "log.txt")
         logger.info(f"Trex {__version__}")
