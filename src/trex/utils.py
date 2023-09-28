@@ -20,7 +20,7 @@ class NiceFormatter(logging.Formatter):
         return super().format(record)
 
 
-def molecule_list_to_df(molecules: List[Molecule]) -> pd.DataFrame:
+def molecule_list_to_dataframe(molecules: List[Molecule]) -> pd.DataFrame:
     """Convert list of Molecules to pandas DataFrame"""
     molecule_dict = {"cell_id": [], "umi": [], "clone_id": [], "read_count": []}
 
@@ -33,7 +33,7 @@ def molecule_list_to_df(molecules: List[Molecule]) -> pd.DataFrame:
     return pd.DataFrame(molecule_dict)
 
 
-def df_to_molecule_list(df: pd.DataFrame) -> List[Molecule]:
+def dataframe_to_molecule_list(df: pd.DataFrame) -> List[Molecule]:
     """Convert pandas DataFrame to list of Molecules"""
     molecules = [
         Molecule(
@@ -52,7 +52,7 @@ def df_to_molecule_list(df: pd.DataFrame) -> List[Molecule]:
     return sorted_molecules
 
 
-def df_to_cell_list(df: pd.DataFrame) -> List[Cell]:
+def dataframe_to_cell_list(df: pd.DataFrame) -> List[Cell]:
     """Convert pandas DataFrame to list of Cells"""
     cell_list = []
     for r, cell in df.groupby("cell_id", observed=True):
