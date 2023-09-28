@@ -60,7 +60,9 @@ def load_cells(data_dir: pathlib.Path, filtered: bool = True) -> pd.DataFrame:
 def load_umi_count_matrix(data_dir: pathlib.Path):
     """Loads saved UMI count matrix into a DataFrame."""
     umi_dir = data_dir / "umi_count_matrix.csv"
-    return pd.read_csv(umi_dir)
+    umi_matrix = pd.read_csv(umi_dir)
+    umi_matrix.set_index("Unnamed: 0", inplace=True, verify_integrity=True)
+    return umi_matrix
 
 
 def load_clone_ids(data_dir: pathlib.Path):
@@ -328,11 +330,16 @@ def jaccard_similarity_matrix(umi_count: pd.DataFrame) -> npt.ArrayLike:
     bool_umi = pd.DataFrame(
         umi_count.values > 0, columns=umi_count.columns, index=umi_count.index
     )
+    cell_id_position_dict = {
+        this_cell_id: i for i, this_cell_id in enumerate(this_cell_ids)
+    }
 
     for id1, id2 in combinations(this_cell_ids, 2):
         clones_cell_1 = bool_umi[id1].values
         clones_cell_2 = bool_umi[id2].values
-        jaccard_matrix[id1, id2] = jaccard(clones_cell_1, clones_cell_2)
+        jaccard_matrix[
+            cell_id_position_dict[id1], cell_id_position_dict[id2]
+        ] = jaccard(clones_cell_1, clones_cell_2)
 
     jaccard_matrix = jaccard_matrix + jaccard_matrix.T
     jaccard_matrix[np.diag_indices_from(jaccard_matrix)] = 1
