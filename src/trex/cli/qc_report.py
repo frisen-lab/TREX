@@ -2,38 +2,37 @@
 Print a quality report from the run10x analysis.
 """
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import pandas as pd
+from matplotlib.backends.backend_pdf import PdfPages
 
-from . import setup_logging, CommandLineError, add_file_logging
 from .. import __version__
 from ..quality_control import (
-    load_reads,
-    load_molecules,
-    load_molecules_corrected,
-    load_cells,
-    load_clone_ids,
-    load_umi_count_matrix,
-    get_read_per_molecule,
-    get_nucleotides_per_molecule,
+    add_clone_ids_per_clone,
+    get_clone_ids_per_cell,
+    get_clone_ids_per_clone,
     get_clone_sizes,
     get_molecules_per_clone_ids,
-    get_clone_ids_per_clone,
-    get_clone_ids_per_cell,
+    get_nucleotides_per_molecule,
+    get_read_per_molecule,
     get_unique_clone_ids_per_cell,
-    plot_discrete_histogram,
-    add_clone_ids_per_clone,
     hamming_distance_histogram,
-    jaccard_similarity_matrix,
     jaccard_histogram,
+    jaccard_similarity_matrix,
+    load_cells,
+    load_clone_ids,
+    load_molecules,
+    load_molecules_corrected,
+    load_reads,
+    load_umi_count_matrix,
+    plot_discrete_histogram,
     plot_jaccard_matrix,
 )
-
+from . import CommandLineError, add_file_logging, setup_logging
 
 logger = logging.getLogger(__name__)
 

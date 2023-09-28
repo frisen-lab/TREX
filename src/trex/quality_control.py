@@ -1,10 +1,11 @@
+import pathlib
+import re
 from itertools import combinations
+
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import pathlib
-import re
 import seaborn as sns
 from tinyalign import hamming_distance
 

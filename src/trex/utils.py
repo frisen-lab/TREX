@@ -1,9 +1,10 @@
 import logging
-import pandas as pd
 from typing import List
 
-from .molecule import Molecule
+import pandas as pd
+
 from .cell import Cell
+from .molecule import Molecule
 
 
 class NiceFormatter(logging.Formatter):
