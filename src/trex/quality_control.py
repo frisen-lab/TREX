@@ -11,20 +11,20 @@ from tinyalign import hamming_distance
 
 def load_reads(data_dir: pathlib.Path) -> pd.DataFrame:
     """Loads saved reads into a DataFrame"""
-    READ_DIR = data_dir / "reads.txt"
-    return pd.read_csv(READ_DIR, delimiter="\t")
+    read_dir = data_dir / "reads.txt"
+    return pd.read_csv(read_dir, delimiter="\t")
 
 
 def load_molecules(data_dir: pathlib.Path) -> pd.DataFrame:
     """Loads saved molecules before correcting into a DataFrame."""
-    MOLS_DIR = data_dir / "molecules.txt"
-    return pd.read_csv(MOLS_DIR, delimiter="\t")
+    mols_dir = data_dir / "molecules.txt"
+    return pd.read_csv(mols_dir, delimiter="\t")
 
 
 def load_molecules_corrected(data_dir: pathlib.Path) -> pd.DataFrame:
     """Loads saved molecules after correcting into a DataFrame."""
-    MOLS_DIR = data_dir / "molecules_corrected.txt"
-    return pd.read_csv(MOLS_DIR, delimiter="\t")
+    mols_dir = data_dir / "molecules_corrected.txt"
+    return pd.read_csv(mols_dir, delimiter="\t")
 
 
 def load_cells(data_dir: pathlib.Path, filtered: bool = True) -> pd.DataFrame:
