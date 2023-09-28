@@ -10,3 +10,5 @@ diff -u <(sed 1d tests/expected_smartseq2/log.txt) <(sed 1d trex_smartseq2_run/l
 
 trex smartseq3 --delete --output trex_smartseq3_run --umi-matrix -s 2330 -e 2359 tests/data/smartseq3_test.bam
 diff -u <(sed 1d tests/expected_smartseq3/log.txt) <(sed 1d trex_smartseq3_run/log.txt)
+
+trex qc_report trex_run
