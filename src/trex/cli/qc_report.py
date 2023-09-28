@@ -65,19 +65,22 @@ def add_arguments(parser):
 
 def plot_clone_size_histogram(clones: pd.DataFrame) -> plt.Figure:
     """Plot the clone size histogram."""
-    vals = get_clone_sizes(clones)
-    mean = np.mean(vals)
-    quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
+    clone_sizes = get_clone_sizes(clones)
+    mean = np.mean(clone_sizes)
+    quantiles = np.quantile(
+        clone_sizes,
+        [0.25, 0.5, 0.75],
+    )
 
     text = (
-        f"There are {len(vals)} clones. On average, they have {mean:.2f}\n"
+        f"There are {len(clone_sizes)} clones. On average, they have {mean:.2f}\n"
         f"cells, with a median of {quantiles[1]} and interquartile range of \n"
-        f"{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} clones have a single cell."
+        f"{quantiles[0]} - {quantiles[2]}. {sum(clone_sizes == 1)} clones have a single cell."
     )
 
     fig, axes = plt.subplots(1, 1)
     plot_discrete_histogram(
-        vals,
+        clone_sizes,
         xlabel="Number of cells",
         title="Number of cells per clone",
         text=text,
@@ -91,19 +94,27 @@ def plot_unique_clone_ids_per_clone(
     clones: pd.DataFrame, cells_filtered: pd.DataFrame
 ) -> plt.Figure:
     """Plot the number of unique cloneIDs per clone histogram."""
-    vals = get_clone_ids_per_clone(add_clone_ids_per_clone(clones, cells_filtered))
-    mean = np.mean(vals)
-    quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
+    clone_ids_per_clone = get_clone_ids_per_clone(
+        add_clone_ids_per_clone(
+            clones,
+            cells_filtered,
+        )
+    )
+    mean = np.mean(clone_ids_per_clone)
+    quantiles = np.quantile(
+        clone_ids_per_clone,
+        [0.25, 0.5, 0.75],
+    )
 
     text = (
-        f"There are {len(vals)} clones. On average, they have {mean:.2f}\n"
+        f"There are {len(clone_ids_per_clone)} clones. On average, they have {mean:.2f}\n"
         f"unique cloneIDs, with a median of {quantiles[1]} and interquartile range of \n"
-        f"{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} clones have a single unique cloneID."
+        f"{quantiles[0]} - {quantiles[2]}. {sum(clone_ids_per_clone == 1)} clones have a single unique cloneID."
     )
 
     fig, axes = plt.subplots(1, 1)
     plot_discrete_histogram(
-        vals,
+        clone_ids_per_clone,
         xlabel="Number of unique cloneIDs",
         title="Number of unique cloneIDs per clone",
         text=text,
@@ -115,20 +126,23 @@ def plot_unique_clone_ids_per_clone(
 
 def plot_reads_per_molecule(reads: pd.DataFrame) -> plt.Figure:
     """Plot the histogram of reads per molecule."""
-    vals = get_read_per_molecule(reads)
-    mean = np.mean(vals)
-    quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
+    reads_per_molecule = get_read_per_molecule(reads)
+    mean = np.mean(reads_per_molecule)
+    quantiles = np.quantile(
+        reads_per_molecule,
+        [0.25, 0.5, 0.75],
+    )
 
     text = (
-        f"There are {len(vals)} viral cloneID molecules. On average, \n"
+        f"There are {len(reads_per_molecule)} viral cloneID molecules. On average, \n"
         f"they have {mean:.2f} reads, with a median of {quantiles[1]} and \n"
-        f"interquartile range of {quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} molecules have \n"
+        f"interquartile range of {quantiles[0]} - {quantiles[2]}. {sum(reads_per_molecule == 1)} molecules have \n"
         f"only a single read."
     )
 
     fig, axes = plt.subplots(1, 1)
     plot_discrete_histogram(
-        vals,
+        reads_per_molecule,
         xlabel="Number of reads",
         title="Number of reads per molecule",
         text=text,
@@ -140,19 +154,25 @@ def plot_reads_per_molecule(reads: pd.DataFrame) -> plt.Figure:
 
 def plot_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
     """Plot the histogram of unique cloneIDs per cell at the end."""
-    vals = get_unique_clone_ids_per_cell(cells_filtered, molecules_dataframe=False)
-    mean = np.mean(vals)
-    quantiles = np.quantile(vals, [0.25, 0.5, 0.75])
+    unique_clone_ids_per_cell = get_unique_clone_ids_per_cell(
+        cells_filtered,
+        molecules_dataframe=False,
+    )
+    mean = np.mean(unique_clone_ids_per_cell)
+    quantiles = np.quantile(
+        unique_clone_ids_per_cell,
+        [0.25, 0.5, 0.75],
+    )
 
     text = (
-        f"There are {len(vals)} cells in the end. On average, they have {mean:.2f}\n"
+        f"There are {len(unique_clone_ids_per_cell)} cells in the end. On average, they have {mean:.2f}\n"
         f"unique cloneIDs, with a median of {quantiles[1]} and interquartile range of \n"
-        f"{quantiles[0]} - {quantiles[2]}. {sum(vals == 1)} cells have only a single unique cloneID."
+        f"{quantiles[0]} - {quantiles[2]}. {sum(unique_clone_ids_per_cell == 1)} cells have only a single unique cloneID."
     )
 
     fig, axes = plt.subplots(1, 1)
     plot_discrete_histogram(
-        vals,
+        unique_clone_ids_per_cell,
         xlabel="Number of unique cloneIDs",
         title="Number of unique cloneIDs per cell",
         text=text,
