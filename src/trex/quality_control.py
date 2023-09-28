@@ -65,7 +65,7 @@ def load_umi_count_matrix(data_dir: pathlib.Path):
 
 def load_clone_ids(data_dir: pathlib.Path):
     """Loads saved clone id and cell id into a DataFrame."""
-    return pd.read_csv(data_dir / "clones.txt")
+    return pd.read_csv(data_dir / "clones.txt", delimiter="\t")
 
 
 def read_quality(
