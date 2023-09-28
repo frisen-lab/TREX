@@ -331,10 +331,10 @@ This file is created only if option `--loom` (or `-l`) is used.
 # Creating a quality control report
 
 ```shell
-trex qc_report --plot-jaccard-matrix --plot-hamming-distance DIRECTORY
+trex qc --plot-jaccard-matrix --plot-hamming-distance DIRECTORY
 ```
 
-*qc_report* takes as an input the directory (or directories) of trex output.
+*qc* takes as an input the directory (or directories) of trex output.
 Plotting the jaccard similarity matrix between cells requires some time as jaccard similarity is calculated pairwise amongst all cells.
 This can be activated adding the optional flag `--plot-jaccard-matrix`.
 Hamming distance between all viral cloneIDs found in the dataset after each step can be plotted by means of the optional flag `--plot-hamming-distance`.
