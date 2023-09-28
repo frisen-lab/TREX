@@ -156,13 +156,13 @@ def add_clone_ids_per_clone(
 def get_clone_ids_per_clone(clones: pd.DataFrame) -> pd.Series:
     """Get a pandas Series with the number of unique cloneIDs found per
     clone."""
-    return clones.groupby("#clone_id").clone_ids.apply(lambda x: len(set.union(*x)))
+    return clones.groupby("clone_nr").clone_ids.apply(lambda x: len(set.union(*x)))
 
 
 def get_clone_sizes(clones: pd.DataFrame) -> pd.Series:
     """Get a pandas Series with the number of cells found in each
     clone. clones is the clones dataframe from clones.txt."""
-    return clones.groupby("#clone_id").cell_id.count()
+    return clones.groupby("clone_nr").cell_id.count()
 
 
 def plot_discrete_histogram(
