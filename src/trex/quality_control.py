@@ -160,7 +160,7 @@ def get_clone_ids_per_clone(clones: pd.DataFrame) -> pd.Series:
 
 
 def get_clone_sizes(clones: pd.DataFrame) -> pd.Series:
-    """Get a pandas Series with the umber of cells found in each
+    """Get a pandas Series with the number of cells found in each
     clone. clones is the clones dataframe from clones.txt."""
     return clones.groupby("#clone_id").cell_id.count()
 
