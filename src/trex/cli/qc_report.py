@@ -585,11 +585,11 @@ def main(args):
         logger.info(f"Trex {__version__}")
         logger.info("Command line arguments: %s", " ".join(sys.argv[1:]))
 
-        pdf_dir = output_dir / "quality_report.pdf"
+        pdf_path = output_dir / "quality_report.pdf"
 
         make_qc_report(
             output_dir,
-            pdf_dir,
+            pdf_path,
             plot_jaccard=args.plot_jaccard_matrix,
             plot_hamming=args.plot_hamming_distance,
         )
