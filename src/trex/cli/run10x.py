@@ -1,39 +1,40 @@
 """
 Run on single cell 10X Chromium or spatial Visium data processed by Cell / Space Ranger software
 """
-import sys
 import logging
-from pathlib import Path
+import sys
 from collections import Counter
-from typing import List, Dict, Iterable
+from pathlib import Path
+from typing import Dict, Iterable, List
 
 import pandas as pd
 
+from .. import __version__
+from ..cell import Cell, compute_cells
+from ..cellranger import CellRangerError, make_cellranger
+from ..clone import CloneGraph
+from ..dataset import DatasetReader
+from ..error import TrexError
+from ..molecule import (
+    Molecule,
+    compute_molecules,
+    correct_clone_ids,
+    correct_clone_ids_per_cell,
+    remove_odd_clone_ids,
+)
+from ..writers import (
+    write_cells,
+    write_count_matrix,
+    write_loom,
+    write_reads_or_molecules,
+)
 from . import (
-    setup_logging,
     CommandLineError,
+    add_common_arguments,
     add_file_logging,
     make_output_dir,
-    add_common_arguments,
+    setup_logging,
 )
-from .. import __version__
-from ..cellranger import make_cellranger, CellRangerError
-from ..writers import (
-    write_count_matrix,
-    write_cells,
-    write_reads_or_molecules,
-    write_loom,
-)
-from ..clone import CloneGraph
-from ..molecule import (Molecule, 
-                        compute_molecules, 
-                        correct_clone_ids, 
-                        correct_clone_ids_per_cell, 
-                        remove_odd_clone_ids)
-from ..cell import Cell, compute_cells
-from ..error import TrexError
-from ..dataset import DatasetReader
-
 
 __author__ = "leonie.von.berlin@ki.se"
 
@@ -201,18 +202,18 @@ def run_trex(
         f"{len(set(clone_ids))} unique)"
     )
 
-    molecules = remove_odd_clone_ids(molecules, min_bases_detected)
+    if min_bases_detected > 0:
+        molecules = remove_odd_clone_ids(molecules, min_bases_detected)
 
-    write_reads_or_molecules(output_dir / "molecules.txt", molecules,
-                             sort=False)
+    write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
 
     if per_cell_correction:
-        corrected_molecules = correct_clone_ids_per_cell(molecules, max_hamming,
-                                                        min_length)
+        corrected_molecules = correct_clone_ids_per_cell(
+            molecules, max_hamming, min_length
+        )
     else:
-        corrected_molecules = correct_clone_ids(molecules, max_hamming,
-                                                min_length)
-    
+        corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
+
     clone_ids = [
         m.clone_id
         for m in corrected_molecules
@@ -247,8 +248,9 @@ def run_trex(
 
     with open(output_dir / "components.txt", "w") as components_file:
         print(
-            clone_graph.components_txt(highlight_cell_ids), 
-            file=components_file, end="",
+            clone_graph.components_txt(highlight_cell_ids),
+            file=components_file,
+            end="",
         )
     if should_plot:
         logger.info("Plotting clone graph")
@@ -259,8 +261,9 @@ def run_trex(
     clone_graph.remove_edges(bridges)
     with open(output_dir / "components_corrected.txt", "w") as components_file:
         print(
-            clone_graph.components_txt(highlight_cell_ids), 
-            file=components_file, end="",
+            clone_graph.components_txt(highlight_cell_ids),
+            file=components_file,
+            end="",
         )
 
     if should_plot:

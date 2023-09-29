@@ -1,10 +1,11 @@
 import logging
-from pathlib import Path
 import shutil
+from pathlib import Path
 from types import SimpleNamespace
 
-from .. import __version__
 from trex.utils import NiceFormatter
+
+from .. import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -124,17 +125,17 @@ def add_common_arguments(parser, smartseq: bool):
 
     filter_group.add_argument(
         "--min-bases-detected",
-        help="Minimum number of bases detected a cloneID must have. "
-             "Default: %(default)s",
+        help="Minimum number of bases detected a cloneID must have. Choose negative values to completely skip removing odd barcodes."
+        "Default: %(default)s",
         type=int,
         metavar="INT",
-        default=7,
+        default=-1,
     )
     filter_group.add_argument(
         "--per-cell",
         help="Perform Hamming distance correction per cell. Default: False",
         default=False,
-        action="store_true"
+        action="store_true",
     )
     filter_group.add_argument(
         "--min-length",
