@@ -100,7 +100,7 @@ def main(args):
             sample_names=sample_names,
             prefix=args.prefix,
             min_bases_detected=args.min_bases_detected,
-            per_cell_correction=args.per_cell,
+            correct_per_cell=args.correct_per_cell,
             max_hamming=args.max_hamming,
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
@@ -160,7 +160,7 @@ def run_trex(
     sample_names: List[str],
     prefix: bool,
     min_bases_detected: int,
-    per_cell_correction: bool,
+    correct_per_cell: bool,
     max_hamming: int,
     min_length: int,
     jaccard_threshold: float,
@@ -207,7 +207,7 @@ def run_trex(
 
     write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
 
-    if per_cell_correction:
+    if correct_per_cell:
         corrected_molecules = correct_clone_ids_per_cell(
             molecules, max_hamming, min_length
         )

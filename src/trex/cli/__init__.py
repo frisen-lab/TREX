@@ -136,6 +136,7 @@ def add_common_arguments(parser, smartseq: bool):
         help="Perform Hamming distance correction per cell. Default: False",
         default=False,
         action="store_true",
+        dest="correct_per_cell",
     )
     filter_group.add_argument(
         "--min-length",
