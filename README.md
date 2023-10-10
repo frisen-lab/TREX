@@ -235,6 +235,11 @@ Example:
     #cell_id          umi         clone_id
     TGACGGCGTTACCAGT  AAAAAACTGT  TGTCAATCGTTCGGTTGAGCAAGATCTTAG
 
+- The character `0` in a cloneIDs signals a deleted base (CIGAR operation
+  `D` in the input BAM file).
+- If the read does not fully cover the cloneID region, the cloneID contains
+  the character `-` for each missing base.
+
 
 ### `molecules.txt`
 
