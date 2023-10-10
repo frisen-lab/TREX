@@ -141,7 +141,7 @@ def add_common_arguments(parser, smartseq: bool):
     filter_group.add_argument(
         "--jaccard-threshold",
         type=float,
-        default=0,
+        default=0.7,
         metavar="VALUE",
         help="If the Jaccard index between cloneIDs of two cells is higher than VALUE, they "
         "are considered similar. Default: %(default)s",

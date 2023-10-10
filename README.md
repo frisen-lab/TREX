@@ -28,6 +28,11 @@ You need to repeat this step in every new shell in order to be able to run TREX.
 Finally, test the installation by running `trex --version`.
 
 
+# Changelog
+
+See [Changelog](CHANGES.md).
+
+
 # Running TREX on a minimal test dataset
 
 Clone the Git repository or [download it as a ZIP file](https://github.com/frisen-lab/TREX/archive/main.zip) and unpack it.
@@ -178,9 +183,9 @@ the number of overlapping, unique cloneIDs between cell A and B by the total
 number of unique cloneIDs in cell A and B. An index of 0.0 indicates no 
 overlapping cloneIDs and an index of 1.0 a perfect match. The Jaccard 
 threshold is the Jaccard index above which two cells are merged into one
-clone. It can be set with the `--jaccard-threshold` flag and is 0.0 
-by default, meaning cell A and B are merged into one clone if they have
-at least one cloneID in common. 
+clone. It can be set with the `--jaccard-threshold` flag and is 0.7
+by default, meaning cell A and B are merged into one clone if they have more
+than 70% of cloneIDs in common.
 
 
 ### Filter cellids

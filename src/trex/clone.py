@@ -32,7 +32,7 @@ class Clone:
 
 
 class CloneGraph:
-    def __init__(self, cells: List[Cell], jaccard_threshold: float = 0):
+    def __init__(self, cells: List[Cell], jaccard_threshold: float):
         self._jaccard_threshold = jaccard_threshold
         self._clones = self._precluster_cells(cells)
         self._graph = self._make_graph()
