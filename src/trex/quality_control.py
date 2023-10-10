@@ -67,11 +67,10 @@ def load_umi_count_matrix(data_dir: pathlib.Path):
 
 def load_clone_ids(data_dir: pathlib.Path):
     """Loads saved clone id and cell id into a DataFrame."""
-    df = pd.read_csv(data_dir / "clones.txt", delimiter="\t")
+    df = pd.read_csv(data_dir / "clones.txt", sep=None)
 
     # In case previous version of clones is loaded, clone_nr was called #clone_id
     if "clone_nr" not in df.columns:
-        df = pd.read_csv(data_dir / "clones.txt")
         df.rename(columns={"#clone_id": "clone_nr"}, inplace=True)
     return df
 
