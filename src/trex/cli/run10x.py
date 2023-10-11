@@ -1,10 +1,11 @@
 """
 Run on single cell 10X Chromium or spatial Visium data processed by Cell / Space Ranger software
 """
+import re
 import sys
 import logging
 from pathlib import Path
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import List, Dict, Iterable
 
 import pandas as pd
@@ -95,6 +96,7 @@ def main(args):
             amplicon_inputs=amplicon_inputs,
             sample_names=sample_names,
             prefix=args.prefix,
+            correct_per_cell=args.correct_per_cell,
             max_hamming=args.max_hamming,
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
@@ -125,6 +127,13 @@ def add_arguments(parser):
         help="Adjust filter settings for 10x Visium data: Filter out cloneIDs only based on "
         "one read, but keep those with only one UMI",
     )
+    groups.filter.add_argument(
+        "--per-cell",
+        help="Use only cloneIDs within the same cell for cloneID correction. Default: Use cloneIDs from all cells",
+        default=False,
+        action="store_true",
+        dest="correct_per_cell",
+    )
 
     groups.output.add_argument(
         "-l",
@@ -154,6 +163,7 @@ def run_trex(
     sample_names: List[str],
     prefix: bool,
     max_hamming: int,
+    correct_per_cell: bool,
     min_length: int,
     jaccard_threshold: float,
     keep_single_reads: bool,
@@ -196,7 +206,10 @@ def run_trex(
 
     write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
 
-    corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
+    if correct_per_cell:
+        corrected_molecules = correct_clone_ids_per_cell(molecules, max_hamming, min_length)
+    else:
+        corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
     clone_ids = [
         m.clone_id
         for m in corrected_molecules
@@ -350,6 +363,80 @@ def correct_clone_ids(
         new_molecules.append(molecule._replace(clone_id=clone_id))
     return new_molecules
 
+
+def correct_clone_ids_per_cell(
+    molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
+) -> List[Molecule]:
+    """
+    Attempt to correct sequencing errors in the CloneID sequences of all
+    molecules looking for similar sequences in the same cell.
+    """
+    # Obtain all cloneIDs (including those with '-' and '0')
+    clone_ids = [m.clone_id for m in molecules]
+
+    # Count the full-length cloneIDs
+    counts = Counter(clone_ids)
+
+    cell_dict = defaultdict(list)
+    for molecule in molecules:
+        cell_dict[molecule.cell_id].append((molecule.umi, molecule.clone_id))
+
+    # Cluster them by Hamming distance
+    def is_similar(s, t):
+        # m = max_hamming
+        bad_chars = {'-', '0'}
+        if bad_chars & set(s) or bad_chars & set(t):
+            # Remove suffix and/or prefix where sequences do not overlap
+            s = s.lstrip("-0")
+            t = t[-len(s):]
+            t = t.lstrip("-0")
+            s = s[-len(t):]
+            s = s.rstrip("-0")
+            if len(s) < min_overlap:
+                return False
+            t = t[: len(s)]
+            t = t.rstrip("-0")
+            if len(t) < min_overlap:
+                return False
+            s = s[: len(t)]
+            # TODO allowed Hamming distance should be reduced relative to the
+            #  overlap length
+            # m = max_hamming * len(s) / len(original_length_of_s)
+        return hamming_distance(s, t) <= max_hamming
+
+    cell_correction_map = defaultdict(dict)
+
+    for cell_id, cell_molecules in cell_dict.items():
+        cell_clone_ids = set([m[1] for m in cell_molecules])
+
+        if len(cell_clone_ids) > 1:
+            cell_clone_ids = list(cell_clone_ids)
+            clusters = cluster_sequences(cell_clone_ids, is_similar=is_similar,
+                                         k=0)
+
+            for cluster in clusters:
+                if len(cluster) > 1:
+                    # Pick most frequent cloneID as representative
+                    longest = max([len(re.sub('[0-]', '', x)) for x in cluster])
+                    subcluster = [x for x in cluster if
+                                  len(re.sub('[0|-]', '', x)) == longest]
+                    representative = max(subcluster,
+                                         key=lambda bc: (counts[bc], bc))
+                    cell_correction_map[cell_id].update(
+                        {clone_id: representative for clone_id in cluster if
+                         clone_id != representative})
+
+    def get_correct_molecule(molecule):
+        this_correction_map = cell_correction_map.get(molecule.cell_id, None)
+        if this_correction_map is not None:
+            new_clone_id = this_correction_map.get(molecule.clone_id,
+                                                  molecule.clone_id)
+            molecule = molecule._replace(clone_id=new_clone_id)
+        return molecule
+
+    # Create a new list of molecules in which the cloneIDs have been replaced
+    # by their representatives
+    return [get_correct_molecule(molecule) for molecule in molecules]
 
 def filter_visium(
     cells: Iterable[Cell],
