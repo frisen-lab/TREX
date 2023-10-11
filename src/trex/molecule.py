@@ -93,7 +93,7 @@ def remove_odd_clone_ids(molecules: List[Molecule], min_length: int = 7) -> List
     """
     def acceptable_clone_id(clone_id: str):
         detected_clone_id = re.sub("[-0]", "", clone_id)
-        if len(detected_clone_id) <= min_length:
+        if len(detected_clone_id) < min_length:
             return False
         else:
             return True
