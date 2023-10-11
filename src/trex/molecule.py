@@ -103,53 +103,6 @@ def remove_odd_clone_ids(molecules: List[Molecule],
     return new_molecules
 
 
-def correct_clone_ids(
-    molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
-) -> List[Molecule]:
-    """
-    Attempt to correct sequencing errors in the cloneID sequences of all molecules
-    """
-    # Obtain all cloneIDs (including those with '-' and '0')
-    clone_ids = [m.clone_id for m in molecules]
-
-    # Count the full-length cloneIDs
-    counts = Counter(clone_ids)
-
-    # Cluster them by Hamming distance
-    def is_similar(s, t):
-        # m = max_hamming
-        if "-" in s or "-" in t:
-            # Remove suffix and/or prefix where sequences do not overlap
-            s = s.lstrip("-")
-            t = t[-len(s) :]
-            s = s.rstrip("-")
-            if len(s) < min_overlap:
-                return False
-            t = t[: len(s)]
-            # TODO allowed Hamming distance should be reduced relative to the overlap length
-            # m = max_hamming * len(s) / len(original_length_of_s)
-        return hamming_distance(s, t) <= max_hamming
-
-    clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
-
-    # Map non-singleton cloneIDs to a cluster representative
-    clone_id_map = dict()
-    for cluster in clusters:
-        if len(cluster) > 1:
-            # Pick most frequent cloneID as representative
-            representative = max(cluster, key=lambda bc: (counts[bc], bc))
-            for clone_id in cluster:
-                clone_id_map[clone_id] = representative
-
-    # Create a new list of molecules in which the cloneIDs have been replaced
-    # by their representatives
-    new_molecules = []
-    for molecule in molecules:
-        clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
-        new_molecules.append(molecule._replace(clone_id=clone_id))
-    return new_molecules
-
-
 def correct_clone_ids_per_cell(
     molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
 ) -> List[Molecule]:

@@ -1,40 +1,37 @@
 """
 Run on single cell 10X Chromium or spatial Visium data processed by Cell / Space Ranger software
 """
-import logging
 import sys
-from collections import Counter
+import logging
 from pathlib import Path
-from typing import Dict, Iterable, List
+from collections import Counter
+from typing import List, Dict, Iterable
 
+from tinyalign import hamming_distance
 import pandas as pd
 
-from .. import __version__
-from ..cell import Cell, compute_cells
-from ..cellranger import CellRangerError, make_cellranger
-from ..clone import CloneGraph
-from ..dataset import DatasetReader
-from ..error import TrexError
-from ..molecule import (
-    Molecule,
-    compute_molecules,
-    correct_clone_ids,
-    correct_clone_ids_per_cell,
-    remove_odd_clone_ids,
-)
-from ..writers import (
-    write_cells,
-    write_count_matrix,
-    write_loom,
-    write_reads_or_molecules,
-)
 from . import (
+    setup_logging,
     CommandLineError,
-    add_common_arguments,
     add_file_logging,
     make_output_dir,
-    setup_logging,
+    add_common_arguments,
 )
+from .. import __version__
+from ..cellranger import make_cellranger, CellRangerError
+from ..writers import (
+    write_count_matrix,
+    write_cells,
+    write_reads_or_molecules,
+    write_loom,
+)
+from ..clustering import cluster_sequences
+from ..clone import CloneGraph
+from ..molecule import Molecule, compute_molecules, correct_clone_ids_per_cell, remove_odd_clone_ids
+from ..cell import Cell, compute_cells
+from ..error import TrexError
+from ..dataset import DatasetReader
+
 
 __author__ = "leonie.von.berlin@ki.se"
 
@@ -316,6 +313,53 @@ def read_allowed_cellids(path):
         allowed_ids.append(cell_id)
     logger.info(f"Restricting analysis to {len(allowed_ids)} allowed cells")
     return set(allowed_ids)
+
+
+def correct_clone_ids(
+    molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
+) -> List[Molecule]:
+    """
+    Attempt to correct sequencing errors in the cloneID sequences of all molecules
+    """
+    # Obtain all cloneIDs (including those with '-' and '0')
+    clone_ids = [m.clone_id for m in molecules]
+
+    # Count the full-length cloneIDs
+    counts = Counter(clone_ids)
+
+    # Cluster them by Hamming distance
+    def is_similar(s, t):
+        # m = max_hamming
+        if "-" in s or "-" in t:
+            # Remove suffix and/or prefix where sequences do not overlap
+            s = s.lstrip("-")
+            t = t[-len(s) :]
+            s = s.rstrip("-")
+            if len(s) < min_overlap:
+                return False
+            t = t[: len(s)]
+            # TODO allowed Hamming distance should be reduced relative to the overlap length
+            # m = max_hamming * len(s) / len(original_length_of_s)
+        return hamming_distance(s, t) <= max_hamming
+
+    clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
+
+    # Map non-singleton cloneIDs to a cluster representative
+    clone_id_map = dict()
+    for cluster in clusters:
+        if len(cluster) > 1:
+            # Pick most frequent cloneID as representative
+            representative = max(cluster, key=lambda bc: (counts[bc], bc))
+            for clone_id in cluster:
+                clone_id_map[clone_id] = representative
+
+    # Create a new list of molecules in which the cloneIDs have been replaced
+    # by their representatives
+    new_molecules = []
+    for molecule in molecules:
+        clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
+        new_molecules.append(molecule._replace(clone_id=clone_id))
+    return new_molecules
 
 
 def filter_visium(

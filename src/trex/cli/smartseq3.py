@@ -10,7 +10,7 @@ from typing import List, Dict, Iterable
 from tinyalign import hamming_distance
 import pandas as pd
 
-from .run10x import read_allowed_cellids
+from .run10x import read_allowed_cellids, correct_clone_ids
 from . import (
     setup_logging,
     CommandLineError,
@@ -26,7 +26,7 @@ from ..writers import (
 )
 from ..clustering import cluster_sequences
 from ..clone import CloneGraph
-from ..molecule import Molecule, compute_molecules, correct_clone_ids
+from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
 from ..error import TrexError
 from ..dataset import DatasetReader
