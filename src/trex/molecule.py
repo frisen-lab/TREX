@@ -2,11 +2,25 @@
 A molecule is a DNA/RNA fragment that has potentially been sequenced multiple times
 """
 from dataclasses import dataclass
+import math
 from typing import List
-from collections import defaultdict
+from collections import defaultdict, Counter
 import numpy as np
 
 from .bam import Read
+
+# Threshold for low-complexity cloneIDs
+MIN_SHANNON_ENTROPY = 1.0
+
+
+def shannon_entropy(s: str) -> float:
+    """Return the empirical Shannon entropy in bits"""
+    n = len(s)
+    counts = Counter(s)
+    relative_frequencies = [count / n for count in counts.values()]
+    entropy = sum(-math.log2(freq) * freq for freq in relative_frequencies)
+
+    return entropy
 
 
 @dataclass
@@ -17,7 +31,13 @@ class Molecule:
     read_count: int
 
     def is_low_complexity(self) -> bool:
-        return len(set(self.trimmed_clone_id)) <= 1
+        """
+        Return True for low-complexity cloneIDs such as
+        AAAAAAAAAAAAAAAAAAAAAAAAAAGAAA
+        or even
+        T-----------------------------
+        """
+        return shannon_entropy(self.clone_id) < MIN_SHANNON_ENTROPY
 
     @property
     def trimmed_clone_id(self) -> str:

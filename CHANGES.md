@@ -9,5 +9,8 @@
   subclusters are detected and removed. The cell IDs of detected doublets
   are written to `doublets.txt`. Doublet detection can be disabled with
   `--keep-doublets`.
-* Added a filter to `run10x` that always removes low-complexity cloneIDs
-  (those consisting of a single, repeated nucleotide such as `AAAA...`)
+* Added a filter to `run10x` that always removes cloneIDs with a highly
+  uneven distribution of nucleotide frequencies (low-complexity cloneIDs,
+  measured using Shannon entropy).
+  This includes, for example, cloneIDs consisting of a single, repeated
+  nucleotide such as `AAAA...`, but also `AAAAAAAAAAAAAAAAAAAAAAAAAAGAAA`.
