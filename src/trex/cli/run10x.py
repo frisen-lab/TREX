@@ -298,6 +298,20 @@ def read_allowed_cellids(path):
     return set(allowed_ids)
 
 
+def is_similar(s: str, t: str, min_overlap: int, max_hamming: int):
+    if "-" in s or "-" in t:
+        # Remove suffix and/or prefix where sequences do not overlap
+        s = s.lstrip("-")
+        t = t[-len(s) :]
+        s = s.rstrip("-")
+        if len(s) < min_overlap:
+            return False
+        t = t[: len(s)]
+        # TODO allowed Hamming distance should be reduced relative to the overlap length
+        # m = max_hamming * len(s) / len(original_length_of_s)
+    return hamming_distance(s, t) <= max_hamming
+
+
 def correct_clone_ids(
     molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
 ) -> List[Molecule]:
@@ -311,21 +325,7 @@ def correct_clone_ids(
     counts = Counter(clone_ids)
 
     # Cluster them by Hamming distance
-    def is_similar(s, t):
-        # m = max_hamming
-        if "-" in s or "-" in t:
-            # Remove suffix and/or prefix where sequences do not overlap
-            s = s.lstrip("-")
-            t = t[-len(s) :]
-            s = s.rstrip("-")
-            if len(s) < min_overlap:
-                return False
-            t = t[: len(s)]
-            # TODO allowed Hamming distance should be reduced relative to the overlap length
-            # m = max_hamming * len(s) / len(original_length_of_s)
-        return hamming_distance(s, t) <= max_hamming
-
-    clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
+    clusters = cluster_sequences(list(set(clone_ids)), is_similar=lambda s, t: is_similar(s, t, min_overlap, max_hamming), k=7)
 
     # Map non-singleton cloneIDs to a cluster representative
     clone_id_map = dict()
