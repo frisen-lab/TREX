@@ -16,6 +16,16 @@ class Molecule:
     clone_id: str
     read_count: int
 
+    def is_low_complexity(self) -> bool:
+        return len(set(self.trimmed_clone_id)) <= 1
+
+    @property
+    def trimmed_clone_id(self) -> str:
+        """
+        Return cloneID without "0" and "-"
+        """
+        return self.clone_id.replace("-", "").replace("0", "")
+
 
 def compute_molecules(reads: List[Read]) -> List[Molecule]:
     """
