@@ -1,11 +1,10 @@
 import logging
-import shutil
 from pathlib import Path
+import shutil
 from types import SimpleNamespace
 
-from trex.utils import NiceFormatter
-
 from .. import __version__
+from trex.utils import NiceFormatter
 
 logger = logging.getLogger(__name__)
 
