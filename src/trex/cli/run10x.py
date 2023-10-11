@@ -298,18 +298,25 @@ def read_allowed_cellids(path):
     return set(allowed_ids)
 
 
-def is_similar(s: str, t: str, min_overlap: int, max_hamming: int):
-    if "-" in s or "-" in t:
-        # Remove suffix and/or prefix where sequences do not overlap
-        s = s.lstrip("-")
-        t = t[-len(s) :]
-        s = s.rstrip("-")
-        if len(s) < min_overlap:
-            return False
-        t = t[: len(s)]
-        # TODO allowed Hamming distance should be reduced relative to the overlap length
-        # m = max_hamming * len(s) / len(original_length_of_s)
-    return hamming_distance(s, t) <= max_hamming
+def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
+    if len(s) != len(t):
+        raise IndexError("Sequences do not have the same length")
+
+    matches = 0
+    mismatches = 0
+    for ch1, ch2 in zip(s, t):
+        if ch1 == "-" or ch1 == "0" or ch2 == "-" or ch2 == "0":
+            continue
+        if ch1 == ch2:
+            matches += 1
+        else:
+            mismatches += 1
+    if matches + mismatches < min_overlap:
+        return False
+    if mismatches > max_hamming:
+        return False
+    return True
+    # TODO allowed Hamming distance should be reduced relative to the overlap length
 
 
 def correct_clone_ids(

@@ -43,3 +43,6 @@ def test_is_similar(s, t, similar):
     assert is_similar(s, t, min_overlap, max_hamming) == similar
     # Must be symmetric
     assert is_similar(t, s, min_overlap, max_hamming) == similar
+
+    assert is_similar(s.replace("-", "0"), t, min_overlap, max_hamming) == similar
+    assert is_similar(s, t.replace("-", "0"), min_overlap, max_hamming) == similar
