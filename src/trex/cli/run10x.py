@@ -27,7 +27,7 @@ from ..writers import (
 )
 from ..clustering import cluster_sequences
 from ..clone import CloneGraph
-from ..molecule import Molecule, compute_molecules, correct_clone_ids_per_cell, remove_odd_clone_ids
+from ..molecule import Molecule, compute_molecules, correct_clone_ids_per_cell, remove_too_short_clone_ids
 from ..cell import Cell, compute_cells
 from ..error import TrexError
 from ..dataset import DatasetReader
@@ -200,7 +200,7 @@ def run_trex(
     )
 
     if min_bases_detected > 0:
-        molecules = remove_odd_clone_ids(molecules, min_bases_detected)
+        molecules = remove_too_short_clone_ids(molecules, min_bases_detected)
 
     write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
 

@@ -87,20 +87,14 @@ def compute_consensus(sequences):
     return "".join(letters[bin_consens])
 
 
-def remove_odd_clone_ids(molecules: List[Molecule], min_length: int = 7) -> List[Molecule]:
+def remove_too_short_clone_ids(molecules: List[Molecule], min_length: int) -> List[Molecule]:
     """
-    Discard cloneIDs shorter than min_bases_detected
+    Discard cloneIDs shorter than min_length
     """
-    def acceptable_clone_id(clone_id: str):
-        detected_clone_id = re.sub("[-0]", "", clone_id)
-        if len(detected_clone_id) < min_length:
-            return False
-        else:
-            return True
-
-    new_molecules = [mol for mol in molecules if acceptable_clone_id(
-        mol.clone_id)]
-    return new_molecules
+    return [
+        m for m in molecules
+        if len(m.clone_id.replace("0", "").replace("-", "")) >= min_length
+    ]
 
 
 def correct_clone_ids_per_cell(
