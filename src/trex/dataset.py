@@ -46,15 +46,6 @@ class DatasetReader:
             require_umis,
             cell_id_tag,
         )
-        '''
-        if require_umis:
-            umis = list()
-            for read in reads:
-                if read.umi:
-                    umis.append(read.umi)
-            assert len(umis) > 0, "No UMIs"
-        assert len(reads) > 0, "No reads"
-        '''
         return reads
 
     def read_all(
