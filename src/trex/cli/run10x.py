@@ -382,28 +382,6 @@ def correct_clone_ids_per_cell(
         cell_dict[molecule.cell_id].append((molecule.umi, molecule.clone_id))
 
     # Cluster them by Hamming distance
-    def is_similar(s, t):
-        # m = max_hamming
-        bad_chars = {'-', '0'}
-        if bad_chars & set(s) or bad_chars & set(t):
-            # Remove suffix and/or prefix where sequences do not overlap
-            s = s.lstrip("-0")
-            t = t[-len(s):]
-            t = t.lstrip("-0")
-            s = s[-len(t):]
-            s = s.rstrip("-0")
-            if len(s) < min_overlap:
-                return False
-            t = t[: len(s)]
-            t = t.rstrip("-0")
-            if len(t) < min_overlap:
-                return False
-            s = s[: len(t)]
-            # TODO allowed Hamming distance should be reduced relative to the
-            #  overlap length
-            # m = max_hamming * len(s) / len(original_length_of_s)
-        return hamming_distance(s, t) <= max_hamming
-
     cell_correction_map = defaultdict(dict)
 
     for cell_id, cell_molecules in cell_dict.items():
@@ -411,8 +389,11 @@ def correct_clone_ids_per_cell(
 
         if len(cell_clone_ids) > 1:
             cell_clone_ids = list(cell_clone_ids)
-            clusters = cluster_sequences(cell_clone_ids, is_similar=is_similar,
-                                         k=0)
+            clusters = cluster_sequences(
+                cell_clone_ids,
+                is_similar=lambda s, t: is_similar(s, t, min_overlap, max_hamming),
+                k=0,
+            )
 
             for cluster in clusters:
                 if len(cluster) > 1:
@@ -437,6 +418,7 @@ def correct_clone_ids_per_cell(
     # Create a new list of molecules in which the cloneIDs have been replaced
     # by their representatives
     return [get_correct_molecule(molecule) for molecule in molecules]
+
 
 def filter_visium(
     cells: Iterable[Cell],
