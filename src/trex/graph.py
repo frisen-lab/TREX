@@ -18,6 +18,11 @@ class Graph:
         self._nodes[node1].remove(node2)
         self._nodes[node2].remove(node1)
 
+    def remove_node(self, node):
+        for neighbor in list(self._nodes[node]):
+            self._nodes[neighbor] = [n for n in self._nodes[neighbor] if n != node]
+        del self._nodes[node]
+
     def connected_components(self):
         """Return a list of connected components."""
         visited = set()
