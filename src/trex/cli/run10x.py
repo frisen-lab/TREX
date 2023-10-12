@@ -371,43 +371,43 @@ def correct_clone_ids_per_cell(
     Attempt to correct sequencing errors in the CloneID sequences of all
     molecules looking for similar sequences in the same cell.
     """
-    # Obtain all cloneIDs (including those with '-' and '0')
-    clone_ids = [m.clone_id for m in molecules]
+    # Count all cloneIDs (including those with '-' and '0')
+    counts = Counter(m.clone_id for m in molecules)
 
-    # Count the full-length cloneIDs
-    counts = Counter(clone_ids)
-
-    cell_dict = defaultdict(list)
+    # Group molecules into cells
+    cells: defaultdict[str, List[Molecule]] = defaultdict(list)
     for molecule in molecules:
-        cell_dict[molecule.cell_id].append((molecule.umi, molecule.clone_id))
+        cells[molecule.cell_id].append(molecule)
 
-    # Cluster them by Hamming distance
+    # Iterate over cells
     cell_correction_map = defaultdict(dict)
+    for cell_id, cell_molecules in cells.items():
+        cell_clone_ids = list(set(m.clone_id for m in cell_molecules))
 
-    for cell_id, cell_molecules in cell_dict.items():
-        cell_clone_ids = set([m[1] for m in cell_molecules])
+        if len(cell_clone_ids) < 2:
+            continue
+        clusters = cluster_sequences(
+            cell_clone_ids,
+            is_similar=lambda s, t: is_similar(s, t, min_overlap, max_hamming),
+            k=0,
+        )
+        for cluster in clusters:
+            if len(cluster) < 2:
+                continue
 
-        if len(cell_clone_ids) > 1:
-            cell_clone_ids = list(cell_clone_ids)
-            clusters = cluster_sequences(
-                cell_clone_ids,
-                is_similar=lambda s, t: is_similar(s, t, min_overlap, max_hamming),
-                k=0,
+            # Pick most frequent cloneID as representative
+            longest = max(len(re.sub('[0-]', '', x)) for x in cluster)
+            subcluster = [
+                x for x in cluster if
+                len(re.sub('[0-]', '', x)) == longest
+            ]
+            representative = max(subcluster, key=lambda clone_id: (counts[clone_id], clone_id))
+            cell_correction_map[cell_id].update(
+                {clone_id: representative for clone_id in cluster if
+                 clone_id != representative}
             )
 
-            for cluster in clusters:
-                if len(cluster) > 1:
-                    # Pick most frequent cloneID as representative
-                    longest = max([len(re.sub('[0-]', '', x)) for x in cluster])
-                    subcluster = [x for x in cluster if
-                                  len(re.sub('[0|-]', '', x)) == longest]
-                    representative = max(subcluster,
-                                         key=lambda bc: (counts[bc], bc))
-                    cell_correction_map[cell_id].update(
-                        {clone_id: representative for clone_id in cluster if
-                         clone_id != representative})
-
-    def get_correct_molecule(molecule):
+    def corrected_molecule(molecule):
         this_correction_map = cell_correction_map.get(molecule.cell_id, None)
         if this_correction_map is not None:
             new_clone_id = this_correction_map.get(molecule.clone_id,
@@ -417,7 +417,7 @@ def correct_clone_ids_per_cell(
 
     # Create a new list of molecules in which the cloneIDs have been replaced
     # by their representatives
-    return [get_correct_molecule(molecule) for molecule in molecules]
+    return [corrected_molecule(molecule) for molecule in molecules]
 
 
 def filter_visium(
