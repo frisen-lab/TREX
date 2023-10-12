@@ -8,6 +8,14 @@ from .cellranger import make_cellranger
 
 logger = logging.getLogger(__name__)
 
+def find_paths(path, cell_id_tag):
+        if cell_id_tag == "CB":
+            files = [path]
+        else:
+            files = sorted(Path(path).glob("*.bam"))
+            if len(files) == 0:
+                files = [path]
+        return files
 
 class DatasetReader:
     def __init__(
@@ -19,15 +27,6 @@ class DatasetReader:
         self.start = start
         self.end = end
         self.prefix = prefix
-        
-    def find_paths(self, path, cell_id_tag):
-        if cell_id_tag == "CB":
-            files = [path]
-        else:
-            files = sorted(Path(path).glob("*.bam"))
-            if len(files) == 0:
-                files = [path]
-        return files
 
     def read_one(self, path, output_bam_path, cell_id_tag="CB", require_umis=True):
         allowed_cell_ids = None
@@ -64,7 +63,7 @@ class DatasetReader:
         assert n_transcriptome == len(names)
 
         if n_transcriptome == 1:
-            files = self.find_paths(transcriptome_inputs[0], cell_id_tag)
+            files = find_paths(transcriptome_inputs[0], cell_id_tag)
             reads = []
             for file in files:
                 reads.extend(
@@ -76,7 +75,7 @@ class DatasetReader:
                     )
                 )
             if n_amplicon == 1:
-                files = self.find_paths(amplicon_inputs[0], cell_id_tag)
+                files = find_paths(amplicon_inputs[0], cell_id_tag)
                 for file in files:
                     reads.extend(
                         self.read_one(
@@ -92,7 +91,7 @@ class DatasetReader:
                 transcriptome_inputs, amplicon_inputs, names
             ):
                 assert name is not None
-                files = self.find_paths(paths[0], cell_id_tag)
+                files = find_paths(paths[0], cell_id_tag)
                 reads = []
                 for file in files:
                     reads.exend(
@@ -104,7 +103,7 @@ class DatasetReader:
                         )
                     )
                 if paths[1]:
-                    files = self.find_paths(paths[1], cell_id_tag)
+                    files = find_paths(paths[1], cell_id_tag)
                     for file in files:
                         reads.extend(
                                 self.read_one(
