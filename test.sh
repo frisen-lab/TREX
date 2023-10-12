@@ -22,3 +22,4 @@ trex qc trex_run
 
 # Ensure --per-cell works
 trex run10x --per-cell --delete -s 695 -e 724 -o trex_per_cell tests/data
+diff -u <(sed 1d tests/expected_per_cell/log.txt) <(sed 1d trex_per_cell/log.txt)
