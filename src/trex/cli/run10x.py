@@ -248,14 +248,17 @@ def run_trex(
         )
 
     bridges = clone_graph.bridges()
-    logger.info(f"Removing {len(bridges)} bridges from the graph")
+    logger.info(f"Removing {len(bridges)} bridges from the graph (first round)")
     clone_graph.remove_edges(bridges)
 
     doublets = clone_graph.doublets()
     logger.info(f"Removing {len(doublets)} doublets from the graph (first round)")
     clone_graph.remove_nodes(doublets)
-    doublets2 = clone_graph.doublets()
 
+    bridges2 = clone_graph.bridges()
+    logger.info(f"Removing {len(bridges2)} bridges from the graph (second round)")
+    clone_graph.remove_edges(bridges2)
+    doublets2 = clone_graph.doublets()
     if should_plot:
         logger.info("Plotting clone graph")
         clone_graph.plot(output_dir / "graph", highlight_cell_ids, doublets2)
