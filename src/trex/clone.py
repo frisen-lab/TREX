@@ -156,16 +156,16 @@ class CloneGraph:
 
         return [(most_abundant_clone_id(cells), cells) for cells in clusters]
 
-    def plot(self, path, highlight_cell_ids=None):
+    def plot(self, path, highlight_cell_ids=None, highlight_nodes=None):
         graphviz_path = path.with_suffix(".gv")
         with open(graphviz_path, "w") as f:
-            print(self.dot(highlight_cell_ids), file=f)
+            print(self.dot(highlight_cell_ids, highlight_nodes), file=f)
         pdf_path = str(path.with_suffix(".pdf"))
         subprocess.run(["sfdp", "-Tpdf", "-o", pdf_path, graphviz_path], check=True)
 
-    def dot(self, highlight_cell_ids=None):
-        if highlight_cell_ids is not None:
-            highlight_cell_ids = set(highlight_cell_ids)
+    def dot(self, highlight_cell_ids=None, highlight_nodes=None) -> str:
+        highlight_cell_ids = set(highlight_cell_ids) if highlight_cell_ids is not None else set()
+        highlight_nodes = set(highlight_nodes) if highlight_nodes is not None else set()
         max_width = 10
         edge_scaling = (max_width - 1) / math.log(
             max(
@@ -186,8 +186,15 @@ class CloneGraph:
             if self._graph.neighbors(node):
                 width = int(1 + node_scaling * math.log(node.n))
                 intersection = set(node.cell_ids) & highlight_cell_ids
-                hl = ",fillcolor=yellow" if intersection else ""
-                hl_label = f" ({len(intersection)})" if intersection else ""
+                if node in highlight_nodes:
+                    hl = ",fillcolor=orange"
+                    hl_label = " (doublet)"
+                elif intersection:
+                    hl = ",fillcolor=yellow"
+                    hl_label = f" ({len(intersection)})"
+                else:
+                    hl = ""
+                    hl_label = ""
                 print(
                     f'  "{node.cell_id}" [penwidth={width}{hl},label="{node.cell_id}'
                     f'\\n{node.n}{hl_label}"];',
