@@ -310,6 +310,10 @@ These are only created if option `--plot` is used.
 
 `graph_corrected.gv` and `graph.gv` are textual descriptions of the graphs in GraphViz format.
 
+### `doublets.txt`
+
+A list of the cell IDs of the cells that were detected to be doublets.
+
 
 ### `clones.txt`
 

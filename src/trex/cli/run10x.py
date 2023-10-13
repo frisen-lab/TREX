@@ -274,6 +274,10 @@ def run_trex(
         print(
             clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
+    with open(output_dir / "doublets.txt", "w") as doublets_file:
+        for clone in doublets + doublets2:
+            assert clone.n == 1
+            print(clone.cell_ids[0], file=doublets_file)
 
     clones = clone_graph.clones()
     with open(output_dir / "clones.txt", "w") as f:
