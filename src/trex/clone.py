@@ -113,6 +113,10 @@ class CloneGraph:
         for node1, node2 in edges:
             self._graph.remove_edge(node1, node2)
 
+    def remove_nodes(self, nodes):
+        for node in nodes:
+            self._graph.remove_node(node)
+
     @staticmethod
     def _expand_clones(clones: List[Clone]) -> List[Cell]:
         """Expand a list of Clone instances into a list of Cells"""

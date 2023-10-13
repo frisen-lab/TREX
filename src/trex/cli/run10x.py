@@ -246,24 +246,31 @@ def run_trex(
         print(
             clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
-    if should_plot:
-        logger.info("Plotting clone graph")
-        clone_graph.plot(output_dir / "graph", highlight_cell_ids)
 
     bridges = clone_graph.bridges()
     logger.info(f"Removing {len(bridges)} bridges from the graph")
     clone_graph.remove_edges(bridges)
-    with open(output_dir / "components_corrected.txt", "w") as components_file:
-        print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
-        )
 
     doublets = clone_graph.doublets()
-    logger.info(f"Found {len(doublets)} doublets")
+    logger.info(f"Removing {len(doublets)} doublets from the graph (first round)")
+    clone_graph.remove_nodes(doublets)
+    doublets2 = clone_graph.doublets()
+
+    if should_plot:
+        logger.info("Plotting clone graph")
+        clone_graph.plot(output_dir / "graph", highlight_cell_ids, doublets2)
+
+    logger.info(f"Removing {len(doublets2)} doublets from the graph (second round)")
+    clone_graph.remove_nodes(doublets2)
 
     if should_plot:
         logger.info("Plotting corrected clone graph")
         clone_graph.plot(output_dir / "graph_corrected", highlight_cell_ids)
+
+    with open(output_dir / "components_corrected.txt", "w") as components_file:
+        print(
+            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+        )
 
     clones = clone_graph.clones()
     with open(output_dir / "clones.txt", "w") as f:
