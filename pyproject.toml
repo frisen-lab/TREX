@@ -40,3 +40,6 @@ trex = "trex.__main__:main"
 
 [tool.setuptools_scm]
 write_to = "src/trex/_version.py"
+
+[tool.ruff]
+ignore = ["E501"]  # line too long
