@@ -98,13 +98,10 @@ class CloneGraph:
         doublets = []
         for node in self._graph.nodes():
             neighbors = self._graph.neighbors(node)
-            n = len(neighbors)
-            if n < 2:
+            if len(neighbors) < 2:
                 continue
-            # A fully connected subgraph would have this many edges
-            expected_edges = len(neighbors) * (len(neighbors) - 1) / 2
-            actual_edges = self._graph.induced_subgraph(neighbors).count_edges()
-            if actual_edges / expected_edges < 0.5:
+            subgraph = self._graph.induced_subgraph(neighbors)
+            if len(subgraph.connected_components()) > 1:
                 doublets.append(node)
 
         return doublets
