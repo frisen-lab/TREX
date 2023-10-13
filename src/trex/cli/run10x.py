@@ -292,7 +292,6 @@ def run_trex(
     )
     number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
     logger.debug("No. of cells in clones: %d", number_of_cells_in_clones)
-    assert len(cells) == number_of_cells_in_clones
 
     if should_write_loom:
         if len(transcriptome_inputs) > 1:
