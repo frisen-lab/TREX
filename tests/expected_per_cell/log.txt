@@ -10,6 +10,7 @@ Found 103 single-read cloneIDs
 697 filtered cells remain
 Removing 0 bridges from the graph
 Removing 0 doublets from the graph (first round)
+Removing 0 bridges from the graph (second round)
 Removing 0 doublets from the graph (second round)
 Detected 11 clones
 Clone size histogram

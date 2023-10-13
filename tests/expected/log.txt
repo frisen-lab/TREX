@@ -1,5 +1,5 @@
 Trex 0.4.dev220+g35d3306
-Command line arguments: run10x --delete --loom --umi-matrix -s 695 -e 724 tests/data/
+Command line arguments: run10x --delete --keep-doublets --loom --umi-matrix -s 695 -e 724 tests/data/
 Reading cloneIDs from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
 Found 3857 reads with usable cloneIDs and UMIs. Skipped 1692 without cell id, 3 without UMI.
 Read 3857 reads containing (parts of) the cloneID (2703 full cloneIDs, 71 unique)
@@ -10,8 +10,6 @@ Found 53 single-read cloneIDs
 697 filtered cells remain
 Writing UMI matrix
 Removing 0 bridges from the graph
-Removing 0 doublets from the graph (first round)
-Removing 0 doublets from the graph (second round)
 Detected 4 clones
 Clone size histogram
  size count
