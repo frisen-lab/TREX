@@ -258,6 +258,9 @@ def run_trex(
             clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
 
+    doublets = clone_graph.doublets()
+    logger.info(f"Found {len(doublets)} doublets")
+
     if should_plot:
         logger.info("Plotting corrected clone graph")
         clone_graph.plot(output_dir / "graph_corrected", highlight_cell_ids)

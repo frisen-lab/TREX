@@ -93,6 +93,22 @@ class CloneGraph:
                 bridges.append((node1, node2))
         return bridges
 
+    def doublets(self):
+        """Find vertices that appear to incorrectly connect two unrelated subclusters"""
+        doublets = []
+        for node in self._graph.nodes():
+            neighbors = self._graph.neighbors(node)
+            n = len(neighbors)
+            if n < 2:
+                continue
+            # A fully connected subgraph would have this many edges
+            expected_edges = len(neighbors) * (len(neighbors) - 1) / 2
+            actual_edges = self._graph.induced_subgraph(neighbors).count_edges()
+            if actual_edges / expected_edges < 0.5:
+                doublets.append(node)
+
+        return doublets
+
     def remove_edges(self, edges):
         for node1, node2 in edges:
             self._graph.remove_edge(node1, node2)
