@@ -54,3 +54,17 @@ def test_remove_node(graph):
     assert sorted(graph.nodes()) == list("ACDEFG")
     assert sorted(graph.neighbors("A")) == ["D"]
     assert sorted(graph.edges()) == [("A", "D"), ("F", "G")]
+
+
+def test_induced_subgraph(graph):
+    subgraph = graph.induced_subgraph(["A", "B", "D"])
+    nodes = list(subgraph.nodes())
+    assert sorted(nodes) == ["A", "B", "D"]
+    edges = list(subgraph.edges())
+    assert sorted(edges) == [("A", "B"), ("A", "D"), ("B", "D")]
+
+
+def test_count_edges(graph):
+    assert graph.count_edges() == 6
+
+    assert Graph([]).count_edges() == 0

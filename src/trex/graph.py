@@ -66,3 +66,18 @@ class Graph:
     def neighbors(self, node):
         """Return a list of all neighbors of a node"""
         return self._nodes[node]
+
+    def induced_subgraph(self, nodes):
+        nodes_set = set(nodes)
+        new_nodes = {
+            node: [neighbor for neighbor in self._nodes[node] if neighbor in nodes_set]
+            for node in nodes
+        }
+        subgraph = Graph([])
+        subgraph._nodes = new_nodes
+
+        return subgraph
+
+    def count_edges(self) -> int:
+        """Return number of edges"""
+        return sum(len(neighbors) for neighbors in self._nodes.values()) // 2
