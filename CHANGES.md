@@ -7,4 +7,5 @@
 * #44: Fix some inconsistencies in the way cloneIDs are error-corrected.
 * #30: Added doublet filtering. Cells that appear to be connected to two
   subclusters are detected and removed. The cell IDs of detected doublets
-  is written to `doublets.txt`. 
+  is written to `doublets.txt`. Doublet detection can be disabled with
+  `--keep-doublets`.
