@@ -156,16 +156,16 @@ class CloneGraph:
 
         return [(most_abundant_clone_id(cells), cells) for cells in clusters]
 
-    def plot(self, path, highlight=None):
+    def plot(self, path, highlight_cell_ids=None):
         graphviz_path = path.with_suffix(".gv")
         with open(graphviz_path, "w") as f:
-            print(self.dot(highlight), file=f)
+            print(self.dot(highlight_cell_ids), file=f)
         pdf_path = str(path.with_suffix(".pdf"))
         subprocess.run(["sfdp", "-Tpdf", "-o", pdf_path, graphviz_path], check=True)
 
-    def dot(self, highlight=None):
-        if highlight is not None:
-            highlight = set(highlight)
+    def dot(self, highlight_cell_ids=None):
+        if highlight_cell_ids is not None:
+            highlight_cell_ids = set(highlight_cell_ids)
         max_width = 10
         edge_scaling = (max_width - 1) / math.log(
             max(
@@ -185,7 +185,7 @@ class CloneGraph:
         for node in self._graph.nodes():
             if self._graph.neighbors(node):
                 width = int(1 + node_scaling * math.log(node.n))
-                intersection = set(node.cell_ids) & highlight
+                intersection = set(node.cell_ids) & highlight_cell_ids
                 hl = ",fillcolor=yellow" if intersection else ""
                 hl_label = f" ({len(intersection)})" if intersection else ""
                 print(
