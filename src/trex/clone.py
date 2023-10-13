@@ -94,9 +94,12 @@ class CloneGraph:
         return bridges
 
     def doublets(self):
-        """Find vertices that appear to incorrectly connect two unrelated subclusters"""
+        """Find cells that appear to incorrectly connect two unrelated subclusters"""
         doublets = []
         for node in self._graph.nodes():
+            # Skip clones that represent multiple cells
+            if node.n > 1:
+                continue
             neighbors = self._graph.neighbors(node)
             if len(neighbors) < 2:
                 continue
