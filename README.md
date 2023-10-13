@@ -141,7 +141,7 @@ Please also run `trex run10x --help` (or `trex smartseq2 --help` and `trex smart
 
 ## Pipeline steps overview
 
-This is an overview of the steps that the `trex run10x`/ `trex smartseq3` command performs. 
+This is an overview of the steps that the `trex run10x`/ `trex smartseq3` command performs.
 
 1. Retrieve usable reads from the input BAM file.
    A usable read fulfills these requirements:
@@ -149,7 +149,7 @@ This is an overview of the steps that the `trex run10x`/ `trex smartseq3` comman
      `-e` flags or, if the flags are not given, to the region that
      has been automatically identified to be the region containing
      the variable cloneID sequence,
-   - it has both an associated cell ID and UMI (SAM tags `CB` and `UB` 
+   - it has both an associated cell ID and UMI (SAM tags `CB` and `UB`
      in case of 10x data , SAM tags `BC` and `UB` in case of Smart-seq3 data),
    - its cell ID is included in the list of allowed cell IDs
      (if such a list is provided with `--filter-cellid` or `-f`).
@@ -169,7 +169,7 @@ This is an overview of the steps that the `trex run10x`/ `trex smartseq3` comman
 
 `trex smartseq2` follows a similar pipeline with the following differences:
 - A useable read does not require a UMI
-- Reads do not get grouped into molecules and their cloneIDs are not collapsed 
+- Reads do not get grouped into molecules and their cloneIDs are not collapsed
   and error-corrected into consensus sequences
 
 
@@ -177,11 +177,11 @@ This is an overview of the steps that the `trex run10x`/ `trex smartseq3` comman
 
 ### Jaccard index threshold
 
-The Jaccard index measures the similarity of two sample sets, in this case 
+The Jaccard index measures the similarity of two sample sets, in this case
 the similarity of two sets of cloneIDs. It is calculated by dividing
-the number of overlapping, unique cloneIDs between cell A and B by the total 
-number of unique cloneIDs in cell A and B. An index of 0.0 indicates no 
-overlapping cloneIDs and an index of 1.0 a perfect match. The Jaccard 
+the number of overlapping, unique cloneIDs between cell A and B by the total
+number of unique cloneIDs in cell A and B. An index of 0.0 indicates no
+overlapping cloneIDs and an index of 1.0 a perfect match. The Jaccard
 threshold is the Jaccard index above which two cells are merged into one
 clone. It can be set with the `--jaccard-threshold` flag and is 0.7
 by default, meaning cell A and B are merged into one clone if they have more
@@ -190,7 +190,7 @@ than 70% of cloneIDs in common.
 
 ### Filter cellids
 
-Tab-separated file of cell IDs to keep in the TREX run. Adding this file via 
+Tab-separated file of cell IDs to keep in the TREX run. Adding this file via
 the `--filter-cellid` or `-f` option allows to focus the analysis on specific cells
 and to filter out low quality cells or doublets.
 Example:
@@ -349,7 +349,7 @@ Plotting the jaccard similarity matrix between cells requires some time as jacca
 This can be activated adding the optional flag `--plot-jaccard-matrix`.
 Hamming distance between all viral cloneIDs found in the dataset after each step can be plotted by means of the optional flag `--plot-hamming-distance`.
 
-This will add a PDF file named *quality_report.pdf* describing the quality of the TREX run inside the same folder with the TREX output. 
+This will add a PDF file named *quality_report.pdf* describing the quality of the TREX run inside the same folder with the TREX output.
 
 This report contains:
 
