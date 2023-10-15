@@ -25,9 +25,6 @@ from ..quality_control import (
     jaccard_similarity_matrix,
     load_cells,
     load_clone_ids,
-    load_molecules,
-    load_molecules_corrected,
-    load_reads,
     load_umi_count_matrix,
     plot_discrete_histogram,
     plot_jaccard_matrix,
@@ -516,11 +513,11 @@ def make_qc_report(
         Whether Hamming distance between all detected cloneIDs should be
         calculated and the histogram plotted in a per-step basis."""
     logger.info("Loading reads")
-    reads = load_reads(output_dir)
+    reads = pd.read_table(output_dir / "reads.txt")
     logger.info("Loading molecules")
-    molecules = load_molecules(output_dir)
-    logger.info("Loading molecules corrected")
-    molecules_corrected = load_molecules_corrected(output_dir)
+    molecules = pd.read_table(output_dir / "molecules.txt")
+    logger.info("Loading corrected molecules")
+    molecules_corrected = pd.read_table(output_dir / "molecules_corrected.txt")
     logger.info("Loading cells")
     cells = load_cells(output_dir, filtered=False)
     logger.info("Loading cells filtered")
