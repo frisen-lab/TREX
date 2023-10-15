@@ -20,7 +20,7 @@ from ..quality_control import (
     get_nucleotides_per_molecule,
     get_read_per_molecule,
     get_unique_clone_ids_per_cell,
-    hamming_distance_histogram,
+    plot_hamming_distance_histogram,
     jaccard_histogram,
     jaccard_similarity_matrix,
     load_cells,
@@ -479,7 +479,7 @@ def plot_hamming_distance_per_step(
         axes[0],
         ["Molecules", "Corrected Molecules"],
     ):
-        hamming_distance_histogram(df, ax=ax)
+        plot_hamming_distance_histogram(df, ax=ax)
         ax.set_title(title)
 
     for df, ax, title in zip(
@@ -487,7 +487,7 @@ def plot_hamming_distance_per_step(
         axes[1],
         ["Cells", "Filtered Cells"],
     ):
-        hamming_distance_histogram(df, ax=ax)
+        plot_hamming_distance_histogram(df, ax=ax)
         ax.set_title(title)
 
     plt.suptitle("Hamming Distance between all cloneIDs in the Dataset")

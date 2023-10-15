@@ -75,7 +75,7 @@ def load_clone_ids(data_dir: pathlib.Path):
     return df
 
 
-def read_quality(
+def plot_read_quality(
     reads: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
     """Plot histogram of how many times a molecule was read."""
@@ -207,7 +207,7 @@ def plot_discrete_histogram(
     return axes
 
 
-def molecules_per_cell(
+def plot_molecules_per_cell(
     molecules: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
     """Plot histogram of how many molecules were detected per cell."""
@@ -227,7 +227,7 @@ def molecules_per_cell(
     return ax
 
 
-def molecules_per_clone_id(
+def plot_molecules_per_clone_id(
     molecules: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
     """Plot histogram of how many molecules were detected per viral cloneID."""
@@ -248,7 +248,7 @@ def molecules_per_clone_id(
     return ax
 
 
-def unique_clone_ids_per_cell(
+def plot_unique_clone_ids_per_cell(
     molecules: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
     """Plot histogram of how many unique cloneIDs were detected per cell."""
@@ -268,7 +268,7 @@ def unique_clone_ids_per_cell(
     return ax
 
 
-def hamming_distance_histogram(
+def plot_hamming_distance_histogram(
     molecules: pd.DataFrame, ax: plt.Axes = None, ignore_incomplete: bool = True
 ) -> plt.Axes:
     """Plot histogram of Hamming distance between cloneIDs. ignore_incomplete is
