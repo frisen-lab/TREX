@@ -42,4 +42,5 @@ trex = "trex.__main__:main"
 write_to = "src/trex/_version.py"
 
 [tool.ruff]
+select = ["E", "F", "W"]
 ignore = ["E501"]  # line too long
