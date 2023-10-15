@@ -23,9 +23,9 @@ from ..quality_control import (
     plot_hamming_distance_histogram,
     jaccard_histogram,
     jaccard_similarity_matrix,
-    load_cells,
-    load_clone_ids,
-    load_umi_count_matrix,
+    read_cells,
+    read_clone_ids,
+    read_umi_count_matrix,
     plot_discrete_histogram,
     plot_jaccard_matrix,
 )
@@ -182,7 +182,7 @@ def plot_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
 def plot_jaccard_similarity_plots(data_dir: Path) -> plt.Figure:
     """Calculate and plot the jaccard similarity histogram and matrix.
     Consider that it is not optimized so it might take a long time."""
-    umi_count = load_umi_count_matrix(data_dir)
+    umi_count = read_umi_count_matrix(data_dir)
     jaccard_matrix = jaccard_similarity_matrix(umi_count)
 
     fig, axes = plt.subplots(
@@ -498,7 +498,7 @@ def make_qc_report(
     plot_jaccard: bool = False,
     plot_hamming: bool = False,
 ):
-    """Load data from trex analysis and make a pdf report.
+    """Read data from trex analysis and make a PDF report.
 
     Parameters
     ----------
@@ -512,18 +512,18 @@ def make_qc_report(
     plot_hamming: bool; Default: False
         Whether Hamming distance between all detected cloneIDs should be
         calculated and the histogram plotted in a per-step basis."""
-    logger.info("Loading reads")
+    logger.info("Reading reads ...")
     reads = pd.read_table(output_dir / "reads.txt")
-    logger.info("Loading molecules")
+    logger.info("Reading molecules ...")
     molecules = pd.read_table(output_dir / "molecules.txt")
-    logger.info("Loading corrected molecules")
+    logger.info("Reading corrected molecules ...")
     molecules_corrected = pd.read_table(output_dir / "molecules_corrected.txt")
-    logger.info("Loading cells")
-    cells = load_cells(output_dir, filtered=False)
-    logger.info("Loading cells filtered")
-    cells_filtered = load_cells(output_dir, filtered=True)
-    logger.info("Loading clones")
-    clones = load_clone_ids(output_dir)
+    logger.info("Reading cells ...")
+    cells = read_cells(output_dir, filtered=False)
+    logger.info("Reading filtered cells ...")
+    cells_filtered = read_cells(output_dir, filtered=True)
+    logger.info("Reading clones ...")
+    clones = read_clone_ids(output_dir)
 
     with PdfPages(pdf_dir) as pp:
         # Overall quality plots

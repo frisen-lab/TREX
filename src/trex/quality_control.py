@@ -10,7 +10,7 @@ import seaborn as sns
 from tinyalign import hamming_distance
 
 
-def load_cells(data_dir: pathlib.Path, filtered: bool = True) -> pd.DataFrame:
+def read_cells(data_dir: pathlib.Path, filtered: bool = True) -> pd.DataFrame:
     cells_df = []
 
     filename = "cells_filtered.txt" if filtered else "cells.txt"
@@ -39,7 +39,7 @@ def load_cells(data_dir: pathlib.Path, filtered: bool = True) -> pd.DataFrame:
     return cells_df
 
 
-def load_umi_count_matrix(data_dir: pathlib.Path):
+def read_umi_count_matrix(data_dir: pathlib.Path) -> pd.DataFrame:
     """Loads saved UMI count matrix into a DataFrame."""
     umi_dir = data_dir / "umi_count_matrix.csv"
     umi_matrix = pd.read_csv(umi_dir)
@@ -47,7 +47,7 @@ def load_umi_count_matrix(data_dir: pathlib.Path):
     return umi_matrix
 
 
-def load_clone_ids(data_dir: pathlib.Path):
+def read_clone_ids(data_dir: pathlib.Path):
     """Loads saved clone id and cell id into a DataFrame."""
     df = pd.read_table(data_dir / "clones.txt")
 
