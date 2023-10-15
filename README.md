@@ -371,3 +371,22 @@ Each of these plots has four subplots corresponding to different steps of the TR
 - Histograms of how many viral cloneID molecules have been found in each cell
 - Histograms of how many molecules of each unique cloneID have been found in the dataset
 - Histograms of How many unique cloneIDs per cell have been found
+
+
+# TREX development
+
+It is highly recommended that you develop TREX within a separate virtual environment:
+
+    python3 -m venv --prompt trex .venv
+    source .venv/bin/activate
+
+Install TREX in "editable" mode:
+
+    pip install -e .
+
+Install `pre-commit` and install the pre-commit hooks
+(these run at `git commit` time and do some checks on
+the to-be-committed files):
+
+    pip install pre-commit
+    pre-commit install
