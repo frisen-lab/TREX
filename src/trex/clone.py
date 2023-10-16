@@ -96,8 +96,8 @@ class CloneGraph:
     def doublets(self):
         """Find cells that appear to incorrectly connect two unrelated subclusters"""
         cut_vertices = self._graph.local_cut_vertices()
-        # Skip clones that represent multiple cells
-        return [node for node in cut_vertices if node.n > 1]
+        # Skip nodes that represent multiple cells
+        return [node for node in cut_vertices if node.n == 1]
 
     def remove_edges(self, edges):
         for node1, node2 in edges:
