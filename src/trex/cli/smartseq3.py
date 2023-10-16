@@ -10,7 +10,6 @@ from typing import List, Dict, Iterable
 
 from .run10x import read_allowed_cellids, correct_clone_ids
 from . import (
-    setup_logging,
     CommandLineError,
     add_file_logging,
     make_output_dir,
@@ -35,8 +34,6 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    setup_logging(debug=args.debug)
-
     output_dir = args.output
     try:
         make_output_dir(output_dir, args.delete)

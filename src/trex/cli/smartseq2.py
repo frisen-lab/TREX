@@ -9,7 +9,7 @@ from typing import List, Iterable
 
 import trex.cli
 from .run10x import read_allowed_cellids, correct_clone_ids
-from . import setup_logging, CommandLineError, add_file_logging, make_output_dir
+from . import CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
 from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
 from ..clone import CloneGraph
@@ -25,8 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    setup_logging(debug=args.debug)
-
     output_dir = args.output
     try:
         make_output_dir(output_dir, args.delete)

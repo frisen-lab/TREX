@@ -32,7 +32,7 @@ from ..quality_control import (
     plot_discrete_histogram,
     plot_jaccard_matrix,
 )
-from . import CommandLineError, add_file_logging, setup_logging
+from . import CommandLineError, add_file_logging
 
 logger = logging.getLogger(__name__)
 
@@ -595,8 +595,6 @@ def make_qc_report(
 
 
 def main(args):
-    setup_logging(debug=args.debug)
-
     for output_dir in args.path:
         if not output_dir.exists():
             raise CommandLineError(f"Directory '{output_dir}' does not exist")
