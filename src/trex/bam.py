@@ -77,7 +77,7 @@ def read_bam(
                 if allowed_cell_ids and cell_id not in allowed_cell_ids:
                     no_cell_id += 1
                     continue
-                
+
                 umi = read.get_tag("UB")
                 if umi == '':
                     umi = None

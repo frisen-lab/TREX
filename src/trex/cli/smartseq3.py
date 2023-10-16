@@ -7,8 +7,6 @@ from pathlib import Path
 from collections import Counter
 from typing import List, Dict, Iterable
 
-from tinyalign import hamming_distance
-import pandas as pd
 
 from .run10x import read_allowed_cellids, correct_clone_ids
 from . import (
@@ -24,7 +22,6 @@ from ..writers import (
     write_cells,
     write_reads_or_molecules
 )
-from ..clustering import cluster_sequences
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
