@@ -22,7 +22,6 @@ def test_is_similar_unequal_length_raises():
     ("ACGT", "ACGT", False),  # too little overlap
     ("TACGT", "TACGT", True),
     ("TACGT", "TATGT", True),
-    ("TACGT", "TATGT", True),
     ("TACGT", "TTTGT", False),  # too many differences
 
     ("------ACGT", "------ACGT", False),  # too little overlap
@@ -35,7 +34,10 @@ def test_is_similar_unequal_length_raises():
     ("TAC-----GT", "TATGGGGGGT", True),
     ("--TAC---GT--", "--TATGGGGT--", True),
     ("--TAC---GTGG", "--TATGGGGT--", True),
+    ("--TAC---TTGG", "--TATGGGGT--", False),
     ("GGTAC---GT--", "GGTATGGGGT--", True),
+    ("---00TACGT", "GGGGGTATGT", True),  # Mixing 0 and -
+    ("---00TACGT", "GGGGGTATGA", False),
 ])
 def test_is_similar(s, t, similar):
     min_overlap = 5
