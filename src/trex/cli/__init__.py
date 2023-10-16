@@ -3,14 +3,25 @@ from pathlib import Path
 import shutil
 from types import SimpleNamespace
 
-from .. import __version__
-from trex.utils import NiceFormatter
-
 logger = logging.getLogger(__name__)
 
 
 class CommandLineError(Exception):
     pass
+
+
+class NiceFormatter(logging.Formatter):
+    """
+    Do not prefix "INFO:" to info-level log messages (but do it for all other
+    levels).
+
+    Based on http://stackoverflow.com/a/9218261/715090 .
+    """
+
+    def format(self, record):
+        if record.levelno != logging.INFO:
+            record.msg = "{}: {}".format(record.levelname, record.msg)
+        return super().format(record)
 
 
 def setup_logging(debug: bool) -> None:
@@ -45,14 +56,6 @@ def make_output_dir(path, delete_if_exists):
 
 def add_common_arguments(parser, smartseq: bool):
     """Add arguments to an ArgumentParser common to both run10x and smartseq2/3"""
-
-    parser.add_argument("--version", action="version", version=__version__)
-    parser.add_argument(
-        "--debug",
-        default=False,
-        action="store_true",
-        help="Print some extra debugging messages",
-    )
 
     input_group = parser.add_argument_group("Input")
 
