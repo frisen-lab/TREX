@@ -68,3 +68,7 @@ def test_count_edges(graph):
     assert graph.count_edges() == 6
 
     assert Graph([]).count_edges() == 0
+
+
+def test_local_cut_vertices(graph):
+    assert graph.local_cut_vertices() == ["B"]
