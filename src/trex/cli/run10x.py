@@ -7,7 +7,6 @@ from pathlib import Path
 from collections import Counter
 from typing import List, Dict, Iterable
 
-from tinyalign import hamming_distance
 import pandas as pd
 
 from . import (
