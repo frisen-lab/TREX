@@ -8,7 +8,7 @@ from .cellranger import make_cellranger
 
 logger = logging.getLogger(__name__)
 
-def find_paths(path, cell_id_tag):
+def find_files(path, cell_id_tag):
         if cell_id_tag == "CB":
             files = [path]
         else:
@@ -28,23 +28,26 @@ class DatasetReader:
         self.end = end
         self.prefix = prefix
 
-    def read_one(self, path, output_bam_path, cell_id_tag="CB", require_umis=True):
+    def read_multiple(self, input, output_bam_path, cell_id_tag="CB", require_umis=True):
         allowed_cell_ids = None
-        bam = path
-        if cell_id_tag == "CB":
-            cellranger_dir = make_cellranger(path, self.genome_name)
-            allowed_cell_ids = cellranger_dir.cellids()
-            bam = cellranger_dir.bam
-        reads = read_bam(
-            bam,
-            output_bam_path,
-            allowed_cell_ids,
-            self.chromosome,
-            self.start,
-            self.end,
-            require_umis,
-            cell_id_tag,
-        )
+        files = find_files(input, cell_id_tag)
+        reads = []
+        for file in files:
+            bam = file
+            if cell_id_tag == "CB":
+                cellranger_dir = make_cellranger(file, self.genome_name)
+                allowed_cell_ids = cellranger_dir.cellids()
+                bam = cellranger_dir.bam
+            reads.extend(read_bam(
+                bam,
+                output_bam_path,
+                allowed_cell_ids,
+                self.chromosome,
+                self.start,
+                self.end,
+                require_umis,
+                cell_id_tag,
+            ))
         return reads
 
     def read_all(
@@ -62,57 +65,48 @@ class DatasetReader:
         assert n_amplicon == 0 or n_amplicon == n_transcriptome
         assert n_transcriptome == len(names)
 
+# remodel these ifs and loops to fit the new read_multiple function
+
         if n_transcriptome == 1:
-            files = find_paths(transcriptome_inputs[0], cell_id_tag)
-            reads = []
-            for file in files:
+            reads = self.read_multiple(
+                transcriptome_inputs[0],
+                self.output_dir / "entries.bam",
+                cell_id_tag,
+                require_umis,
+            )
+            if n_amplicon == 1:
                 reads.extend(
-                    self.read_one(
-                        file,
-                        self.output_dir / "entries.bam",
+                    self.read_multiple(
+                        amplicon_inputs[0],
+                        self.output_dir / "amplicon_entries.bam",
                         cell_id_tag,
                         require_umis,
                     )
-                )
-            if n_amplicon == 1:
-                files = find_paths(amplicon_inputs[0], cell_id_tag)
-                for file in files:
-                    reads.extend(
-                        self.read_one(
-                            amplicon_inputs[0],
-                            self.output_dir / "amplicon_entries.bam",
-                            cell_id_tag,
-                            require_umis,
-                        )
-                    ) 
+                ) 
         else:
             datasets = []
             for *paths, name in zip_longest(
                 transcriptome_inputs, amplicon_inputs, names
             ):
                 assert name is not None
-                files = find_paths(paths[0], cell_id_tag)
                 reads = []
-                for file in files:
-                    reads.exend(
-                        self.read_one(
-                            paths[0],
-                            self.output_dir / (name + "_entries.bam"),
-                            cell_id_tag,
-                            require_umis,
-                        )
+                reads.exend(
+                    self.read_multiple(
+                        paths[0],
+                        self.output_dir / (name + "_entries.bam"),
+                        cell_id_tag,
+                        require_umis,
                     )
+                )
                 if paths[1]:
-                    files = find_paths(paths[1], cell_id_tag)
-                    for file in files:
-                        reads.extend(
-                                self.read_one(
-                                    paths[1],
-                                    self.output_dir / (name + "_amplicon_entries.bam"),
-                                    cell_id_tag,
-                                    require_umis,
-                                )
+                    reads.extend(
+                            self.read_multiple(
+                                paths[1],
+                                self.output_dir / (name + "_amplicon_entries.bam"),
+                                cell_id_tag,
+                                require_umis,
                             )
+                        )
                 datasets.append(reads)
             reads = self.merge_datasets(datasets, names)
 
