@@ -10,25 +10,7 @@ import seaborn as sns
 from tinyalign import hamming_distance
 
 
-def load_reads(data_dir: pathlib.Path) -> pd.DataFrame:
-    """Loads saved reads into a DataFrame"""
-    read_dir = data_dir / "reads.txt"
-    return pd.read_csv(read_dir, delimiter="\t")
-
-
-def load_molecules(data_dir: pathlib.Path) -> pd.DataFrame:
-    """Loads saved molecules before correcting into a DataFrame."""
-    mols_dir = data_dir / "molecules.txt"
-    return pd.read_csv(mols_dir, delimiter="\t")
-
-
-def load_molecules_corrected(data_dir: pathlib.Path) -> pd.DataFrame:
-    """Loads saved molecules after correcting into a DataFrame."""
-    mols_dir = data_dir / "molecules_corrected.txt"
-    return pd.read_csv(mols_dir, delimiter="\t")
-
-
-def load_cells(data_dir: pathlib.Path, filtered: bool = True) -> pd.DataFrame:
+def read_cells(data_dir: pathlib.Path, filtered: bool = True) -> pd.DataFrame:
     cells_df = []
 
     filename = "cells_filtered.txt" if filtered else "cells.txt"
@@ -57,7 +39,7 @@ def load_cells(data_dir: pathlib.Path, filtered: bool = True) -> pd.DataFrame:
     return cells_df
 
 
-def load_umi_count_matrix(data_dir: pathlib.Path):
+def read_umi_count_matrix(data_dir: pathlib.Path) -> pd.DataFrame:
     """Loads saved UMI count matrix into a DataFrame."""
     umi_dir = data_dir / "umi_count_matrix.csv"
     umi_matrix = pd.read_csv(umi_dir)
@@ -65,9 +47,9 @@ def load_umi_count_matrix(data_dir: pathlib.Path):
     return umi_matrix
 
 
-def load_clone_ids(data_dir: pathlib.Path):
+def read_clone_ids(data_dir: pathlib.Path):
     """Loads saved clone id and cell id into a DataFrame."""
-    df = pd.read_csv(data_dir / "clones.txt", sep=None)
+    df = pd.read_table(data_dir / "clones.txt")
 
     # In case previous version of clones is loaded, clone_nr was called #clone_id
     if "clone_nr" not in df.columns:
@@ -75,7 +57,7 @@ def load_clone_ids(data_dir: pathlib.Path):
     return df
 
 
-def read_quality(
+def plot_read_quality(
     reads: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
     """Plot histogram of how many times a molecule was read."""
@@ -207,7 +189,7 @@ def plot_discrete_histogram(
     return axes
 
 
-def molecules_per_cell(
+def plot_molecules_per_cell(
     molecules: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
     """Plot histogram of how many molecules were detected per cell."""
@@ -227,7 +209,7 @@ def molecules_per_cell(
     return ax
 
 
-def molecules_per_clone_id(
+def plot_molecules_per_clone_id(
     molecules: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
     """Plot histogram of how many molecules were detected per viral cloneID."""
@@ -248,7 +230,7 @@ def molecules_per_clone_id(
     return ax
 
 
-def unique_clone_ids_per_cell(
+def plot_unique_clone_ids_per_cell(
     molecules: pd.DataFrame, ax: plt.Axes = None, add_description: bool = True
 ) -> plt.Axes:
     """Plot histogram of how many unique cloneIDs were detected per cell."""
@@ -268,7 +250,7 @@ def unique_clone_ids_per_cell(
     return ax
 
 
-def hamming_distance_histogram(
+def plot_hamming_distance_histogram(
     molecules: pd.DataFrame, ax: plt.Axes = None, ignore_incomplete: bool = True
 ) -> plt.Axes:
     """Plot histogram of Hamming distance between cloneIDs. ignore_incomplete is
