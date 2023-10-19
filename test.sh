@@ -6,7 +6,8 @@ samtools --version > /dev/null
 
 pytest tests
 
-trex run10x --delete --loom --umi-matrix -s 695 -e 724 tests/data/
+set -x
+trex run10x --delete --keep-doublets --loom --umi-matrix -s 695 -e 724 tests/data/
 diff -ur -xdata.loom -xlog.txt -xentries.bam tests/expected trex_run
 
 diff -u <(samtools view -h --no-PG tests/expected/entries.bam) <(samtools view -h --no-PG trex_run/entries.bam) | head -n 10

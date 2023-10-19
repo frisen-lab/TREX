@@ -93,9 +93,19 @@ class CloneGraph:
                 bridges.append((node1, node2))
         return bridges
 
+    def doublets(self):
+        """Find cells that appear to incorrectly connect two unrelated subclusters"""
+        cut_vertices = self._graph.local_cut_vertices()
+        # Skip nodes that represent multiple cells
+        return [node for node in cut_vertices if node.n == 1]
+
     def remove_edges(self, edges):
         for node1, node2 in edges:
             self._graph.remove_edge(node1, node2)
+
+    def remove_nodes(self, nodes):
+        for node in nodes:
+            self._graph.remove_node(node)
 
     @staticmethod
     def _expand_clones(clones: List[Clone]) -> List[Cell]:
@@ -140,16 +150,16 @@ class CloneGraph:
 
         return [(most_abundant_clone_id(cells), cells) for cells in clusters]
 
-    def plot(self, path, highlight=None):
+    def plot(self, path, highlight_cell_ids=None, highlight_doublets=None):
         graphviz_path = path.with_suffix(".gv")
         with open(graphviz_path, "w") as f:
-            print(self.dot(highlight), file=f)
+            print(self.dot(highlight_cell_ids, highlight_doublets), file=f)
         pdf_path = str(path.with_suffix(".pdf"))
         subprocess.run(["sfdp", "-Tpdf", "-o", pdf_path, graphviz_path], check=True)
 
-    def dot(self, highlight=None):
-        if highlight is not None:
-            highlight = set(highlight)
+    def dot(self, highlight_cell_ids=None, highlight_doublets=None) -> str:
+        highlight_cell_ids = set(highlight_cell_ids) if highlight_cell_ids is not None else set()
+        highlight_doublets = set(highlight_doublets) if highlight_doublets is not None else set()
         max_width = 10
         edge_scaling = (max_width - 1) / math.log(
             max(
@@ -169,9 +179,16 @@ class CloneGraph:
         for node in self._graph.nodes():
             if self._graph.neighbors(node):
                 width = int(1 + node_scaling * math.log(node.n))
-                intersection = set(node.cell_ids) & highlight
-                hl = ",fillcolor=yellow" if intersection else ""
-                hl_label = f" ({len(intersection)})" if intersection else ""
+                intersection = set(node.cell_ids) & highlight_cell_ids
+                if node in highlight_doublets:
+                    hl = ",fillcolor=orange"
+                    hl_label = " (doublet)"
+                elif intersection:
+                    hl = ",fillcolor=yellow"
+                    hl_label = f" ({len(intersection)})"
+                else:
+                    hl = ""
+                    hl_label = ""
                 print(
                     f'  "{node.cell_id}" [penwidth={width}{hl},label="{node.cell_id}'
                     f'\\n{node.n}{hl_label}"];',

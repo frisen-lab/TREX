@@ -101,6 +101,7 @@ def main(args):
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
             keep_single_reads=args.keep_single_reads,
+            keep_doublets=args.keep_doublets,
             should_write_umi_matrix=args.umi_matrix,
             should_run_visium=args.visium,
             should_plot=args.plot,
@@ -119,6 +120,12 @@ def add_arguments(parser):
         action="store_true",
         default=False,
         help="Keep cloneIDs supported by only a single read. Default: Discard them",
+    )
+    groups.filter.add_argument(
+        "--keep-doublets",
+        action="store_true",
+        default=False,
+        help="Keep doublets. Default: Detect and remove doublets",
     )
     groups.filter.add_argument(
         "--visium",
@@ -167,6 +174,7 @@ def run_trex(
     min_length: int,
     jaccard_threshold: float,
     keep_single_reads: bool,
+    keep_doublets: bool,
     should_write_umi_matrix: bool,
     should_run_visium: bool,
     should_plot: bool,
@@ -246,21 +254,40 @@ def run_trex(
         print(
             clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
-    if should_plot:
-        logger.info("Plotting clone graph")
-        clone_graph.plot(output_dir / "graph", highlight_cell_ids)
 
     bridges = clone_graph.bridges()
     logger.info(f"Removing {len(bridges)} bridges from the graph")
     clone_graph.remove_edges(bridges)
-    with open(output_dir / "components_corrected.txt", "w") as components_file:
-        print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
-        )
+
+    if not keep_doublets:
+        doublets = clone_graph.doublets()
+        logger.info(f"Removing {len(doublets)} doublets from the graph (first round)")
+        clone_graph.remove_nodes(doublets)
+
+        bridges2 = clone_graph.bridges()
+        logger.info(f"Removing {len(bridges2)} bridges from the graph (second round)")
+        clone_graph.remove_edges(bridges2)
+        doublets2 = clone_graph.doublets()
+        if should_plot:
+            logger.info("Plotting clone graph")
+            clone_graph.plot(output_dir / "graph", highlight_cell_ids, doublets2)
+
+        logger.info(f"Removing {len(doublets2)} doublets from the graph (second round)")
+        clone_graph.remove_nodes(doublets2)
+
+        with open(output_dir / "doublets.txt", "w") as doublets_file:
+            for clone in doublets + doublets2:
+                assert clone.n == 1
+                print(clone.cell_ids[0], file=doublets_file)
 
     if should_plot:
         logger.info("Plotting corrected clone graph")
         clone_graph.plot(output_dir / "graph_corrected", highlight_cell_ids)
+
+    with open(output_dir / "components_corrected.txt", "w") as components_file:
+        print(
+            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+        )
 
     clones = clone_graph.clones()
     with open(output_dir / "clones.txt", "w") as f:
@@ -275,7 +302,6 @@ def run_trex(
     )
     number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
     logger.debug("No. of cells in clones: %d", number_of_cells_in_clones)
-    assert len(cells) == number_of_cells_in_clones
 
     if should_write_loom:
         if len(transcriptome_inputs) > 1:
