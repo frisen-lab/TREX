@@ -1,10 +1,11 @@
 """
 Run on single cell 10X Chromium or spatial Visium data processed by Cell / Space Ranger software
 """
+import re
 import sys
 import logging
 from pathlib import Path
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import List, Dict, Iterable
 
 import pandas as pd
@@ -92,10 +93,12 @@ def main(args):
             amplicon_inputs=amplicon_inputs,
             sample_names=sample_names,
             prefix=args.prefix,
+            correct_per_cell=args.correct_per_cell,
             max_hamming=args.max_hamming,
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
             keep_single_reads=args.keep_single_reads,
+            keep_doublets=args.keep_doublets,
             should_write_umi_matrix=args.umi_matrix,
             should_run_visium=args.visium,
             should_plot=args.plot,
@@ -116,11 +119,24 @@ def add_arguments(parser):
         help="Keep cloneIDs supported by only a single read. Default: Discard them",
     )
     groups.filter.add_argument(
+        "--keep-doublets",
+        action="store_true",
+        default=False,
+        help="Keep doublets. Default: Detect and remove doublets",
+    )
+    groups.filter.add_argument(
         "--visium",
         default=False,
         action="store_true",
         help="Adjust filter settings for 10x Visium data: Filter out cloneIDs only based on "
         "one read, but keep those with only one UMI",
+    )
+    groups.filter.add_argument(
+        "--per-cell",
+        help="Use only cloneIDs within the same cell for cloneID correction. Default: Use cloneIDs from all cells",
+        default=False,
+        action="store_true",
+        dest="correct_per_cell",
     )
 
     groups.output.add_argument(
@@ -151,9 +167,11 @@ def run_trex(
     sample_names: List[str],
     prefix: bool,
     max_hamming: int,
+    correct_per_cell: bool,
     min_length: int,
     jaccard_threshold: float,
     keep_single_reads: bool,
+    keep_doublets: bool,
     should_write_umi_matrix: bool,
     should_run_visium: bool,
     should_plot: bool,
@@ -193,7 +211,10 @@ def run_trex(
 
     write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
 
-    corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
+    if correct_per_cell:
+        corrected_molecules = correct_clone_ids_per_cell(molecules, max_hamming, min_length)
+    else:
+        corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
     clone_ids = [
         m.clone_id
         for m in corrected_molecules
@@ -230,21 +251,40 @@ def run_trex(
         print(
             clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
-    if should_plot:
-        logger.info("Plotting clone graph")
-        clone_graph.plot(output_dir / "graph", highlight_cell_ids)
 
     bridges = clone_graph.bridges()
     logger.info(f"Removing {len(bridges)} bridges from the graph")
     clone_graph.remove_edges(bridges)
-    with open(output_dir / "components_corrected.txt", "w") as components_file:
-        print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
-        )
+
+    if not keep_doublets:
+        doublets = clone_graph.doublets()
+        logger.info(f"Removing {len(doublets)} doublets from the graph (first round)")
+        clone_graph.remove_nodes(doublets)
+
+        bridges2 = clone_graph.bridges()
+        logger.info(f"Removing {len(bridges2)} bridges from the graph (second round)")
+        clone_graph.remove_edges(bridges2)
+        doublets2 = clone_graph.doublets()
+        if should_plot:
+            logger.info("Plotting clone graph")
+            clone_graph.plot(output_dir / "graph", highlight_cell_ids, doublets2)
+
+        logger.info(f"Removing {len(doublets2)} doublets from the graph (second round)")
+        clone_graph.remove_nodes(doublets2)
+
+        with open(output_dir / "doublets.txt", "w") as doublets_file:
+            for clone in doublets + doublets2:
+                assert clone.n == 1
+                print(clone.cell_ids[0], file=doublets_file)
 
     if should_plot:
         logger.info("Plotting corrected clone graph")
         clone_graph.plot(output_dir / "graph_corrected", highlight_cell_ids)
+
+    with open(output_dir / "components_corrected.txt", "w") as components_file:
+        print(
+            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+        )
 
     clones = clone_graph.clones()
     with open(output_dir / "clones.txt", "w") as f:
@@ -259,7 +299,6 @@ def run_trex(
     )
     number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
     logger.debug("No. of cells in clones: %d", number_of_cells_in_clones)
-    assert len(cells) == number_of_cells_in_clones
 
     if should_write_loom:
         if len(transcriptome_inputs) > 1:
@@ -346,6 +385,62 @@ def correct_clone_ids(
         clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
         new_molecules.append(molecule._replace(clone_id=clone_id))
     return new_molecules
+
+
+def correct_clone_ids_per_cell(
+    molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
+) -> List[Molecule]:
+    """
+    Attempt to correct sequencing errors in the CloneID sequences of all
+    molecules looking for similar sequences in the same cell.
+    """
+    # Count all cloneIDs (including those with '-' and '0')
+    counts = Counter(m.clone_id for m in molecules)
+
+    # Group molecules into cells
+    cells: defaultdict[str, List[Molecule]] = defaultdict(list)
+    for molecule in molecules:
+        cells[molecule.cell_id].append(molecule)
+
+    # Iterate over cells
+    cell_correction_map = defaultdict(dict)
+    for cell_id, cell_molecules in cells.items():
+        cell_clone_ids = list(set(m.clone_id for m in cell_molecules))
+
+        if len(cell_clone_ids) < 2:
+            continue
+        clusters = cluster_sequences(
+            cell_clone_ids,
+            is_similar=lambda s, t: is_similar(s, t, min_overlap, max_hamming),
+            k=0,
+        )
+        for cluster in clusters:
+            if len(cluster) < 2:
+                continue
+
+            # Pick most frequent cloneID as representative
+            longest = max(len(re.sub('[0-]', '', x)) for x in cluster)
+            subcluster = [
+                x for x in cluster if
+                len(re.sub('[0-]', '', x)) == longest
+            ]
+            representative = max(subcluster, key=lambda clone_id: (counts[clone_id], clone_id))
+            cell_correction_map[cell_id].update(
+                {clone_id: representative for clone_id in cluster if
+                 clone_id != representative}
+            )
+
+    def corrected_molecule(molecule):
+        this_correction_map = cell_correction_map.get(molecule.cell_id, None)
+        if this_correction_map is not None:
+            new_clone_id = this_correction_map.get(molecule.clone_id,
+                                                  molecule.clone_id)
+            molecule = molecule._replace(clone_id=new_clone_id)
+        return molecule
+
+    # Create a new list of molecules in which the cloneIDs have been replaced
+    # by their representatives
+    return [corrected_molecule(molecule) for molecule in molecules]
 
 
 def filter_visium(
