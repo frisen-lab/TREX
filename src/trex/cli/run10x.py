@@ -4,6 +4,7 @@ Run on single cell 10X Chromium or spatial Visium data processed by Cell / Space
 import re
 import sys
 import logging
+import dataclasses
 from pathlib import Path
 from collections import Counter, defaultdict
 from typing import List, Dict, Iterable
@@ -383,7 +384,8 @@ def correct_clone_ids(
     new_molecules = []
     for molecule in molecules:
         clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
-        new_molecules.append(molecule._replace(clone_id=clone_id))
+        molecule = dataclasses.replace(molecule, clone_id=clone_id)
+        new_molecules.append(molecule)
     return new_molecules
 
 
@@ -435,7 +437,7 @@ def correct_clone_ids_per_cell(
         if this_correction_map is not None:
             new_clone_id = this_correction_map.get(molecule.clone_id,
                                                   molecule.clone_id)
-            molecule = molecule._replace(clone_id=new_clone_id)
+            molecule = dataclasses.replace(molecule, clone_id=new_clone_id)
         return molecule
 
     # Create a new list of molecules in which the cloneIDs have been replaced

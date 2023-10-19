@@ -1,10 +1,12 @@
-from typing import NamedTuple, Dict, List
+from dataclasses import dataclass
+from typing import Dict, List
 from collections import defaultdict, OrderedDict, Counter
 
 from .molecule import Molecule
 
 
-class Cell(NamedTuple):
+@dataclass(frozen=True, order=True)
+class Cell:
     cell_id: str
     counts: Dict[str, int]
 
