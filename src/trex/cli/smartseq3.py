@@ -95,7 +95,7 @@ def main(args):
             keep_single_reads=args.keep_single_reads,
             should_write_umi_matrix=args.umi_matrix,
             should_plot=args.plot,
-            highlight_cell_ids=highlight_cell_ids
+            highlight_cell_ids=highlight_cell_ids,
         )
     except TrexError as e:
         raise CommandLineError("%s", e)
@@ -103,7 +103,6 @@ def main(args):
 
 def add_arguments(parser):
     groups = add_common_arguments(parser, smartseq=True)
-
 
     groups.filter.add_argument(
         "--keep-single-reads",
