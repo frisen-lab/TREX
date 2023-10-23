@@ -9,3 +9,4 @@
   subclusters are detected and removed. The cell IDs of detected doublets
   is written to `doublets.txt`. Doublet detection can be disabled with
   `--keep-doublets`.
+* [#40](https://github.com/frisen-lab/TREX/issues/40): Add a filtering option for excluding certain cloneIDs
