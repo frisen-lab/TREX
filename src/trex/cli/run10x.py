@@ -27,6 +27,7 @@ from ..writers import (
 )
 from ..clustering import cluster_sequences
 from ..clone import CloneGraph
+from ..filters import is_low_complexity
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
 from ..error import TrexError
@@ -211,7 +212,7 @@ def run_trex(
     )
     write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
 
-    molecules = [m for m in molecules if not m.is_low_complexity()]
+    molecules = [m for m in molecules if not is_low_complexity(m.clone_id)]
     logger.info(f"{len(molecules)} remain after low-complexity filtering")
     write_reads_or_molecules(output_dir / "molecules_filtered.txt", molecules, sort=False)
 

@@ -3,14 +3,10 @@ A molecule is a DNA/RNA fragment that has potentially been sequenced multiple ti
 """
 from dataclasses import dataclass
 from typing import List
-from collections import defaultdict, Counter
+from collections import defaultdict
 import numpy as np
-from scipy.stats import entropy
 
 from .bam import Read
-
-# Threshold for low-complexity cloneIDs
-MIN_SHANNON_ENTROPY = 1.0  # in bits
 
 
 @dataclass
@@ -19,16 +15,6 @@ class Molecule:
     cell_id: str
     clone_id: str
     read_count: int
-
-    def is_low_complexity(self) -> bool:
-        """
-        Return True for low-complexity cloneIDs such as
-        AAAAAAAAAAAAAAAAAAAAAAAAAAGAAA
-        or even
-        T-----------------------------
-        """
-        character_counts = list(Counter(self.clone_id).values())
-        return entropy(character_counts, base=2) < MIN_SHANNON_ENTROPY
 
     @property
     def trimmed_clone_id(self) -> str:
