@@ -1,5 +1,5 @@
 Trex 0.4.dev215+gd6d4d90.d20230928
-Command line arguments: run10x --per-cell --delete -s 695 -e 724 -o trex_filter_clone_id -b tests/data/blacklist.csv tests/data
+Command line arguments: run10x --per-cell --delete -s 695 -e 724 -o trex_filter_clone_id --filter-cloneids tests/data/exclude_list.csv tests/data
 2 CloneIDs will be ignored during the analysis
 Reading cloneIDs from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
 Found 3857 reads with usable cloneIDs and UMIs. Skipped 1692 without cell id, 3 without UMI.
