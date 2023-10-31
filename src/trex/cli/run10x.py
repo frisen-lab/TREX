@@ -56,8 +56,8 @@ def main(args):
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
     clone_id_blacklist = None
-    if args.filter_clone_ids:
-        clone_id_blacklist = read_clone_id_blacklist(args.filter_clone_ids)
+    if args.filter_cloneids:
+        clone_id_blacklist = read_clone_id_blacklist(args.filter_cloneids)
     transcriptome_inputs = args.path
     if args.samples:
         sample_names = args.samples.split(",")
