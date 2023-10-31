@@ -55,9 +55,9 @@ def main(args):
     allowed_cell_ids = None
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
-    clone_id_blacklist = None
+    excluded_clone_ids = None
     if args.filter_cloneids:
-        clone_id_blacklist = read_clone_id_blacklist(args.filter_cloneids)
+        excluded_clone_ids = read_excluded_clone_ids(args.filter_cloneids)
     transcriptome_inputs = args.path
     if args.samples:
         sample_names = args.samples.split(",")
@@ -90,7 +90,7 @@ def main(args):
             output_dir,
             genome_name=args.genome_name,
             allowed_cell_ids=allowed_cell_ids,
-            clone_id_blacklist=clone_id_blacklist,
+            excluded_clone_ids=excluded_clone_ids,
             chromosome=args.chromosome,
             start=args.start - 1 if args.start is not None else None,
             end=args.end,
@@ -164,7 +164,7 @@ def run_trex(
     output_dir: Path,
     genome_name: str,
     allowed_cell_ids: List[str],
-    clone_id_blacklist: List[str],
+    excluded_clone_ids: List[str],
     chromosome: str,
     start: int,
     end: int,
@@ -236,11 +236,11 @@ def run_trex(
         output_dir / "molecules_corrected.txt", corrected_molecules, sort=False
     )
 
-    if clone_id_blacklist is not None:
+    if excluded_clone_ids is not None:
         corrected_molecules = [
             molecule
             for molecule in corrected_molecules
-            if not is_similar_to_any(molecule.clone_id, clone_id_blacklist)
+            if not is_similar_to_any(molecule.clone_id, excluded_clone_ids)
         ]
         clone_ids = [
             m.clone_id
@@ -356,16 +356,16 @@ def read_allowed_cellids(path):
     return set(allowed_ids)
 
 
-def read_clone_id_blacklist(path: Path) -> List:
+def read_excluded_clone_ids(path: Path) -> List:
     """
     Read a user-provided list of CloneIDs to be ignored from a CSV
     """
-    clone_id_blacklist = pd.read_table(path, header=None)
-    clone_id_blacklist = clone_id_blacklist[clone_id_blacklist.columns[0]].values
+    excluded_clone_ids = pd.read_table(path, header=None)
+    excluded_clone_ids = excluded_clone_ids[excluded_clone_ids.columns[0]].values
     logger.info(
-        f"{len(clone_id_blacklist)} CloneIDs will be ignored during the analysis"
+        f"{len(excluded_clone_ids)} CloneIDs will be ignored during the analysis"
     )
-    return set(clone_id_blacklist)
+    return set(excluded_clone_ids)
 
 
 def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
@@ -390,10 +390,10 @@ def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
 
 
 def is_similar_to_any(
-    s: str, blacklist: List[str], min_overlap: int = 0, max_hamming: int = 0
+    s: str, exclusion_list: List[str], min_overlap: int = 0, max_hamming: int = 0
 ) -> bool:
-    """Check if s is similar to any sequence in the blacklist"""
-    for t in blacklist:
+    """Check if s is similar to any sequence in the exclusion list"""
+    for t in exclusion_list:
         if is_similar(s, t, min_overlap, max_hamming):
             return True
     return False
