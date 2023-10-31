@@ -356,9 +356,9 @@ def read_allowed_cellids(path):
     return set(allowed_ids)
 
 
-def read_excluded_clone_ids(path: Path) -> List:
+def read_excluded_clone_ids(path: Path) -> List[str]:
     """
-    Read a user-provided list of CloneIDs to be ignored from a CSV
+    Read a user-provided list of cloneIDs to be ignored from a text file
     """
     excluded_clone_ids = pd.read_table(path, header=None)
     excluded_clone_ids = excluded_clone_ids[excluded_clone_ids.columns[0]].values
