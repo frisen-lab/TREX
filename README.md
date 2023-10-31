@@ -200,11 +200,11 @@ Example:
 1	CACTCGTGGTACCACAAGCA
 ```
 
-## Filter CloneID
+## Filter cloneID
 
-Comma-separated file of CloneIDs to ignore in the TREX run.
-Adding this file via the `--filter-clone-id` or `-b` option allows to ignore CloneIDs that have been identified as overrepresented or artefactual during library characterization.
-Example
+Text file of one cloneIDs per line to ignore during the TREX run.
+Adding this file via the `--filter-cloneids` option allows to ignore cloneIDs that have been identified as overrepresented or artefactual during library characterization.
+Example file
 
 ```
 GGTCTCCCTATACCAACAGTATCGTCTCAA
