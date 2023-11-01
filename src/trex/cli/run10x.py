@@ -7,7 +7,7 @@ import logging
 import dataclasses
 from pathlib import Path
 from collections import Counter, defaultdict
-from typing import List, Dict, Iterable
+from typing import List, Dict, Iterable, DefaultDict
 
 import pandas as pd
 
@@ -452,7 +452,7 @@ def correct_clone_ids_per_cell(
     counts = Counter(m.clone_id for m in molecules)
 
     # Group molecules into cells
-    cells: defaultdict[str, List[Molecule]] = defaultdict(list)
+    cells: DefaultDict[str, List[Molecule]] = defaultdict(list)
     for molecule in molecules:
         cells[molecule.cell_id].append(molecule)
 

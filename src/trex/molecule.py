@@ -2,7 +2,7 @@
 A molecule is a DNA/RNA fragment that has potentially been sequenced multiple times
 """
 from dataclasses import dataclass
-from typing import List
+from typing import List, Sequence
 from collections import defaultdict
 import numpy as np
 
@@ -34,7 +34,7 @@ def compute_molecules(reads: List[Read]) -> List[Molecule]:
     for read in reads:
         groups[(read.umi, read.cell_id)].append(read.clone_id)
 
-    molecules = []
+    molecules: List[Molecule] = []
     for (umi, cell_id), clone_ids in groups.items():
         clone_id_consensus = compute_consensus(clone_ids)
         molecules.append(
@@ -53,7 +53,7 @@ def compute_molecules(reads: List[Read]) -> List[Molecule]:
     return sorted_molecules
 
 
-def compute_consensus(sequences):
+def compute_consensus(sequences: Sequence[str]) -> str:
     """
     Compute a consensus for a set of sequences.
 

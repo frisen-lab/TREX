@@ -19,7 +19,7 @@ class Clone:
     def __init__(self, cells: List[Cell]):
         self.cells = cells
         self.cell_ids = tuple(sorted(c.cell_id for c in cells))
-        self.counts = sum((Counter(c.counts) for c in cells), Counter())
+        self.counts: Counter = sum((Counter(c.counts) for c in cells), Counter())
         self.n = len(cells)
         self.cell_id = "M-" + min(self.cell_ids)
         self._hash = hash(self.cell_ids)
@@ -143,7 +143,7 @@ class CloneGraph:
         )
 
         def most_abundant_clone_id(cells: List[Cell]):
-            counts = Counter()
+            counts: Counter = Counter()
             for cell in cells:
                 counts.update(cell.counts)
             return max(counts, key=lambda k: (counts[k], k))
@@ -265,7 +265,7 @@ class UncompressedCloneGraph:
                     graph.add_edge(cells[i], cells[j])
         return graph
 
-    def _make_barcode_graph(self):
+    def _make_barcode_graph(self) -> Graph:
         counts: Dict[str, int] = Counter()
         for cell in self._cells:
             counts.update(cell.counts)
@@ -286,7 +286,7 @@ class UncompressedCloneGraph:
         clusters = [g.nodes() for g in self._graph.connected_components()]
 
         def most_abundant_clone_id(cells: List[Cell]):
-            counts = Counter()
+            counts: Counter = Counter()
             for cell in cells:
                 counts.update(cell.counts)
             return max(counts, key=lambda k: (counts[k], k))

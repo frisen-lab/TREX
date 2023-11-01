@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Set, Any
 from .cell import Cell
 import operator
 import warnings
@@ -12,10 +12,10 @@ import numpy as np
 
 def write_count_matrix(path: Path, cells: List[Cell]):
     """Create a Read-count matrix with cells as columns and cloneIDs as rows"""
-    clone_ids = set()
+    clone_ids_set: Set[str] = set()
     for cell in cells:
-        clone_ids.update(clone_id for clone_id in cell.counts)
-    clone_ids = sorted(clone_ids)
+        clone_ids_set.update(clone_id for clone_id in cell.counts)
+    clone_ids: List[str] = sorted(clone_ids_set)
     all_counts = [cell.counts for cell in cells]
     with open(path, "w") as f:
         f.write(",")
@@ -44,7 +44,7 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
             file=f,
         )
         for cell in cells:
-            row = [cell.cell_id, ":"]
+            row: List[Any] = [cell.cell_id, ":"]
             sorted_clone_ids = sorted(
                 cell.counts, key=lambda x: cell.counts[x], reverse=True
             )
@@ -116,8 +116,8 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
         # Transform cloneIDs and count data
         # brings cloneID data into correct format for loom file.
         # Array must have same shape as all_cellIDs
-        clone_id_lists = [[] for _ in range(top_n)]
-        count_lists = [[] for _ in range(top_n)]
+        clone_id_lists: List[List[str]] = [[] for _ in range(top_n)]
+        count_lists: List[List[int]] = [[] for _ in range(top_n)]
         for cell_id in loom_cell_ids:
             clone_id_counts = most_abundant.get(cell_id, [])
             # Fill up to a constant length
