@@ -162,8 +162,8 @@ def add_common_arguments(parser, smartseq: bool):
     filter_group.add_argument(
         "--filter-cloneids",
         type=Path,
-        help="Text file containing one cloneID per line that are to be ignored during the analysis. "
-        "This flag enables to remove cloneIDs e.g. overrepresented cloneIDs, misalignments.",
+        help="Text file with cloneIDs to be ignored during the analysis. Format: One cloneID per line. "
+        "Use this to remove e.g. overrepresented cloneIDs or misalignments.",
     )
 
     output_group = parser.add_argument_group("Output directory")
