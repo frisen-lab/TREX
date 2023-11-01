@@ -1,5 +1,3 @@
-Trex 0.4.dev220+g35d3306
-Command line arguments: smartseq3 --delete --output trex_smartseq3_run --umi-matrix -s 2330 -e 2359 tests/data/smartseq3_test.bam
 Reading cloneIDs from EGFP-30N:2330-2359 in tests/data/smartseq3_test.bam
 Found 9631 reads with usable cloneIDs and UMIs. Skipped 0 without cell id, 24435 without UMI.
 Read 9631 reads containing (parts of) the cloneID (4593 full cloneIDs, 943 unique)

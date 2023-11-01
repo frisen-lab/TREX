@@ -5,6 +5,7 @@ from pathlib import Path
 from trex.cli import add_file_logging
 from trex.cli.run10x import run_trex
 from trex.cli.smartseq2 import run_smartseq2
+from trex.cli.smartseq3 import run_smartseq3
 
 
 def diff(expected, actual, ignore=None, recursive=False):
@@ -60,3 +61,21 @@ def test_run_smartseq2(tmp_path):
         amplicon_inputs=[],
     )
     diff("tests/expected_smartseq2/log.txt", tmp_path / "log.txt")
+
+
+def test_run_smartseq3(tmp_path):
+    add_file_logging(tmp_path / "log.txt")
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    run_smartseq3(
+        tmp_path,
+        start=2329,
+        end=2359,
+        chromosome="EGFP-30N",
+        transcriptome_inputs=[Path("tests/data/smartseq3_test.bam")],
+        amplicon_inputs=[],
+        should_write_umi_matrix=True,
+    )
+    diff("tests/expected_smartseq3/log.txt", tmp_path / "log.txt")
+    assert tmp_path.joinpath("umi_count_matrix.csv").exists()
