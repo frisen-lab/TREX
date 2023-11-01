@@ -4,8 +4,13 @@
 
 * #7: Set default Jaccard threshold to 0.7 so that it matches R output.
 * #33: Added a `trex qc` subcommand for quality control plots.
-* #44: Fix some inconsistencies in the way cloneIDs are error-corrected.
+* #44: Fixed some inconsistencies in the way cloneIDs are error-corrected.
 * #30: Added doublet filtering. Cells that appear to be connected to two
   subclusters are detected and removed. The cell IDs of detected doublets
-  is written to `doublets.txt`. Doublet detection can be disabled with
+  are written to `doublets.txt`. Doublet detection can be disabled with
   `--keep-doublets`.
+* Added a filter to `run10x` that always removes cloneIDs with a highly
+  uneven distribution of nucleotide frequencies (low-complexity cloneIDs,
+  measured using Shannon entropy).
+  This includes, for example, cloneIDs consisting of a single, repeated
+  nucleotide such as `AAAA...`, but also `AAAAAAAAAAAAAAAAAAAAAAAAAAGAAA`.
