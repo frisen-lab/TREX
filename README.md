@@ -200,6 +200,16 @@ Example:
 1	CACTCGTGGTACCACAAGCA
 ```
 
+## Filtering cloneIDs
+
+Text file with cloneIDs to ignore. The format is one cloneID per line.
+Adding this file via the `--filter-cloneids` option allows to ignore cloneIDs that have been identified as overrepresented or artefactual during library characterization.
+Example file:
+
+```
+GGTCTCCCTATACCAACAGTATCGTCTCAA
+GGGTTCTGGGATATTACGTTGACTTGAGAG
+```
 
 ## Output files
 

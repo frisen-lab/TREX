@@ -1,0 +1,23 @@
+Trex 0.4.dev285+g14f4e4a.d20231020
+Command line arguments: run10x --per-cell --delete -s 695 -e 724 -o trex_filter_clone_id --filter-cloneids tests/data/exclude_list.csv tests/data
+2 CloneIDs will be ignored during the analysis
+Reading cloneIDs from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
+Found 3857 reads with usable cloneIDs and UMIs. Skipped 1692 without cell id, 3 without UMI.
+Read 3857 reads containing (parts of) the cloneID (2703 full cloneIDs, 71 unique)
+Detected 3800 molecules (2676 full cloneIDs, 70 unique)
+3639 remain after low-complexity filtering
+After cloneID correction, 39 unique cloneIDs remain
+After filtering cloneIDs, 37 unique cloneIDs remain
+Detected 1808 cells
+Found 85 single-read cloneIDs
+689 filtered cells remain
+Removing 0 bridges from the graph
+Removing 0 doublets from the graph (first round)
+Removing 0 bridges from the graph (second round)
+Removing 0 doublets from the graph (second round)
+Detected 10 clones
+Clone size histogram
+ size count
+    1     8
+    2     1
+  679     1

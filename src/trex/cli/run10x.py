@@ -56,6 +56,9 @@ def main(args):
     allowed_cell_ids = None
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
+    excluded_clone_ids = None
+    if args.filter_cloneids:
+        excluded_clone_ids = read_excluded_clone_ids(args.filter_cloneids)
     transcriptome_inputs = args.path
     if args.samples:
         sample_names = args.samples.split(",")
@@ -88,6 +91,7 @@ def main(args):
             output_dir,
             genome_name=args.genome_name,
             allowed_cell_ids=allowed_cell_ids,
+            excluded_clone_ids=excluded_clone_ids,
             chromosome=args.chromosome,
             start=args.start - 1 if args.start is not None else None,
             end=args.end,
@@ -161,6 +165,7 @@ def run_trex(
     output_dir: Path,
     genome_name: str,
     allowed_cell_ids: List[str],
+    excluded_clone_ids: List[str],
     chromosome: str,
     start: int,
     end: int,
@@ -217,7 +222,9 @@ def run_trex(
     write_reads_or_molecules(output_dir / "molecules_filtered.txt", molecules, sort=False)
 
     if correct_per_cell:
-        corrected_molecules = correct_clone_ids_per_cell(molecules, max_hamming, min_length)
+        corrected_molecules = correct_clone_ids_per_cell(
+            molecules, max_hamming, min_length
+        )
     else:
         corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
     clone_ids = [
@@ -232,6 +239,21 @@ def run_trex(
     write_reads_or_molecules(
         output_dir / "molecules_corrected.txt", corrected_molecules, sort=False
     )
+
+    if excluded_clone_ids is not None:
+        corrected_molecules = [
+            molecule
+            for molecule in corrected_molecules
+            if not is_similar_to_any(molecule.clone_id, excluded_clone_ids)
+        ]
+        clone_ids = [
+            m.clone_id
+            for m in corrected_molecules
+            if "-" not in m.clone_id and "0" not in m.clone_id
+        ]
+        logger.info(
+            f"After filtering cloneIDs, {len(set(clone_ids))} unique cloneIDs remain"
+        )
 
     cells = compute_cells(corrected_molecules, min_length)
     logger.info(f"Detected {len(cells)} cells")
@@ -338,6 +360,18 @@ def read_allowed_cellids(path):
     return set(allowed_ids)
 
 
+def read_excluded_clone_ids(path: Path) -> List[str]:
+    """
+    Read a user-provided list of cloneIDs to be ignored from a text file
+    """
+    excluded_clone_ids = pd.read_table(path, header=None)
+    excluded_clone_ids = excluded_clone_ids[excluded_clone_ids.columns[0]].values
+    logger.info(
+        f"{len(excluded_clone_ids)} CloneIDs will be ignored during the analysis"
+    )
+    return set(excluded_clone_ids)
+
+
 def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
     if len(s) != len(t):
         raise IndexError("Sequences do not have the same length")
@@ -359,6 +393,16 @@ def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
     # TODO allowed Hamming distance should be reduced relative to the overlap length
 
 
+def is_similar_to_any(
+    s: str, exclusion_list: List[str], min_overlap: int = 0, max_hamming: int = 0
+) -> bool:
+    """Check if s is similar to any sequence in the exclusion list"""
+    for t in exclusion_list:
+        if is_similar(s, t, min_overlap, max_hamming):
+            return True
+    return False
+
+
 def correct_clone_ids(
     molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
 ) -> List[Molecule]:
@@ -372,7 +416,11 @@ def correct_clone_ids(
     counts = Counter(clone_ids)
 
     # Cluster them by Hamming distance
-    clusters = cluster_sequences(list(set(clone_ids)), is_similar=lambda s, t: is_similar(s, t, min_overlap, max_hamming), k=7)
+    clusters = cluster_sequences(
+        list(set(clone_ids)),
+        is_similar=lambda s, t: is_similar(s, t, min_overlap, max_hamming),
+        k=7,
+    )
 
     # Map non-singleton cloneIDs to a cluster representative
     clone_id_map = dict()
@@ -425,22 +473,23 @@ def correct_clone_ids_per_cell(
                 continue
 
             # Pick most frequent cloneID as representative
-            longest = max(len(re.sub('[0-]', '', x)) for x in cluster)
-            subcluster = [
-                x for x in cluster if
-                len(re.sub('[0-]', '', x)) == longest
-            ]
-            representative = max(subcluster, key=lambda clone_id: (counts[clone_id], clone_id))
+            longest = max(len(re.sub("[0-]", "", x)) for x in cluster)
+            subcluster = [x for x in cluster if len(re.sub("[0-]", "", x)) == longest]
+            representative = max(
+                subcluster, key=lambda clone_id: (counts[clone_id], clone_id)
+            )
             cell_correction_map[cell_id].update(
-                {clone_id: representative for clone_id in cluster if
-                 clone_id != representative}
+                {
+                    clone_id: representative
+                    for clone_id in cluster
+                    if clone_id != representative
+                }
             )
 
     def corrected_molecule(molecule):
         this_correction_map = cell_correction_map.get(molecule.cell_id, None)
         if this_correction_map is not None:
-            new_clone_id = this_correction_map.get(molecule.clone_id,
-                                                  molecule.clone_id)
+            new_clone_id = this_correction_map.get(molecule.clone_id, molecule.clone_id)
             molecule = dataclasses.replace(molecule, clone_id=new_clone_id)
         return molecule
 

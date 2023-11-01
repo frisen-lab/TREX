@@ -14,3 +14,5 @@
   measured using Shannon entropy).
   This includes, for example, cloneIDs consisting of a single, repeated
   nucleotide such as `AAAA...`, but also `AAAAAAAAAAAAAAAAAAAAAAAAAAGAAA`.
+* [#40](https://github.com/frisen-lab/TREX/issues/40):
+  Added `--filter-cloneids` option for excluding certain cloneIDs

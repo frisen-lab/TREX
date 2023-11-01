@@ -1,4 +1,4 @@
-from trex.cli.run10x import is_similar
+from trex.cli.run10x import is_similar, is_similar_to_any
 
 import pytest
 
@@ -48,3 +48,17 @@ def test_is_similar(s, t, similar):
 
     assert is_similar(s.replace("-", "0"), t, min_overlap, max_hamming) == similar
     assert is_similar(s, t.replace("-", "0"), min_overlap, max_hamming) == similar
+
+
+@pytest.mark.parametrize("s,blacklist,similar", [
+    ("AAAAAAAAAA", ["AAAAAAAAAA", "TTTTTTTAAA"], True),
+    ("TAAAAAAAAA", ["AAAAAAAAAA", "TTTTTTTAAA"], False),
+    ("TTTTTTTAAA", ["AAAAAAAAAA", "TTTTTTTAAA"], True),
+    ("TTTTTTTAAG", ["AAAAAAAAAA", "TTTTTTTAAA"], False),
+    ("TTTTTT--AA", ["AAAAAAAAAA", "TTTTTTTAAA"], True),
+    ("----AAAAAA", ["AAAAAAAAAA", "TTTTTTTAAA"], True),
+    ("AAAAAAAAAA", ["AAAAAAAAAA"], True),
+    ("AAAAAAAAAA", ["TTTTTTTAAA"], False),
+])
+def test_is_similar_to_any(s, blacklist, similar):
+    assert is_similar_to_any(s, blacklist) == similar
