@@ -33,16 +33,33 @@ def test_run_trex(tmp_path):
 
     run_trex(
         tmp_path,
+        transcriptome_inputs=["tests/data/"],
+        amplicon_inputs=[],
+        start=694,
+        end=724,
         keep_doublets=True,
         should_write_loom=True,
         should_write_umi_matrix=True,
-        start=694,
-        end=724,
-        transcriptome_inputs=["tests/data/"],
-        amplicon_inputs=[],
     )
     diff("tests/expected", tmp_path, ignore=["data.loom", "entries.bam"], recursive=True)
     bam_diff("tests/expected/entries.bam", tmp_path / "entries.bam", tmp_path)
+
+
+def test_run_trex_per_cell(tmp_path):
+    # Ensure --per-cell works
+    add_file_logging(tmp_path / "log.txt")
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    run_trex(
+        tmp_path,
+        transcriptome_inputs=["tests/data/"],
+        amplicon_inputs=[],
+        start=694,
+        end=724,
+        correct_per_cell=True,
+    )
+    diff("tests/expected_per_cell/log.txt", tmp_path / "log.txt")
 
 
 def test_run_smartseq2(tmp_path):
@@ -52,13 +69,13 @@ def test_run_smartseq2(tmp_path):
 
     run_smartseq2(
         tmp_path,
+        transcriptome_inputs=[Path("tests/data/smartseq2_test.bam")],
+        amplicon_inputs=[],
         start=2329,
         end=2359,
         should_write_read_matrix=True,
         readcount_threshold=1,
         chromosome="EGFP-30N",
-        transcriptome_inputs=[Path("tests/data/smartseq2_test.bam")],
-        amplicon_inputs=[],
     )
     diff("tests/expected_smartseq2/log.txt", tmp_path / "log.txt")
 
@@ -70,11 +87,11 @@ def test_run_smartseq3(tmp_path):
 
     run_smartseq3(
         tmp_path,
+        transcriptome_inputs=[Path("tests/data/smartseq3_test.bam")],
+        amplicon_inputs=[],
         start=2329,
         end=2359,
         chromosome="EGFP-30N",
-        transcriptome_inputs=[Path("tests/data/smartseq3_test.bam")],
-        amplicon_inputs=[],
         should_write_umi_matrix=True,
     )
     diff("tests/expected_smartseq3/log.txt", tmp_path / "log.txt")
