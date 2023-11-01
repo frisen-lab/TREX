@@ -68,13 +68,12 @@ def read_bam(
                 if has_umi:
                     if len(read.get_tag("UB")) == 0:
                         no_umi +=1
-                if not has_cell_id or not has_umi:
-                    if not has_cell_id:
-                        no_cell_id += 1
-                    if not has_umi:
-                        no_umi += 1
-                    if not has_cell_id or (require_umis and not has_umi):
-                        continue
+                if not has_cell_id:
+                    no_cell_id += 1
+                if not has_umi:
+                    no_umi += 1
+                if not has_cell_id or (require_umis and not has_umi):
+                    continue
                 cell_id = read.get_tag(cell_id_tag)
                 if not isinstance(cell_id, str):
                     raise ValueError(f"{cell_id_tag} tag must be a string")
