@@ -260,6 +260,12 @@ Example:
     AAACCTGAGAGGTACC        AGTTAAAGTA      TGTCAATCGTTCGGTTGAGCAAGATCTTAG
 
 
+### `molecules_filtered.txt`
+
+The same `molecules.txt`, but with those molecules removed that did not pass
+some filtering criteria (such as low-complexity cloneID filtering).
+
+
 ### `molecules_corrected.txt`
 
 A table with molecules where cloneIDs have been error corrected.
