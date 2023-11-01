@@ -76,6 +76,8 @@ def read_bam(
                     if not has_cell_id or (require_umis and not has_umi):
                         continue
                 cell_id = read.get_tag(cell_id_tag)
+                if not isinstance(cell_id, str):
+                    raise ValueError(f"{cell_id_tag} tag must be a string")
                 if allowed_cell_ids and cell_id not in allowed_cell_ids:
                     no_cell_id += 1
                     continue
