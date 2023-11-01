@@ -8,9 +8,6 @@ pytest tests
 
 set -x
 
-trex smartseq2 --delete --chr EGFP-30N --output trex_smartseq2_run --start 2330 --end 2359 --read-matrix --readcount-threshold 1 tests/data/smartseq2_test.bam
-diff -u <(sed 1d tests/expected_smartseq2/log.txt) <(sed 1d trex_smartseq2_run/log.txt)
-
 trex smartseq3 --delete --output trex_smartseq3_run --umi-matrix -s 2330 -e 2359 tests/data/smartseq3_test.bam
 diff -u <(sed 1d tests/expected_smartseq3/log.txt) <(sed 1d trex_smartseq3_run/log.txt)
 

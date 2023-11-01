@@ -1,8 +1,10 @@
 import logging
 import subprocess
+from pathlib import Path
 
 from trex.cli import add_file_logging
 from trex.cli.run10x import run_trex
+from trex.cli.smartseq2 import run_smartseq2
 
 
 def diff(expected, actual, ignore=None, recursive=False):
@@ -40,3 +42,21 @@ def test_run_trex(tmp_path):
     )
     diff("tests/expected", tmp_path, ignore=["data.loom", "entries.bam"], recursive=True)
     bam_diff("tests/expected/entries.bam", tmp_path / "entries.bam", tmp_path)
+
+
+def test_run_smartseq2(tmp_path):
+    add_file_logging(tmp_path / "log.txt")
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    run_smartseq2(
+        tmp_path,
+        start=2329,
+        end=2359,
+        should_write_read_matrix=True,
+        readcount_threshold=1,
+        chromosome="EGFP-30N",
+        transcriptome_inputs=[Path("tests/data/smartseq2_test.bam")],
+        amplicon_inputs=[],
+    )
+    diff("tests/expected_smartseq2/log.txt", tmp_path / "log.txt")
