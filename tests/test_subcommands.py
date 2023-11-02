@@ -5,9 +5,10 @@ from shutil import copytree
 
 from trex.cli import add_file_logging
 from trex.cli.qc import make_qc_report
-from trex.cli.run10x import run_trex
+from trex.cli.run10x import run_trex, read_excluded_clone_ids
 from trex.cli.smartseq2 import run_smartseq2
 from trex.cli.smartseq3 import run_smartseq3
+from trex.quality_control import read_cells
 
 
 def diff(expected, actual, ignore=None, recursive=False):
@@ -114,3 +115,32 @@ def test_qc(tmp_path):
         plot_hamming=True,
     )
     assert pdf_path.exists()
+
+
+EXCLUDED_CLONE_IDS = {"GGTCTCCCTATACCAACAGTATCGTCTCAA", "GGGTTCTGGGATATTACGTTGACTTGAGAG"}
+
+
+def test_filter_clone_ids(tmp_path):
+    add_file_logging(tmp_path / "log.txt")
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    run_trex(
+        tmp_path,
+        transcriptome_inputs=["tests/data/"],
+        amplicon_inputs=[],
+        start=694,
+        end=724,
+        correct_per_cell=True,
+        excluded_clone_ids=EXCLUDED_CLONE_IDS,
+    )
+    cells = read_cells(tmp_path, filtered=False)
+
+    diff("tests/expected_filter_clone_id/log.txt", tmp_path / "log.txt")
+    for clone_id in EXCLUDED_CLONE_IDS:
+        assert clone_id not in cells["clone_id"].values
+
+
+def test_read_excluded_clone_ids():
+    cloneids = read_excluded_clone_ids(Path("tests/data/exclude_list.csv"))
+    assert cloneids == EXCLUDED_CLONE_IDS
