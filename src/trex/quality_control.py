@@ -98,9 +98,11 @@ def get_nucleotides_per_molecule(df: pd.DataFrame) -> pd.Series:
 def get_clone_ids_per_cell(
     df: pd.DataFrame, molecules_dataframe: bool = True
 ) -> pd.Series:
-    """Get a pandas Series with the number of cloneID molecules found per cell.
+    """
+    Get a pandas Series with the number of cloneID molecules found per cell.
     molecules_dataframe is set to True by default, if a cells DataFrame is being
-    used, then this must be False."""
+    used, then this must be False.
+    """
     if molecules_dataframe:
         return df.groupby(["#cell_id"]).umi.agg("count")
     else:
@@ -110,9 +112,11 @@ def get_clone_ids_per_cell(
 def get_molecules_per_clone_ids(
     df: pd.DataFrame, molecules_dataframe: bool = True
 ) -> pd.Series:
-    """Get a pandas Series with the number of cloneID molecules found per unique
+    """
+    Get a pandas Series with the number of cloneID molecules found per unique
     cloneID. molecules_dataframe is set to True by default, if a cells
-    DataFrame is being used, then this must be False."""
+    DataFrame is being used, then this must be False.
+    """
     if molecules_dataframe:
         return df.groupby(["clone_id"]).umi.agg("count")
     else:
@@ -122,9 +126,11 @@ def get_molecules_per_clone_ids(
 def get_unique_clone_ids_per_cell(
     df: pd.DataFrame, molecules_dataframe: bool = True
 ) -> pd.Series:
-    """Get a pandas Series with the number of unique cloneID molecules found per
+    """
+    Get a pandas Series with the number of unique cloneID molecules found per
     cell. molecules_dataframe is set to True by default, if a cells DataFrame is
-    being used, then this must be False."""
+    being used, then this must be False.
+    """
     if molecules_dataframe:
         return df.groupby("#cell_id").clone_id.unique().apply(len)
     else:
@@ -134,23 +140,29 @@ def get_unique_clone_ids_per_cell(
 def add_clone_ids_per_clone(
     clones: pd.DataFrame, cells_filtered: pd.DataFrame
 ) -> pd.DataFrame:
-    """Add  the unique cloneID molecules found in each clone to the clones
+    """
+    Add  the unique cloneID molecules found in each clone to the clones
     DataFrame. clones is the clones dataframe from clones.txt and cells_filtered
-    is the dataframe containing cloneIDs per cell (cells_filtered.txt)."""
+    is the dataframe containing cloneIDs per cell (cells_filtered.txt).
+    """
     cells_clone_id = cells_filtered.groupby("cell_id").clone_id.apply(set)
     clones["clone_ids"] = clones.cell_id.apply(lambda x: cells_clone_id[x])
     return clones
 
 
 def get_clone_ids_per_clone(clones: pd.DataFrame) -> pd.Series:
-    """Get a pandas Series with the number of unique cloneIDs found per
-    clone."""
+    """
+    Get a pandas Series with the number of unique cloneIDs found per
+    clone.
+    """
     return clones.groupby("clone_nr").clone_ids.apply(lambda x: len(set.union(*x)))
 
 
 def get_clone_sizes(clones: pd.DataFrame) -> pd.Series:
-    """Get a pandas Series with the number of cells found in each
-    clone. clones is the clones dataframe from clones.txt."""
+    """
+    Get a pandas Series with the number of cells found in each
+    clone. clones is the clones dataframe from clones.txt.
+    """
     return clones.groupby("clone_nr").cell_id.count()
 
 
@@ -162,8 +174,10 @@ def plot_discrete_histogram(
     text: str = None,
     axes: plt.Axes = None,
 ):
-    """plots a discrete histogram with optional title, x and y labels, and added
-    text below."""
+    """
+    Plots a discrete histogram with optional title, x and y labels, and added
+    text below.
+    """
     if axes is None:
         fig, axes = plt.subplots(1, 1)
 
@@ -253,8 +267,10 @@ def plot_unique_clone_ids_per_cell(
 def plot_hamming_distance_histogram(
     molecules: pd.DataFrame, ax: plt.Axes = None, ignore_incomplete: bool = True
 ) -> plt.Axes:
-    """Plot histogram of Hamming distance between cloneIDs. ignore_incomplete is
-    set to True by default and it removes incomplete cloneIDs."""
+    """
+    Plot histogram of Hamming distance between cloneIDs. ignore_incomplete is
+    set to True by default and it removes incomplete cloneIDs.
+    """
     if ignore_incomplete:
         molecules = molecules[~molecules.clone_id.str.contains("-|0")]
     this_clone_ids = molecules.clone_id.unique()
@@ -295,17 +311,21 @@ def plot_hamming_distance_histogram(
 
 
 def jaccard(cell_1: npt.ArrayLike, cell_2: npt.ArrayLike) -> float:
-    """Estimates the Jaccard similarity between two boolean vectors taken from
-    the UMI count matrix."""
+    """
+    Estimate the Jaccard similarity between two boolean vectors taken from
+    the UMI count matrix.
+    """
     return sum(np.logical_and(cell_1, cell_2)) / sum(np.logical_or(cell_1, cell_2))
 
 
 def jaccard_similarity_matrix(umi_count: pd.DataFrame) -> npt.ArrayLike:
-    """Builds Jaccard similarity matrix from the UMI count matrix loaded as
+    """
+    Build Jaccard similarity matrix from the UMI count matrix loaded as
     pandas DataFrame.
 
     Note: columns are cell IDs and first column is disregarded as it usually has
-    the index to cloneIDs"""
+    the index to cloneIDs
+    """
     this_cell_ids = umi_count.columns[1:]
     jaccard_matrix = np.zeros([len(this_cell_ids)] * 2)
     bool_umi = pd.DataFrame(
@@ -329,7 +349,7 @@ def jaccard_similarity_matrix(umi_count: pd.DataFrame) -> npt.ArrayLike:
 
 
 def jaccard_histogram(jaccard_matrix: npt.ArrayLike, axes: plt.Axes = None) -> plt.Axes:
-    """Plots the Jaccard similarity histogram between cells."""
+    """Plot the Jaccard similarity histogram between cells."""
     vals = jaccard_matrix[np.triu_indices_from(jaccard_matrix, 1)]
     axes = sns.histplot(vals, log=True, ax=axes)
 
@@ -342,8 +362,10 @@ def jaccard_histogram(jaccard_matrix: npt.ArrayLike, axes: plt.Axes = None) -> p
 def plot_jaccard_matrix(
     jaccard_matrix: npt.ArrayLike, axes: plt.Axes = None
 ) -> plt.Axes:
-    """Orders with reverse Cuthill-McKee algorithm the cells in the Jaccard
-    Similarity matrix and plots it for visualization."""
+    """
+    Order with reverse Cuthill-McKee algorithm the cells in the Jaccard
+    Similarity matrix and plots it for visualization.
+    """
     from scipy.sparse import csr_matrix
     from scipy.sparse.csgraph import reverse_cuthill_mckee
 
