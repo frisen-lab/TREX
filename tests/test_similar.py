@@ -50,7 +50,7 @@ def test_is_similar(s, t, similar):
     assert is_similar(s, t.replace("-", "0"), min_overlap, max_hamming) == similar
 
 
-@pytest.mark.parametrize("s,blacklist,similar", [
+@pytest.mark.parametrize("s,strings,similar", [
     ("AAAAAAAAAA", ["AAAAAAAAAA", "TTTTTTTAAA"], True),
     ("TAAAAAAAAA", ["AAAAAAAAAA", "TTTTTTTAAA"], False),
     ("TTTTTTTAAA", ["AAAAAAAAAA", "TTTTTTTAAA"], True),
@@ -60,5 +60,5 @@ def test_is_similar(s, t, similar):
     ("AAAAAAAAAA", ["AAAAAAAAAA"], True),
     ("AAAAAAAAAA", ["TTTTTTTAAA"], False),
 ])
-def test_is_similar_to_any(s, blacklist, similar):
-    assert is_similar_to_any(s, blacklist) == similar
+def test_is_similar_to_any(s, strings, similar):
+    assert is_similar_to_any(s, strings) == similar
