@@ -494,24 +494,21 @@ def plot_hamming_distance_per_step(
 
 def make_qc_report(
     output_dir: Path,
-    pdf_dir: Path,
+    pdf_path: Path,
     plot_jaccard: bool = False,
     plot_hamming: bool = False,
 ):
-    """Read data from trex analysis and make a PDF report.
+    """
+    Read data from trex analysis and make a PDF report.
 
-    Parameters
-    ----------
-    output_dir: pathlib.Path
-        Points to the folder containing the output from TREX
-    pdf_dir: pathlib.Path
-        Points to the path where the pdf report should be saved
-    plot_jaccard: bool; Default: False
-        Whether jaccard similarity should be calculated pairwise between cells
-        and the matrix and histogram plotted
-    plot_hamming: bool; Default: False
-        Whether Hamming distance between all detected cloneIDs should be
-        calculated and the histogram plotted in a per-step basis."""
+    Arguments:
+        output_dir: Points to the folder containing the output from TREX
+        pdf_path: Where the PDF report should be saved
+        plot_jaccard: If True, compute pairwise jaccard similarity between cells
+            and plot matrix and histogram
+        plot_hamming: Whether Hamming distance between all detected cloneIDs should be
+            calculated and the histogram plotted in a per-step basis.
+    """
     logger.info("Reading reads ...")
     reads = pd.read_table(output_dir / "reads.txt")
     logger.info("Reading molecules ...")
@@ -525,7 +522,7 @@ def make_qc_report(
     logger.info("Reading clones ...")
     clones = read_clone_ids(output_dir)
 
-    with PdfPages(pdf_dir) as pp:
+    with PdfPages(pdf_path) as pp:
         # Overall quality plots
         logger.info("Plotting clone size histogram")
         fig = plot_clone_size_histogram(clones)
