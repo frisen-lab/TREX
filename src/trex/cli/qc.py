@@ -180,8 +180,10 @@ def plot_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
 
 
 def plot_jaccard_similarity_plots(data_dir: Path) -> plt.Figure:
-    """Calculate and plot the jaccard similarity histogram and matrix.
-    Consider that it is not optimized so it might take a long time."""
+    """
+    Calculate and plot the jaccard similarity histogram and matrix.
+    Consider that it is not optimized so it might take a long time.
+    """
     umi_count = read_umi_count_matrix(data_dir)
     jaccard_matrix = jaccard_similarity_matrix(umi_count)
 
@@ -200,8 +202,10 @@ def plot_read_length_per_step(
     cells: pd.DataFrame,
     cells_filtered: pd.DataFrame,
 ) -> plt.Figure:
-    """Make the subplots showing nucleotides read per molecule for each step in
-    the analysis."""
+    """
+    Make the subplots showing nucleotides read per molecule for each step in
+    the analysis.
+    """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
     for df, ax, title in zip(
@@ -255,8 +259,10 @@ def plot_molecules_per_cell_per_step(
     cells: pd.DataFrame,
     cells_filtered: pd.DataFrame,
 ) -> plt.Figure:
-    """Make the subplots showing cloneID molecules per cell for each step in
-    the analysis."""
+    """
+    Make the subplots showing cloneID molecules per cell for each step in
+    the analysis.
+    """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
 
     for df, ax, title in zip(
@@ -319,8 +325,10 @@ def plot_molecules_per_clone_id_per_step(
     cells: pd.DataFrame,
     cells_filtered: pd.DataFrame,
 ) -> plt.Figure:
-    """Make the subplots showing cloneID molecules per unique cloneID for each
-    step in the analysis."""
+    """
+    Make the subplots showing cloneID molecules per unique cloneID for each
+    step in the analysis.
+    """
     fig, axes = plt.subplots(
         2,
         2,
@@ -387,8 +395,10 @@ def plot_unique_clone_ids_per_cell_per_step(
     cells: pd.DataFrame,
     cells_filtered: pd.DataFrame,
 ) -> plt.Figure:
-    """Make the subplots showing unique cloneIDs per cell for each step in the
-    analysis."""
+    """
+    Make the subplots showing unique cloneIDs per cell for each step in the
+    analysis.
+    """
     fig, axes = plt.subplots(
         2,
         2,
@@ -461,8 +471,10 @@ def plot_hamming_distance_per_step(
     cells: pd.DataFrame,
     cells_filtered: pd.DataFrame,
 ) -> plt.Figure:
-    """Make the subplots showing Hamming distance between all cloneIDs in the
-    dataset for each step in the analysis."""
+    """
+    Make the subplots showing Hamming distance between all cloneIDs in the
+    dataset for each step in the analysis.
+    """
     fig, axes = plt.subplots(
         2,
         2,
