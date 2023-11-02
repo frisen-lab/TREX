@@ -598,6 +598,7 @@ def make_qc_report(
         )
         pp.savefig(fig)
         plt.close()
+    logger.info("Wrote '%s'", pdf_path)
 
 
 def main(args):
