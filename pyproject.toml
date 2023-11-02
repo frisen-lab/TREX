@@ -41,6 +41,10 @@ trex = "trex.__main__:main"
 [tool.setuptools_scm]
 write_to = "src/trex/_version.py"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+xfail_strict = true
+
 [tool.ruff]
 select = ["E", "F", "W"]
 ignore = ["E501"]  # line too long

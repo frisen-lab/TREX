@@ -7,7 +7,7 @@ import logging
 import dataclasses
 from pathlib import Path
 from collections import Counter, defaultdict
-from typing import List, Dict, Iterable, DefaultDict
+from typing import List, Dict, Iterable, Optional, DefaultDict, Union
 
 import pandas as pd
 
@@ -163,29 +163,30 @@ def add_arguments(parser):
 
 def run_trex(
     output_dir: Path,
-    genome_name: str,
-    allowed_cell_ids: List[str],
-    excluded_clone_ids: List[str],
-    chromosome: str,
-    start: int,
-    end: int,
-    transcriptome_inputs: List[Path],
+    *,
+    transcriptome_inputs: List[Union[Path, str]],
     amplicon_inputs: List[Path],
-    sample_names: List[str],
-    prefix: bool,
-    max_hamming: int,
-    correct_per_cell: bool,
-    min_length: int,
-    jaccard_threshold: float,
-    keep_single_reads: bool,
-    keep_doublets: bool,
-    should_write_umi_matrix: bool,
-    should_run_visium: bool,
-    should_plot: bool,
-    highlight_cell_ids: List[str],
-    should_write_loom: bool,
+    genome_name: Optional[str] = None,
+    allowed_cell_ids: Optional[List[str]] = None,
+    excluded_clone_ids: Optional[List[str]] = None,
+    chromosome: Optional[str] = None,
+    start: Optional[int] = None,
+    end: Optional[int] = None,
+    sample_names: Optional[List[str]] = None,
+    prefix: bool = False,
+    max_hamming: int = 5,
+    correct_per_cell: bool = False,
+    min_length: int = 20,
+    jaccard_threshold: float = 0.7,
+    keep_single_reads: bool = False,
+    keep_doublets: bool = False,
+    should_write_umi_matrix: bool = False,
+    should_run_visium: bool = False,
+    should_plot: bool = False,
+    highlight_cell_ids: Optional[List[str]] = None,
+    should_write_loom: bool = False,
 ):
-    if len(sample_names) != len(set(sample_names)):
+    if sample_names is not None and len(sample_names) != len(set(sample_names)):
         raise TrexError("The sample names need to be unique")
 
     dataset_reader = DatasetReader(

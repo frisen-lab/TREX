@@ -101,7 +101,6 @@ def read_bam(
                 reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
                 # Write the passing alignments to a separate file
                 out_bam.write(read)
-            print("The amount of reads with no_umi: ", no_umi)
 
     if require_umis:
         logger.info(
