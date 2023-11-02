@@ -21,5 +21,4 @@ jobs:
         python -m pip install --upgrade pip pytest
         python -m pip install .
     - name: Test
-      run: |
-        ./test.sh
+      run: pytest
