@@ -67,7 +67,7 @@ def read_bam(
                 has_umi = read.has_tag("UB")
                 if has_umi:
                     if len(read.get_tag("UB")) == 0:
-                        no_umi +=1
+                        no_umi += 1
                 if not has_cell_id:
                     no_cell_id += 1
                 if not has_umi:
@@ -82,7 +82,7 @@ def read_bam(
                     continue
 
                 umi = read.get_tag("UB")
-                if umi == '':
+                if umi == "":
                     umi = None
                 if cell_id_tag == "CB":
                     if not cell_id.endswith("-1"):
@@ -96,7 +96,7 @@ def read_bam(
                     # Read does not cover the cloneID
                     continue
                 if require_umis and not umi:
-                    #Read does not have a umi
+                    # Read does not have a umi
                     continue
                 reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
                 # Write the passing alignments to a separate file

@@ -158,8 +158,12 @@ class CloneGraph:
         subprocess.run(["sfdp", "-Tpdf", "-o", pdf_path, graphviz_path], check=True)
 
     def dot(self, highlight_cell_ids=None, highlight_doublets=None) -> str:
-        highlight_cell_ids = set(highlight_cell_ids) if highlight_cell_ids is not None else set()
-        highlight_doublets = set(highlight_doublets) if highlight_doublets is not None else set()
+        highlight_cell_ids = (
+            set(highlight_cell_ids) if highlight_cell_ids is not None else set()
+        )
+        highlight_doublets = (
+            set(highlight_doublets) if highlight_doublets is not None else set()
+        )
         max_width = 10
         edge_scaling = (max_width - 1) / math.log(
             max(

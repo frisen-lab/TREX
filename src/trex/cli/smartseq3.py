@@ -15,11 +15,7 @@ from . import (
     add_common_arguments,
 )
 from .. import __version__
-from ..writers import (
-    write_count_matrix,
-    write_cells,
-    write_reads_or_molecules
-)
+from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
@@ -239,6 +235,7 @@ def run_smartseq3(
     number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
     logger.debug("No. of cells in clones: %d", number_of_cells_in_clones)
     assert len(cells) == number_of_cells_in_clones
+
 
 def filter_cells(
     cells: Iterable[Cell],

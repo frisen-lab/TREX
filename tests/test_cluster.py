@@ -10,11 +10,15 @@ def parse_cluster(s):
 
 
 def test_parse_cluster():
-    assert parse_cluster(
-        """
+    assert (
+        parse_cluster(
+            """
         TGGGTCGTTATAA 1
         AGGGTCGTTATAA 1
-        """) == ["TGGGTCGTTATAA", "AGGGTCGTTATAA"]
+        """
+        )
+        == ["TGGGTCGTTATAA", "AGGGTCGTTATAA"]
+    )
 
 
 def test_cluster_1():
@@ -30,7 +34,10 @@ def test_cluster_1():
         -------------------GGTCGTTATAA 1
         """
     )
-    clusters = cluster_sequences(sequences, is_similar=lambda s, t: is_similar(s, t, min_overlap=10, max_hamming=5))
+    clusters = cluster_sequences(
+        sequences,
+        is_similar=lambda s, t: is_similar(s, t, min_overlap=10, max_hamming=5),
+    )
 
     assert len(clusters) == 1
     assert sorted(clusters[0]) == sorted(sequences)

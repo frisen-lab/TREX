@@ -220,7 +220,9 @@ def run_trex(
 
     molecules = [m for m in molecules if not is_low_complexity(m.clone_id)]
     logger.info(f"{len(molecules)} remain after low-complexity filtering")
-    write_reads_or_molecules(output_dir / "molecules_filtered.txt", molecules, sort=False)
+    write_reads_or_molecules(
+        output_dir / "molecules_filtered.txt", molecules, sort=False
+    )
 
     if correct_per_cell:
         corrected_molecules = correct_clone_ids_per_cell(

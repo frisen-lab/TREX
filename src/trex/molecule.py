@@ -71,7 +71,7 @@ def compute_consensus(sequences: Sequence[str]) -> str:
     matrix = np.zeros([length, 6], dtype="float16")
     for sequence in sequences:
         align = np.zeros([length, 6], dtype="float16")
-        for (i, ch) in enumerate(sequence):
+        for i, ch in enumerate(sequence):
             # turns each base into a number and position in numpy array
             if ch == "A":
                 align[i, 0] = 1
