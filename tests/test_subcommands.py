@@ -1,8 +1,10 @@
 import logging
 import subprocess
 from pathlib import Path
+from shutil import copytree
 
 from trex.cli import add_file_logging
+from trex.cli.qc import make_qc_report
 from trex.cli.run10x import run_trex
 from trex.cli.smartseq2 import run_smartseq2
 from trex.cli.smartseq3 import run_smartseq3
@@ -96,3 +98,19 @@ def test_run_smartseq3(tmp_path):
     )
     diff("tests/expected_smartseq3/log.txt", tmp_path / "log.txt")
     assert tmp_path.joinpath("umi_count_matrix.csv").exists()
+
+
+def test_qc(tmp_path):
+    add_file_logging(tmp_path / "log.txt")
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    pdf_path = tmp_path / "quality_report.pdf"
+
+    copytree("tests/expected", tmp_path / "trexrun")
+    make_qc_report(
+        tmp_path / "trexrun",
+        pdf_path,
+        plot_jaccard=True,
+        plot_hamming=True,
+    )
+    assert pdf_path.exists()
