@@ -47,4 +47,4 @@ xfail_strict = true
 
 [tool.ruff]
 select = ["E", "F", "W"]
-ignore = ["E501"]  # line too long
+line-length = 100
