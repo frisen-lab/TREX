@@ -139,7 +139,8 @@ def add_arguments(parser):
     )
     groups.filter.add_argument(
         "--per-cell",
-        help="Use only cloneIDs within the same cell for cloneID correction. Default: Use cloneIDs from all cells",
+        help="Use only cloneIDs within the same cell for cloneID correction. "
+        "Default: Use cloneIDs from all cells",
         default=False,
         action="store_true",
         dest="correct_per_cell",

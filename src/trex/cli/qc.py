@@ -106,7 +106,8 @@ def plot_unique_clone_ids_per_clone(
     text = (
         f"There are {len(clone_ids_per_clone)} clones. On average, they have {mean:.2f}\n"
         f"unique cloneIDs, with a median of {quantiles[1]} and interquartile range of \n"
-        f"{quantiles[0]} - {quantiles[2]}. {sum(clone_ids_per_clone == 1)} clones have a single unique cloneID."
+        f"{quantiles[0]} - {quantiles[2]}. "
+        f"{sum(clone_ids_per_clone == 1)} clones have a single unique cloneID."
     )
 
     fig, axes = plt.subplots(1, 1)
@@ -133,7 +134,8 @@ def plot_reads_per_molecule(reads: pd.DataFrame) -> plt.Figure:
     text = (
         f"There are {len(reads_per_molecule)} viral cloneID molecules. On average, \n"
         f"they have {mean:.2f} reads, with a median of {quantiles[1]} and \n"
-        f"interquartile range of {quantiles[0]} - {quantiles[2]}. {sum(reads_per_molecule == 1)} molecules have \n"
+        f"interquartile range of {quantiles[0]} - {quantiles[2]}. "
+        f"{sum(reads_per_molecule == 1)} molecules have \n"
         f"only a single read."
     )
 
@@ -162,9 +164,11 @@ def plot_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
     )
 
     text = (
-        f"There are {len(unique_clone_ids_per_cell)} cells in the end. On average, they have {mean:.2f}\n"
+        f"There are {len(unique_clone_ids_per_cell)} cells in the end. "
+        f"On average, they have {mean:.2f}\n"
         f"unique cloneIDs, with a median of {quantiles[1]} and interquartile range of \n"
-        f"{quantiles[0]} - {quantiles[2]}. {sum(unique_clone_ids_per_cell == 1)} cells have only a single unique cloneID."
+        f"{quantiles[0]} - {quantiles[2]}. "
+        f"{sum(unique_clone_ids_per_cell == 1)} cells have only a single unique cloneID."
     )
 
     fig, axes = plt.subplots(1, 1)
@@ -347,7 +351,8 @@ def plot_molecules_per_clone_id_per_step(
         text = (
             f"There are {len(vals)} unique cloneIDs. On average, there\n"
             f"are {mean:.2f} molecules per unique cloneID, with a  \n"
-            f"median of {quantiles[1]} and interquartile range of {quantiles[0]} - {quantiles[2]}.\n"
+            f"median of {quantiles[1]} and interquartile range of "
+            f"{quantiles[0]} - {quantiles[2]}.\n"
             f"{sum(vals == 1)} are cloneIDs with single molecules."
         )
 
@@ -372,7 +377,8 @@ def plot_molecules_per_clone_id_per_step(
         text = (
             f"There are {len(vals)} unique cloneIDs. On average, there\n"
             f"are {mean:.2f} molecules per unique cloneID, with a  \n"
-            f"median of {quantiles[1]} and interquartile range of {quantiles[0]} - {quantiles[2]}. \n"
+            f"median of {quantiles[1]} and interquartile range of "
+            f"{quantiles[0]} - {quantiles[2]}. \n"
             f"{sum(vals == 1)} are cloneIDs with single molecules."
         )
 
