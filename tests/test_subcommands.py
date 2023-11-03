@@ -24,7 +24,9 @@ def bam_diff(expected_bam, actual_bam, tmp_path):
     expected_sam = tmp_path / "expected.sam"
     actual_sam = tmp_path / "actual.sam"
     with open(expected_sam, "w") as expected, open(actual_sam, "w") as actual:
-        subprocess.run(["samtools", "view", "--no-PG", "-h", expected_bam], stdout=expected)
+        subprocess.run(
+            ["samtools", "view", "--no-PG", "-h", expected_bam], stdout=expected
+        )
         subprocess.run(["samtools", "view", "--no-PG", "-h", actual_bam], stdout=actual)
     diff(expected_sam, actual_sam)
 
@@ -44,7 +46,9 @@ def test_run_trex(tmp_path):
         should_write_loom=True,
         should_write_umi_matrix=True,
     )
-    diff("tests/expected", tmp_path, ignore=["data.loom", "entries.bam"], recursive=True)
+    diff(
+        "tests/expected", tmp_path, ignore=["data.loom", "entries.bam"], recursive=True
+    )
     bam_diff("tests/expected/entries.bam", tmp_path / "entries.bam", tmp_path)
 
 
@@ -117,7 +121,10 @@ def test_qc(tmp_path):
     assert pdf_path.exists()
 
 
-EXCLUDED_CLONE_IDS = {"GGTCTCCCTATACCAACAGTATCGTCTCAA", "GGGTTCTGGGATATTACGTTGACTTGAGAG"}
+EXCLUDED_CLONE_IDS = {
+    "GGTCTCCCTATACCAACAGTATCGTCTCAA",
+    "GGGTTCTGGGATATTACGTTGACTTGAGAG",
+}
 
 
 def test_filter_clone_ids(tmp_path):

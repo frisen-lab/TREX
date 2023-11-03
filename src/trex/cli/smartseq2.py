@@ -108,7 +108,7 @@ def add_arguments(parser):
         default=False,
         action="store_true",
         help="Create a read count matrix 'read_count_matrix.csv' "
-             "with cells as columns and cloneIDs as rows",
+        "with cells as columns and cloneIDs as rows",
     )
 
 

@@ -34,7 +34,9 @@ def main(arguments=None):
     subcommand_name = get_subcommand_name(arguments)
     module = importlib.import_module("." + subcommand_name, cli_package.__name__)
     parser = HelpfulArgumentParser(description=__doc__, prog="trex")
-    parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + __version__
+    )
     parser.add_argument(
         "--debug",
         default=False,

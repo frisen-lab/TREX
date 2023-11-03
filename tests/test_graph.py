@@ -27,7 +27,14 @@ def test_nodes(graph):
 
 def test_edges(graph):
     edges = list(graph.edges())
-    assert sorted(edges) == [("A", "B"), ("A", "D"), ("B", "C"), ("B", "D"), ("B", "E"), ("F", "G")]
+    assert sorted(edges) == [
+        ("A", "B"),
+        ("A", "D"),
+        ("B", "C"),
+        ("B", "D"),
+        ("B", "E"),
+        ("F", "G"),
+    ]
 
 
 def test_neighbors(graph):
