@@ -60,7 +60,8 @@ def read_bam(
         )
     if require_umis:
         logger.info(
-            f"Found {len(reads)} reads with usable cloneIDs and UMIs. Skipped {no_cell_id} without cell id, "
+            f"Found {len(reads)} reads with usable cloneIDs and UMIs. "
+            f"Skipped {no_cell_id} without cell id, "
             f"{no_umi} without UMI."
         )
     else:
