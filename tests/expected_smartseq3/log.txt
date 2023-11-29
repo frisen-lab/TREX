@@ -1,29 +1,26 @@
-Trex 0.4.dev161+g17ccfe3.d20230601
-Command line arguments: smartseq3 --delete --output trex_smartseq3_run --umi-matrix -s 2330 -e 2359 tests/data/smartseq3_test.bam
 Reading cloneIDs from EGFP-30N:2330-2359 in tests/data/smartseq3_test.bam
 Found 9631 reads with usable cloneIDs and UMIs. Skipped 0 without cell id, 24435 without UMI.
 Read 9631 reads containing (parts of) the cloneID (4593 full cloneIDs, 943 unique)
 Detected 3448 molecules (2183 full cloneIDs, 779 unique)
-After cloneID correction, 424 unique cloneIDs remain
-Detected 1528 cells
-Found 680 single-read cloneIDs
-613 filtered cells remain
+After cloneID correction, 430 unique cloneIDs remain
+Detected 1547 cells
+Found 719 single-read cloneIDs
+610 filtered cells remain
 Writing UMI matrix
-Removing 7 bridges from the graph
-Detected 323 clones
+Removing 0 bridges from the graph
+Detected 343 clones
 Clone size histogram
  size count
-    1   233
+    1   253
     2    36
-    3    19
+    3    20
     4     7
-    5     7
+    5     8
     6     4
-    7     9
+    7     7
     8     1
-    9     2
-   11     1
+    9     3
+   10     1
    12     1
+   13     1
    14     1
-   15     1
-   23     1

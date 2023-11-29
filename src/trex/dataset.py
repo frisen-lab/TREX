@@ -1,6 +1,7 @@
 from pathlib import Path
 from itertools import zip_longest
 import logging
+from typing import Optional, List
 
 from .bam import read_bam
 from .cellranger import make_cellranger
@@ -54,13 +55,15 @@ class DatasetReader:
         self,
         transcriptome_inputs,
         amplicon_inputs,
-        names,
-        allowed_cell_ids,
+        names: Optional[List[str]],
+        allowed_cell_ids: Optional[List[str]],
         require_umis=True,
         cell_id_tag="CB",
     ):
         n_transcriptome = len(transcriptome_inputs)
         n_amplicon = len(amplicon_inputs)
+        if names is None:
+            names = [None] * n_transcriptome
         assert n_transcriptome > 0
         assert n_amplicon == 0 or n_amplicon == n_transcriptome
         assert n_transcriptome == len(names)

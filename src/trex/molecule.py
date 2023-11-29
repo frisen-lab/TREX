@@ -1,18 +1,27 @@
 """
 A molecule is a DNA/RNA fragment that has potentially been sequenced multiple times
 """
-from typing import NamedTuple, List
+from dataclasses import dataclass
+from typing import List, Sequence
 from collections import defaultdict
 import numpy as np
 
 from .bam import Read
 
 
-class Molecule(NamedTuple):
+@dataclass
+class Molecule:
     umi: str
     cell_id: str
     clone_id: str
     read_count: int
+
+    @property
+    def trimmed_clone_id(self) -> str:
+        """
+        Return cloneID without "0" and "-"
+        """
+        return self.clone_id.replace("-", "").replace("0", "")
 
 
 def compute_molecules(reads: List[Read]) -> List[Molecule]:
@@ -25,7 +34,7 @@ def compute_molecules(reads: List[Read]) -> List[Molecule]:
     for read in reads:
         groups[(read.umi, read.cell_id)].append(read.clone_id)
 
-    molecules = []
+    molecules: List[Molecule] = []
     for (umi, cell_id), clone_ids in groups.items():
         clone_id_consensus = compute_consensus(clone_ids)
         molecules.append(
@@ -44,7 +53,7 @@ def compute_molecules(reads: List[Read]) -> List[Molecule]:
     return sorted_molecules
 
 
-def compute_consensus(sequences):
+def compute_consensus(sequences: Sequence[str]) -> str:
     """
     Compute a consensus for a set of sequences.
 
@@ -62,7 +71,7 @@ def compute_consensus(sequences):
     matrix = np.zeros([length, 6], dtype="float16")
     for sequence in sequences:
         align = np.zeros([length, 6], dtype="float16")
-        for (i, ch) in enumerate(sequence):
+        for i, ch in enumerate(sequence):
             # turns each base into a number and position in numpy array
             if ch == "A":
                 align[i, 0] = 1

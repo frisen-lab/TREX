@@ -1,5 +1,3 @@
-Trex 0.4.dev150+g2e002b0.d20220427
-Command line arguments: smartseq2 --delete --chr EGFP-30N --output trex_smartseq2_run --start 2330 --end 2359 --read-matrix --readcount-threshold 1 tests/data/smartseq2_test.bam
 Reading cloneIDs from EGFP-30N:2330-2359 in tests/data/smartseq2_test.bam
 Found 286 reads with usable cloneIDs. Skipped 0 without cell id
 Read 286 reads containing (parts of) the cloneID (135 full cloneIDs, 115 unique)
@@ -8,8 +6,8 @@ Detected 93 cells
 93 filtered cells remain
 Writing read matrix
 Removing 0 bridges from the graph
-Detected 88 clones
+Detected 91 clones
 Clone size histogram
  size count
-    1    83
-    2     5
+    1    89
+    2     2

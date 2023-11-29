@@ -19,7 +19,7 @@ class Clone:
     def __init__(self, cells: List[Cell]):
         self.cells = cells
         self.cell_ids = tuple(sorted(c.cell_id for c in cells))
-        self.counts = sum((Counter(c.counts) for c in cells), Counter())
+        self.counts: Counter = sum((Counter(c.counts) for c in cells), Counter())
         self.n = len(cells)
         self.cell_id = "M-" + min(self.cell_ids)
         self._hash = hash(self.cell_ids)
@@ -32,7 +32,7 @@ class Clone:
 
 
 class CloneGraph:
-    def __init__(self, cells: List[Cell], jaccard_threshold: float = 0):
+    def __init__(self, cells: List[Cell], jaccard_threshold: float):
         self._jaccard_threshold = jaccard_threshold
         self._clones = self._precluster_cells(cells)
         self._graph = self._make_graph()
@@ -93,9 +93,19 @@ class CloneGraph:
                 bridges.append((node1, node2))
         return bridges
 
+    def doublets(self):
+        """Find cells that appear to incorrectly connect two unrelated subclusters"""
+        cut_vertices = self._graph.local_cut_vertices()
+        # Skip nodes that represent multiple cells
+        return [node for node in cut_vertices if node.n == 1]
+
     def remove_edges(self, edges):
         for node1, node2 in edges:
             self._graph.remove_edge(node1, node2)
+
+    def remove_nodes(self, nodes):
+        for node in nodes:
+            self._graph.remove_node(node)
 
     @staticmethod
     def _expand_clones(clones: List[Clone]) -> List[Cell]:
@@ -107,7 +117,7 @@ class CloneGraph:
 
     @staticmethod
     def write_clones(file, clones):
-        print("clone#", "cell_id", sep="\t", file=file)
+        print("clone_nr", "cell_id", sep="\t", file=file)
         for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
             cells = sorted(cells)
             for cell in cells:
@@ -115,7 +125,7 @@ class CloneGraph:
 
     @staticmethod
     def write_clone_sequences(file, clones):
-        print("clone#", "clone_id", sep="\t", file=file)
+        print("clone_nr", "clone_id", sep="\t", file=file)
         for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
             print(index, clone_id, sep="\t", file=file)
 
@@ -133,23 +143,27 @@ class CloneGraph:
         )
 
         def most_abundant_clone_id(cells: List[Cell]):
-            counts = Counter()
+            counts: Counter = Counter()
             for cell in cells:
                 counts.update(cell.counts)
             return max(counts, key=lambda k: (counts[k], k))
 
         return [(most_abundant_clone_id(cells), cells) for cells in clusters]
 
-    def plot(self, path, highlight=None):
+    def plot(self, path, highlight_cell_ids=None, highlight_doublets=None):
         graphviz_path = path.with_suffix(".gv")
         with open(graphviz_path, "w") as f:
-            print(self.dot(highlight), file=f)
+            print(self.dot(highlight_cell_ids, highlight_doublets), file=f)
         pdf_path = str(path.with_suffix(".pdf"))
         subprocess.run(["sfdp", "-Tpdf", "-o", pdf_path, graphviz_path], check=True)
 
-    def dot(self, highlight=None):
-        if highlight is not None:
-            highlight = set(highlight)
+    def dot(self, highlight_cell_ids=None, highlight_doublets=None) -> str:
+        highlight_cell_ids = (
+            set(highlight_cell_ids) if highlight_cell_ids is not None else set()
+        )
+        highlight_doublets = (
+            set(highlight_doublets) if highlight_doublets is not None else set()
+        )
         max_width = 10
         edge_scaling = (max_width - 1) / math.log(
             max(
@@ -169,9 +183,16 @@ class CloneGraph:
         for node in self._graph.nodes():
             if self._graph.neighbors(node):
                 width = int(1 + node_scaling * math.log(node.n))
-                intersection = set(node.cell_ids) & highlight
-                hl = ",fillcolor=yellow" if intersection else ""
-                hl_label = f" ({len(intersection)})" if intersection else ""
+                intersection = set(node.cell_ids) & highlight_cell_ids
+                if node in highlight_doublets:
+                    hl = ",fillcolor=orange"
+                    hl_label = " (doublet)"
+                elif intersection:
+                    hl = ",fillcolor=yellow"
+                    hl_label = f" ({len(intersection)})"
+                else:
+                    hl = ""
+                    hl_label = ""
                 print(
                     f'  "{node.cell_id}" [penwidth={width}{hl},label="{node.cell_id}'
                     f'\\n{node.n}{hl_label}"];',
@@ -248,7 +269,7 @@ class UncompressedCloneGraph:
                     graph.add_edge(cells[i], cells[j])
         return graph
 
-    def _make_barcode_graph(self):
+    def _make_barcode_graph(self) -> Graph:
         counts: Dict[str, int] = Counter()
         for cell in self._cells:
             counts.update(cell.counts)
@@ -269,7 +290,7 @@ class UncompressedCloneGraph:
         clusters = [g.nodes() for g in self._graph.connected_components()]
 
         def most_abundant_clone_id(cells: List[Cell]):
-            counts = Counter()
+            counts: Counter = Counter()
             for cell in cells:
                 counts.update(cell.counts)
             return max(counts, key=lambda k: (counts[k], k))

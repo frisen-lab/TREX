@@ -5,26 +5,17 @@ import sys
 import logging
 from pathlib import Path
 from collections import Counter
-from typing import List, Dict, Iterable
-
-from tinyalign import hamming_distance
-import pandas as pd
+from typing import List, Dict, Iterable, Optional
 
 from .run10x import read_allowed_cellids, correct_clone_ids
 from . import (
-    setup_logging,
     CommandLineError,
     add_file_logging,
     make_output_dir,
     add_common_arguments,
 )
 from .. import __version__
-from ..writers import (
-    write_count_matrix,
-    write_cells,
-    write_reads_or_molecules
-)
-from ..clustering import cluster_sequences
+from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
 from ..clone import CloneGraph
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
@@ -38,8 +29,6 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    setup_logging(debug=args.debug)
-
     output_dir = args.output
     try:
         make_output_dir(output_dir, args.delete)
@@ -101,7 +90,7 @@ def main(args):
             keep_single_reads=args.keep_single_reads,
             should_write_umi_matrix=args.umi_matrix,
             should_plot=args.plot,
-            highlight_cell_ids=highlight_cell_ids
+            highlight_cell_ids=highlight_cell_ids,
         )
     except TrexError as e:
         raise CommandLineError("%s", e)
@@ -109,7 +98,6 @@ def main(args):
 
 def add_arguments(parser):
     groups = add_common_arguments(parser, smartseq=True)
-
 
     groups.filter.add_argument(
         "--keep-single-reads",
@@ -129,24 +117,25 @@ def add_arguments(parser):
 
 def run_smartseq3(
     output_dir: Path,
-    genome_name: str,
-    allowed_cell_ids: List[str],
-    chromosome: str,
-    start: int,
-    end: int,
+    *,
     transcriptome_inputs: List[Path],
     amplicon_inputs: List[Path],
-    sample_names: List[str],
-    prefix: bool,
-    max_hamming: int,
-    min_length: int,
-    jaccard_threshold: float,
-    keep_single_reads: bool,
-    should_write_umi_matrix: bool,
-    should_plot: bool,
-    highlight_cell_ids: List[str],
+    genome_name: Optional[str] = None,
+    allowed_cell_ids: Optional[List[str]] = None,
+    chromosome: Optional[str] = None,
+    start: Optional[int] = None,
+    end: Optional[int] = None,
+    sample_names: Optional[List[str]] = None,
+    prefix: bool = False,
+    max_hamming: int = 5,
+    min_length: int = 20,
+    jaccard_threshold: float = 0.7,
+    keep_single_reads: bool = False,
+    should_write_umi_matrix: bool = False,
+    should_plot: bool = False,
+    highlight_cell_ids: Optional[List[str]] = None,
 ):
-    if len(sample_names) != len(set(sample_names)):
+    if sample_names is not None and len(sample_names) != len(set(sample_names)):
         raise TrexError("The sample names need to be unique")
 
     dataset_reader = DatasetReader(
@@ -246,6 +235,7 @@ def run_smartseq3(
     number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
     logger.debug("No. of cells in clones: %d", number_of_cells_in_clones)
     assert len(cells) == number_of_cells_in_clones
+
 
 def filter_cells(
     cells: Iterable[Cell],

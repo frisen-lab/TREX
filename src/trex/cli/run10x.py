@@ -1,17 +1,17 @@
 """
 Run on single cell 10X Chromium or spatial Visium data processed by Cell / Space Ranger software
 """
+import re
 import sys
 import logging
+import dataclasses
 from pathlib import Path
-from collections import Counter
-from typing import List, Dict, Iterable
+from collections import Counter, defaultdict
+from typing import List, Dict, Iterable, Optional, DefaultDict, Union
 
-from tinyalign import hamming_distance
 import pandas as pd
 
 from . import (
-    setup_logging,
     CommandLineError,
     add_file_logging,
     make_output_dir,
@@ -27,6 +27,7 @@ from ..writers import (
 )
 from ..clustering import cluster_sequences
 from ..clone import CloneGraph
+from ..filters import is_low_complexity
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
 from ..error import TrexError
@@ -39,8 +40,6 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    setup_logging(debug=args.debug)
-
     output_dir = args.output
     try:
         make_output_dir(output_dir, args.delete)
@@ -57,6 +56,9 @@ def main(args):
     allowed_cell_ids = None
     if args.filter_cellids:
         allowed_cell_ids = read_allowed_cellids(args.filter_cellids)
+    excluded_clone_ids = None
+    if args.filter_cloneids:
+        excluded_clone_ids = read_excluded_clone_ids(args.filter_cloneids)
     transcriptome_inputs = args.path
     if args.samples:
         sample_names = args.samples.split(",")
@@ -89,6 +91,7 @@ def main(args):
             output_dir,
             genome_name=args.genome_name,
             allowed_cell_ids=allowed_cell_ids,
+            excluded_clone_ids=excluded_clone_ids,
             chromosome=args.chromosome,
             start=args.start - 1 if args.start is not None else None,
             end=args.end,
@@ -96,10 +99,12 @@ def main(args):
             amplicon_inputs=amplicon_inputs,
             sample_names=sample_names,
             prefix=args.prefix,
+            correct_per_cell=args.correct_per_cell,
             max_hamming=args.max_hamming,
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
             keep_single_reads=args.keep_single_reads,
+            keep_doublets=args.keep_doublets,
             should_write_umi_matrix=args.umi_matrix,
             should_run_visium=args.visium,
             should_plot=args.plot,
@@ -120,11 +125,25 @@ def add_arguments(parser):
         help="Keep cloneIDs supported by only a single read. Default: Discard them",
     )
     groups.filter.add_argument(
+        "--keep-doublets",
+        action="store_true",
+        default=False,
+        help="Keep doublets. Default: Detect and remove doublets",
+    )
+    groups.filter.add_argument(
         "--visium",
         default=False,
         action="store_true",
         help="Adjust filter settings for 10x Visium data: Filter out cloneIDs only based on "
         "one read, but keep those with only one UMI",
+    )
+    groups.filter.add_argument(
+        "--per-cell",
+        help="Use only cloneIDs within the same cell for cloneID correction. "
+        "Default: Use cloneIDs from all cells",
+        default=False,
+        action="store_true",
+        dest="correct_per_cell",
     )
 
     groups.output.add_argument(
@@ -145,26 +164,30 @@ def add_arguments(parser):
 
 def run_trex(
     output_dir: Path,
-    genome_name: str,
-    allowed_cell_ids: List[str],
-    chromosome: str,
-    start: int,
-    end: int,
-    transcriptome_inputs: List[Path],
+    *,
+    transcriptome_inputs: List[Union[Path, str]],
     amplicon_inputs: List[Path],
-    sample_names: List[str],
-    prefix: bool,
-    max_hamming: int,
-    min_length: int,
-    jaccard_threshold: float,
-    keep_single_reads: bool,
-    should_write_umi_matrix: bool,
-    should_run_visium: bool,
-    should_plot: bool,
-    highlight_cell_ids: List[str],
-    should_write_loom: bool,
+    genome_name: Optional[str] = None,
+    allowed_cell_ids: Optional[List[str]] = None,
+    excluded_clone_ids: Optional[List[str]] = None,
+    chromosome: Optional[str] = None,
+    start: Optional[int] = None,
+    end: Optional[int] = None,
+    sample_names: Optional[List[str]] = None,
+    prefix: bool = False,
+    max_hamming: int = 5,
+    correct_per_cell: bool = False,
+    min_length: int = 20,
+    jaccard_threshold: float = 0.7,
+    keep_single_reads: bool = False,
+    keep_doublets: bool = False,
+    should_write_umi_matrix: bool = False,
+    should_run_visium: bool = False,
+    should_plot: bool = False,
+    highlight_cell_ids: Optional[List[str]] = None,
+    should_write_loom: bool = False,
 ):
-    if len(sample_names) != len(set(sample_names)):
+    if sample_names is not None and len(sample_names) != len(set(sample_names)):
         raise TrexError("The sample names need to be unique")
 
     dataset_reader = DatasetReader(
@@ -194,10 +217,20 @@ def run_trex(
         f"Detected {len(molecules)} molecules ({len(clone_ids)} full cloneIDs, "
         f"{len(set(clone_ids))} unique)"
     )
-
     write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
 
-    corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
+    molecules = [m for m in molecules if not is_low_complexity(m.clone_id)]
+    logger.info(f"{len(molecules)} remain after low-complexity filtering")
+    write_reads_or_molecules(
+        output_dir / "molecules_filtered.txt", molecules, sort=False
+    )
+
+    if correct_per_cell:
+        corrected_molecules = correct_clone_ids_per_cell(
+            molecules, max_hamming, min_length
+        )
+    else:
+        corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
     clone_ids = [
         m.clone_id
         for m in corrected_molecules
@@ -210,6 +243,21 @@ def run_trex(
     write_reads_or_molecules(
         output_dir / "molecules_corrected.txt", corrected_molecules, sort=False
     )
+
+    if excluded_clone_ids is not None:
+        corrected_molecules = [
+            molecule
+            for molecule in corrected_molecules
+            if not is_similar_to_any(molecule.clone_id, excluded_clone_ids)
+        ]
+        clone_ids = [
+            m.clone_id
+            for m in corrected_molecules
+            if "-" not in m.clone_id and "0" not in m.clone_id
+        ]
+        logger.info(
+            f"After filtering cloneIDs, {len(set(clone_ids))} unique cloneIDs remain"
+        )
 
     cells = compute_cells(corrected_molecules, min_length)
     logger.info(f"Detected {len(cells)} cells")
@@ -234,21 +282,40 @@ def run_trex(
         print(
             clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
-    if should_plot:
-        logger.info("Plotting clone graph")
-        clone_graph.plot(output_dir / "graph", highlight_cell_ids)
 
     bridges = clone_graph.bridges()
     logger.info(f"Removing {len(bridges)} bridges from the graph")
     clone_graph.remove_edges(bridges)
-    with open(output_dir / "components_corrected.txt", "w") as components_file:
-        print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
-        )
+
+    if not keep_doublets:
+        doublets = clone_graph.doublets()
+        logger.info(f"Removing {len(doublets)} doublets from the graph (first round)")
+        clone_graph.remove_nodes(doublets)
+
+        bridges2 = clone_graph.bridges()
+        logger.info(f"Removing {len(bridges2)} bridges from the graph (second round)")
+        clone_graph.remove_edges(bridges2)
+        doublets2 = clone_graph.doublets()
+        if should_plot:
+            logger.info("Plotting clone graph")
+            clone_graph.plot(output_dir / "graph", highlight_cell_ids, doublets2)
+
+        logger.info(f"Removing {len(doublets2)} doublets from the graph (second round)")
+        clone_graph.remove_nodes(doublets2)
+
+        with open(output_dir / "doublets.txt", "w") as doublets_file:
+            for clone in doublets + doublets2:
+                assert clone.n == 1
+                print(clone.cell_ids[0], file=doublets_file)
 
     if should_plot:
         logger.info("Plotting corrected clone graph")
         clone_graph.plot(output_dir / "graph_corrected", highlight_cell_ids)
+
+    with open(output_dir / "components_corrected.txt", "w") as components_file:
+        print(
+            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+        )
 
     clones = clone_graph.clones()
     with open(output_dir / "clones.txt", "w") as f:
@@ -263,7 +330,6 @@ def run_trex(
     )
     number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
     logger.debug("No. of cells in clones: %d", number_of_cells_in_clones)
-    assert len(cells) == number_of_cells_in_clones
 
     if should_write_loom:
         if len(transcriptome_inputs) > 1:
@@ -298,6 +364,49 @@ def read_allowed_cellids(path):
     return set(allowed_ids)
 
 
+def read_excluded_clone_ids(path: Path) -> List[str]:
+    """
+    Read a user-provided list of cloneIDs to be ignored from a text file
+    """
+    excluded_clone_ids = pd.read_table(path, header=None)
+    excluded_clone_ids = excluded_clone_ids[excluded_clone_ids.columns[0]].values
+    logger.info(
+        f"{len(excluded_clone_ids)} CloneIDs will be ignored during the analysis"
+    )
+    return set(excluded_clone_ids)
+
+
+def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
+    if len(s) != len(t):
+        raise IndexError("Sequences do not have the same length")
+
+    matches = 0
+    mismatches = 0
+    for ch1, ch2 in zip(s, t):
+        if ch1 == "-" or ch1 == "0" or ch2 == "-" or ch2 == "0":
+            continue
+        if ch1 == ch2:
+            matches += 1
+        else:
+            mismatches += 1
+    if matches + mismatches < min_overlap:
+        return False
+    if mismatches > max_hamming:
+        return False
+    return True
+    # TODO allowed Hamming distance should be reduced relative to the overlap length
+
+
+def is_similar_to_any(
+    s: str, exclusion_list: List[str], min_overlap: int = 0, max_hamming: int = 0
+) -> bool:
+    """Check if s is similar to any sequence in the exclusion list"""
+    for t in exclusion_list:
+        if is_similar(s, t, min_overlap, max_hamming):
+            return True
+    return False
+
+
 def correct_clone_ids(
     molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
 ) -> List[Molecule]:
@@ -311,21 +420,11 @@ def correct_clone_ids(
     counts = Counter(clone_ids)
 
     # Cluster them by Hamming distance
-    def is_similar(s, t):
-        # m = max_hamming
-        if "-" in s or "-" in t:
-            # Remove suffix and/or prefix where sequences do not overlap
-            s = s.lstrip("-")
-            t = t[-len(s) :]
-            s = s.rstrip("-")
-            if len(s) < min_overlap:
-                return False
-            t = t[: len(s)]
-            # TODO allowed Hamming distance should be reduced relative to the overlap length
-            # m = max_hamming * len(s) / len(original_length_of_s)
-        return hamming_distance(s, t) <= max_hamming
-
-    clusters = cluster_sequences(list(set(clone_ids)), is_similar=is_similar, k=7)
+    clusters = cluster_sequences(
+        list(set(clone_ids)),
+        is_similar=lambda s, t: is_similar(s, t, min_overlap, max_hamming),
+        k=7,
+    )
 
     # Map non-singleton cloneIDs to a cluster representative
     clone_id_map = dict()
@@ -341,8 +440,66 @@ def correct_clone_ids(
     new_molecules = []
     for molecule in molecules:
         clone_id = clone_id_map.get(molecule.clone_id, molecule.clone_id)
-        new_molecules.append(molecule._replace(clone_id=clone_id))
+        molecule = dataclasses.replace(molecule, clone_id=clone_id)
+        new_molecules.append(molecule)
     return new_molecules
+
+
+def correct_clone_ids_per_cell(
+    molecules: List[Molecule], max_hamming: int, min_overlap: int = 20
+) -> List[Molecule]:
+    """
+    Attempt to correct sequencing errors in the CloneID sequences of all
+    molecules looking for similar sequences in the same cell.
+    """
+    # Count all cloneIDs (including those with '-' and '0')
+    counts = Counter(m.clone_id for m in molecules)
+
+    # Group molecules into cells
+    cells: DefaultDict[str, List[Molecule]] = defaultdict(list)
+    for molecule in molecules:
+        cells[molecule.cell_id].append(molecule)
+
+    # Iterate over cells
+    cell_correction_map = defaultdict(dict)
+    for cell_id, cell_molecules in cells.items():
+        cell_clone_ids = list(set(m.clone_id for m in cell_molecules))
+
+        if len(cell_clone_ids) < 2:
+            continue
+        clusters = cluster_sequences(
+            cell_clone_ids,
+            is_similar=lambda s, t: is_similar(s, t, min_overlap, max_hamming),
+            k=0,
+        )
+        for cluster in clusters:
+            if len(cluster) < 2:
+                continue
+
+            # Pick most frequent cloneID as representative
+            longest = max(len(re.sub("[0-]", "", x)) for x in cluster)
+            subcluster = [x for x in cluster if len(re.sub("[0-]", "", x)) == longest]
+            representative = max(
+                subcluster, key=lambda clone_id: (counts[clone_id], clone_id)
+            )
+            cell_correction_map[cell_id].update(
+                {
+                    clone_id: representative
+                    for clone_id in cluster
+                    if clone_id != representative
+                }
+            )
+
+    def corrected_molecule(molecule):
+        this_correction_map = cell_correction_map.get(molecule.cell_id, None)
+        if this_correction_map is not None:
+            new_clone_id = this_correction_map.get(molecule.clone_id, molecule.clone_id)
+            molecule = dataclasses.replace(molecule, clone_id=new_clone_id)
+        return molecule
+
+    # Create a new list of molecules in which the cloneIDs have been replaced
+    # by their representatives
+    return [corrected_molecule(molecule) for molecule in molecules]
 
 
 def filter_visium(
