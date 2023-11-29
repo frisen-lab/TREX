@@ -150,14 +150,16 @@ def write_outbam(
 ):
     # Write the passing alignments to a separate file
     alignment_file = pysam.AlignmentFile(input_bam_path, "rb")
-
-    with AlignmentFile(output_bam_path, "wb", template=alignment_file) as out_bam:
+    
+    new_path = output_bam_path.with_name("temp.bam")
+    with AlignmentFile(new_path, "wb", template=alignment_file) as out_bam:
         for read in all_reads_seq:
             out_bam.write(read)
     out_bam.close()
 
-    #Sort reads
-    pysam.sort("-o",str(output_bam_path), str(output_bam_path))
+    # Sort reads
+    pysam.sort("-o", str(output_bam_path), str(new_path))
+    new_path.unlink()
 
 
 class CachedCloneIdExtractor:
