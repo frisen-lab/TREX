@@ -98,7 +98,7 @@ def read_alignment_file(
     no_cell_id = no_umi = 0
     start, stop = max(0, clone_id_start - 10), clone_id_end + 10
     for read in alignment_file.fetch(chr_name, start, stop):
-        #Collect all read sequences for output BAM file
+        # Collect all read sequences for output BAM file
         reads_seq.append(read)
         # Skip reads without cellID or UMI
         has_cell_id = read.has_tag(cell_id_tag)
@@ -147,15 +147,15 @@ def read_alignment_file(
 
 def write_outbam(
     all_reads_seq: AlignedSegment,
-    output_bam_path: str, 
+    output_bam_path: str,
     input_bam_path: str
 ):
-     # Write the passing alignments to a separate file
-     print("I am writing an output file")
+    # Write the passing alignments to a separate file
+    print("I am writing an output file")
      
-     alignment_file = pysam.AlignmentFile(input_bam_path, 'rb')
+    alignment_file = pysam.AlignmentFile(input_bam_path, 'rb')
 
-     with AlignmentFile(output_bam_path, "wb", template=alignment_file) as out_bam:
+    with AlignmentFile(output_bam_path, "wb", template=alignment_file) as out_bam:
         for read in all_reads_seq:
             out_bam.write(read)
 

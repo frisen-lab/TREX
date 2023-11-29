@@ -9,14 +9,16 @@ from .cellranger import make_cellranger
 
 logger = logging.getLogger(__name__)
 
+
 def find_files(path, cell_id_tag):
-        if cell_id_tag == "CB":
+    if cell_id_tag == "CB":
+        files = [path]
+    else:
+        files = sorted(Path(path).glob("*.bam"))
+        if len(files) == 0:
             files = [path]
-        else:
-            files = sorted(Path(path).glob("*.bam"))
-            if len(files) == 0:
-                files = [path]
-        return files
+    return files
+
 
 class DatasetReader:
     def __init__(
@@ -40,7 +42,7 @@ class DatasetReader:
                 cellranger_dir = make_cellranger(file, self.genome_name)
                 allowed_cell_ids = cellranger_dir.cellids()
                 bam = cellranger_dir.bam
-            
+
             reads, reads_seq, input_bam_path = read_bam(
                 bam,
                 allowed_cell_ids,
@@ -52,9 +54,10 @@ class DatasetReader:
             )
             all_reads.extend(reads)
             all_reads_seq.extend(reads_seq)
-        
-        write_outbam(all_reads_seq=all_reads_seq, output_bam_path=output_bam_path, input_bam_path=input_bam_path)
-        
+
+        write_outbam(all_reads_seq=all_reads_seq, output_bam_path=output_bam_path, 
+                     input_bam_path=input_bam_path)
+
         return all_reads
 
     def read_all(
@@ -74,7 +77,6 @@ class DatasetReader:
         assert n_amplicon == 0 or n_amplicon == n_transcriptome
         assert n_transcriptome == len(names)
 
-
         if n_transcriptome == 1:
             reads = self.read_multiple(
                 transcriptome_inputs[0],
@@ -90,7 +92,7 @@ class DatasetReader:
                         cell_id_tag,
                         require_umis,
                     )
-                ) 
+                )
         else:
             datasets = []
             for *paths, name in zip_longest(
@@ -128,7 +130,7 @@ class DatasetReader:
                 "\n- ".join(r.cell_id for r in reads[:10]),
             )
             reads = [r for r in reads if r.cell_id in allowed_cell_ids]
-        
+
         if require_umis:
             umis = list()
             for read in reads:
@@ -136,7 +138,7 @@ class DatasetReader:
                     umis.append(read.umi)
             assert len(umis) > 0, "No UMIs"
         assert len(reads) > 0, "No reads"
-        
+
         sorted_reads = sorted(reads, key=lambda rd: (rd.cell_id, rd.clone_id))
         return sorted_reads
 
