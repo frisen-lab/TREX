@@ -55,7 +55,7 @@ class DatasetReader:
             all_reads.extend(reads)
             all_reads_seq.extend(reads_seq)
 
-        write_outbam(all_reads_seq=all_reads_seq, output_bam_path=output_bam_path, 
+        write_outbam(all_reads_seq=all_reads_seq, output_bam_path=output_bam_path,
                      input_bam_path=input_bam_path)
 
         return all_reads
