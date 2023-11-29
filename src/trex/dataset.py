@@ -3,7 +3,7 @@ from itertools import zip_longest
 import logging
 from typing import Optional, List
 
-from .bam import read_bam
+from .bam import read_bam, write_outbam
 from .cellranger import make_cellranger
 
 
@@ -32,24 +32,30 @@ class DatasetReader:
     def read_multiple(self, input, output_bam_path, cell_id_tag="CB", require_umis=True):
         allowed_cell_ids = None
         files = find_files(input, cell_id_tag)
-        reads = []
+        all_reads = []
+        all_reads_seq = []
         for file in files:
             bam = file
             if cell_id_tag == "CB":
                 cellranger_dir = make_cellranger(file, self.genome_name)
                 allowed_cell_ids = cellranger_dir.cellids()
                 bam = cellranger_dir.bam
-            reads.extend(read_bam(
+            
+            reads, reads_seq, input_bam_path = read_bam(
                 bam,
-                output_bam_path,
                 allowed_cell_ids,
                 self.chromosome,
                 self.start,
                 self.end,
                 require_umis,
                 cell_id_tag,
-            ))
-        return reads
+            )
+            all_reads.extend(reads)
+            all_reads_seq.extend(reads_seq)
+        
+        write_outbam(all_reads_seq=all_reads_seq, output_bam_path=output_bam_path, input_bam_path=input_bam_path)
+        
+        return all_reads
 
     def read_all(
         self,
@@ -68,7 +74,6 @@ class DatasetReader:
         assert n_amplicon == 0 or n_amplicon == n_transcriptome
         assert n_transcriptome == len(names)
 
-# remodel these ifs and loops to fit the new read_multiple function
 
         if n_transcriptome == 1:
             reads = self.read_multiple(

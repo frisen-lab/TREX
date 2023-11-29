@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import List, Tuple
 from typing import Optional
 
-from pysam import AlignmentFile
+from pysam import AlignmentFile, AlignedSegment
+import pysam
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,6 @@ class Read:
 
 def read_bam(
     bam_path: Path,
-    output_bam_path: Path,
     allowed_cell_ids: List[str],
     chr_name: str,
     clone_id_start=None,
@@ -53,9 +53,8 @@ def read_bam(
             f"Reading cloneIDs from {chr_name}:{clone_id_start + 1}-{clone_id_end} "
             f"in {bam_path}"
         )
-        reads, no_umi, no_cell_id = read_alignment_file(
+        reads, no_umi, no_cell_id, reads_seq, alignment_file = read_alignment_file(
             alignment_file,
-            output_bam_path,
             allowed_cell_ids,
             chr_name,
             clone_id_start,
@@ -74,12 +73,11 @@ def read_bam(
             f"Found {len(reads)} reads with usable cloneIDs. Skipped {no_cell_id} without cell id"
         )
 
-    return reads
+    return reads, reads_seq, bam_path
 
 
 def read_alignment_file(
     alignment_file: AlignmentFile,
-    output_bam_path: Path,
     allowed_cell_ids: List[str],
     chr_name: str,
     clone_id_start: int,
@@ -94,57 +92,72 @@ def read_alignment_file(
     """
 
     clone_id_extractor = CachedCloneIdExtractor(clone_id_start, clone_id_end)
-    with AlignmentFile(output_bam_path, "wb", template=alignment_file) as out_bam:
-        # Fetches those reads aligning to the artifical, clone-id-containing chromosome
-        reads = []
-        no_cell_id = no_umi = 0
-        start, stop = max(0, clone_id_start - 10), clone_id_end + 10
-        for read in alignment_file.fetch(chr_name, start, stop):
-            # Skip reads without cellID or UMI
-            has_cell_id = read.has_tag(cell_id_tag)
-            has_umi = read.has_tag("UB")
-            if has_umi:
-                if len(read.get_tag("UB")) == 0:
-                    no_umi += 1
-            if not has_cell_id:
-                no_cell_id += 1
-            if not has_umi:
+    # Fetches those reads aligning to the artifical, clone-id-containing chromosome
+    reads = []
+    reads_seq = []
+    no_cell_id = no_umi = 0
+    start, stop = max(0, clone_id_start - 10), clone_id_end + 10
+    for read in alignment_file.fetch(chr_name, start, stop):
+        #Collect all read sequences for output BAM file
+        reads_seq.append(read)
+        # Skip reads without cellID or UMI
+        has_cell_id = read.has_tag(cell_id_tag)
+        has_umi = read.has_tag("UB")
+        if has_umi:
+            if len(read.get_tag("UB")) == 0:
                 no_umi += 1
-            if not has_cell_id or (require_umis and not has_umi):
-                continue
-            cell_id = read.get_tag(cell_id_tag)
-            if not isinstance(cell_id, str):
-                raise ValueError(f"{cell_id_tag} tag must be a string")
-            if allowed_cell_ids and cell_id not in allowed_cell_ids:
-                no_cell_id += 1
-                continue
+        if not has_cell_id:
+            no_cell_id += 1
+        if not has_umi:
+            no_umi += 1
+        if not has_cell_id or (require_umis and not has_umi):
+            continue
+        cell_id = read.get_tag(cell_id_tag)
+        if not isinstance(cell_id, str):
+            raise ValueError(f"{cell_id_tag} tag must be a string")
+        if allowed_cell_ids and cell_id not in allowed_cell_ids:
+            no_cell_id += 1
+            continue
 
-            umi: Optional[str] = read.get_tag("UB")
-            if umi == "":
-                umi = None
-            if cell_id_tag == "CB":
-                if not cell_id.endswith("-1"):
-                    raise ValueError(
-                        f"A cell id ({cell_id!r}) was found that does not end in '-1'. "
-                        "Currently, this type of data cannot be used"
-                    )
-                cell_id = cell_id[:-2]
-            clone_id = clone_id_extractor.extract(read)
-            if clone_id is None:
-                # Read does not cover the cloneID
-                continue
-            if require_umis and not umi:
-                # Read does not have a UMI
-                continue
-            reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
-            # Write the passing alignments to a separate file
-            out_bam.write(read)
+        umi: Optional[str] = read.get_tag("UB")
+        if umi == "":
+            umi = None
+        if cell_id_tag == "CB":
+            if not cell_id.endswith("-1"):
+                raise ValueError(
+                    f"A cell id ({cell_id!r}) was found that does not end in '-1'. "
+                    "Currently, this type of data cannot be used"
+                )
+            cell_id = cell_id[:-2]
+        clone_id = clone_id_extractor.extract(read)
+        if clone_id is None:
+            # Read does not cover the cloneID
+            continue
+        if require_umis and not umi:
+            # Read does not have a UMI
+            continue
+        reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
 
     logger.debug(
         f"CloneID extractor cache hits: {clone_id_extractor.hits}. "
         f"Cache misses: {clone_id_extractor.misses}"
     )
-    return reads, no_umi, no_cell_id
+    return reads, no_umi, no_cell_id, reads_seq, alignment_file
+
+
+def write_outbam(
+    all_reads_seq: AlignedSegment,
+    output_bam_path: str, 
+    input_bam_path: str
+):
+     # Write the passing alignments to a separate file
+     print("I am writing an output file")
+     
+     alignment_file = pysam.AlignmentFile(input_bam_path, 'rb')
+
+     with AlignmentFile(output_bam_path, "wb", template=alignment_file) as out_bam:
+        for read in all_reads_seq:
+            out_bam.write(read)
 
 
 class CachedCloneIdExtractor:
