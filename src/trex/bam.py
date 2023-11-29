@@ -196,8 +196,7 @@ class CachedCloneIdExtractor:
         for query_pos, ref_pos in read.get_aligned_pairs():
             # Replace soft-clipping with an ungapped alignment extending into the
             # soft-clipped region, assuming the clipping occurred because the cloneID
-            # region was encountered 
-            
+            # region was encountered
             if ref_pos is None:
                 # Soft clip or insertion
                 if query_align_end <= query_pos:
