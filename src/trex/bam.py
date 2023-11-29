@@ -146,14 +146,12 @@ def read_alignment_file(
 
 
 def write_outbam(
-    all_reads_seq: AlignedSegment,
-    output_bam_path: str,
-    input_bam_path: str
+    all_reads_seq: AlignedSegment, output_bam_path: str, input_bam_path: str
 ):
     # Write the passing alignments to a separate file
     print("I am writing an output file")
 
-    alignment_file = pysam.AlignmentFile(input_bam_path, 'rb')
+    alignment_file = pysam.AlignmentFile(input_bam_path, "rb")
 
     with AlignmentFile(output_bam_path, "wb", template=alignment_file) as out_bam:
         for read in all_reads_seq:
@@ -198,7 +196,8 @@ class CachedCloneIdExtractor:
         for query_pos, ref_pos in read.get_aligned_pairs():
             # Replace soft-clipping with an ungapped alignment extending into the
             # soft-clipped region, assuming the clipping occurred because the cloneID
-            # region was encountered.
+            # region was encountered 
+            
             if ref_pos is None:
                 # Soft clip or insertion
                 if query_align_end <= query_pos:
