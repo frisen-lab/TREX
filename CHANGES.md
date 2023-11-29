@@ -21,3 +21,7 @@
   nucleotide such as `AAAA...`, but also `AAAAAAAAAAAAAAAAAAAAAAAAAAGAAA`.
 * [#40](https://github.com/frisen-lab/TREX/issues/40):
   Added `--filter-cloneids` option for excluding certain cloneIDs
+* [#26] (https://github.com/frisen-lab/TREX/issues/26):
+  Changed reading of BAM files such as that it is possible to indicate a
+  path with several BAM files as imput. `read_multiple` loops through all
+  BAM files in a given path.
