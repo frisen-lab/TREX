@@ -150,7 +150,7 @@ def write_outbam(
 ):
     # Write the passing alignments to a separate file
     alignment_file = pysam.AlignmentFile(input_bam_path, "rb")
-    
+
     new_path = output_bam_path.with_name("temp.bam")
     with AlignmentFile(new_path, "wb", template=alignment_file) as out_bam:
         for read in all_reads_seq:
