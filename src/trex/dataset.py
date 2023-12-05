@@ -10,8 +10,8 @@ from .cellranger import make_cellranger
 logger = logging.getLogger(__name__)
 
 
-def find_files(path, cell_id_tag):
-    if cell_id_tag == "CB":
+def find_paths(path, cell_id_tag):
+    if cell_id_tag == "CB" or not path.is_dir():
         files = [path]
     else:
         files = sorted(Path(path).glob("*.bam"))
@@ -31,15 +31,17 @@ class DatasetReader:
         self.end = end
         self.prefix = prefix
 
-    def read_multiple(self, input, output_bam_path, cell_id_tag="CB", require_umis=True):
+    def read_multiple(
+        self, input_path, output_bam_path, cell_id_tag="CB", require_umis=True
+    ):
         allowed_cell_ids = None
-        files = find_files(input, cell_id_tag)
+        bam_paths = find_paths(input_path, cell_id_tag)
         all_reads = []
         all_reads_seq = []
-        for file in files:
-            bam = file
+        for bam_path in bam_paths:
+            bam = bam_path
             if cell_id_tag == "CB":
-                cellranger_dir = make_cellranger(file, self.genome_name)
+                cellranger_dir = make_cellranger(bam, self.genome_name)
                 allowed_cell_ids = cellranger_dir.cellids()
                 bam = cellranger_dir.bam
 
@@ -55,8 +57,11 @@ class DatasetReader:
             all_reads.extend(reads)
             all_reads_seq.extend(reads_seq)
 
-        write_outbam(all_reads_seq=all_reads_seq, output_bam_path=output_bam_path,
-                     input_bam_path=input_bam_path)
+        write_outbam(
+            all_reads_seq=all_reads_seq,
+            output_bam_path=output_bam_path,
+            input_bam_path=input_bam_path,
+        )
 
         return all_reads
 
@@ -110,13 +115,13 @@ class DatasetReader:
                 )
                 if paths[1]:
                     reads.extend(
-                            self.read_multiple(
-                                paths[1],
-                                self.output_dir / (name + "_amplicon_entries.bam"),
-                                cell_id_tag,
-                                require_umis,
-                            )
+                        self.read_multiple(
+                            paths[1],
+                            self.output_dir / (name + "_amplicon_entries.bam"),
+                            cell_id_tag,
+                            require_umis,
                         )
+                    )
                 datasets.append(reads)
             reads = self.merge_datasets(datasets, names)
 

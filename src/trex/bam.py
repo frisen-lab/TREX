@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Tuple
 from typing import Optional
 
-from pysam import AlignmentFile, AlignedSegment
+from pysam import AlignmentFile
 import pysam
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def read_bam(
             f"Reading cloneIDs from {chr_name}:{clone_id_start + 1}-{clone_id_end} "
             f"in {bam_path}"
         )
-        reads, no_umi, no_cell_id, reads_seq, alignment_file = read_alignment_file(
+        reads, no_umi, no_cell_id, reads_seq = read_alignment_file(
             alignment_file,
             allowed_cell_ids,
             chr_name,
@@ -85,12 +85,6 @@ def read_alignment_file(
     require_umis=True,
     cell_id_tag="CB",
 ) -> Tuple[List[Read], int, int]:
-    """
-    bam_path -- path to input BAM file
-    output_dir -- path to an output directory into which a BAM file is written that contais all
-        reads on the chromosome that have the required tags.
-    """
-
     clone_id_extractor = CachedCloneIdExtractor(clone_id_start, clone_id_end)
     # Fetches those reads aligning to the artifical, clone-id-containing chromosome
     reads = []
@@ -98,8 +92,6 @@ def read_alignment_file(
     no_cell_id = no_umi = 0
     start, stop = max(0, clone_id_start - 10), clone_id_end + 10
     for read in alignment_file.fetch(chr_name, start, stop):
-        # Collect all read sequences for output BAM file
-        reads_seq.append(read)
         # Skip reads without cellID or UMI
         has_cell_id = read.has_tag(cell_id_tag)
         has_umi = read.has_tag("UB")
@@ -137,19 +129,19 @@ def read_alignment_file(
             # Read does not have a UMI
             continue
         reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
+        # Collect all read sequences for output BAM file
+        reads_seq.append(read)
 
     logger.debug(
         f"CloneID extractor cache hits: {clone_id_extractor.hits}. "
         f"Cache misses: {clone_id_extractor.misses}"
     )
-    return reads, no_umi, no_cell_id, reads_seq, alignment_file
+    return reads, no_umi, no_cell_id, reads_seq
 
 
-def write_outbam(
-    all_reads_seq: AlignedSegment, output_bam_path: str, input_bam_path: str
-):
+def write_outbam(all_reads_seq, output_bam_path, input_bam_path):
     # Write the passing alignments to a separate file
-    alignment_file = pysam.AlignmentFile(input_bam_path, "rb")
+    alignment_file = AlignmentFile(input_bam_path, "rb")
 
     new_path = output_bam_path.with_name("temp.bam")
     with AlignmentFile(new_path, "wb", template=alignment_file) as out_bam:
