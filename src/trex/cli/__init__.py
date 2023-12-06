@@ -91,8 +91,8 @@ def add_common_arguments(parser, smartseq: bool):
     )
     if smartseq:
         help = (
-            "Path to united BAM file for all cells or path to a folder with one BAM file "
-            "per cell, containing sequencing of the cloneID amplicon library."
+            "Path to united BAM file for all cells or path to a folder with several BAM files"
+            ", containing sequencing of the cloneID amplicon library."
         )
     else:
         help = (
@@ -108,9 +108,9 @@ def add_common_arguments(parser, smartseq: bool):
         default=None,
     )
     if smartseq:
-        help = "BAM files/BAM file directories"
+        help = "BAM files/BAM file directories or folder with several BAM files"
     else:
-        help = "Cell Ranger directories"
+        help = "Cell Ranger directories or folder with several directories"
     input_group.add_argument(
         "--samples",
         help="Sample names separated by comma, in the same order as " + help,
@@ -207,7 +207,7 @@ def add_common_arguments(parser, smartseq: bool):
     if smartseq:
         help = (
             "Path to a united BAM file for all cells or path to a folder "
-            "with one BAM file per cell."
+            "with several BAM files."
         )
     else:
         help = (
