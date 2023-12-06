@@ -150,7 +150,7 @@ def write_outbam(all_reads_seq, output_bam_path, input_bam_path):
     out_bam.close()
 
     # Sort reads
-    pysam.sort("-o", str(output_bam_path), str(new_path))
+    pysam.sort("-o", str(output_bam_path), str(new_path), "--no-PG")
     new_path.unlink()
 
 
