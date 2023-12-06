@@ -147,7 +147,6 @@ def write_outbam(all_reads_seq, output_bam_path, input_bam_path):
     with AlignmentFile(new_path, "wb", template=alignment_file) as out_bam:
         for read in all_reads_seq:
             out_bam.write(read)
-    out_bam.close()
 
     # Sort reads
     pysam.sort("-o", str(output_bam_path), str(new_path), "--no-PG")
