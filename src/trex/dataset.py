@@ -3,11 +3,21 @@ from itertools import zip_longest
 import logging
 from typing import Optional, List
 
-from .bam import read_bam
+from .bam import read_bam, write_outbam
 from .cellranger import make_cellranger
 
 
 logger = logging.getLogger(__name__)
+
+
+def find_paths(path, cell_id_tag):
+    if cell_id_tag == "CB" or not path.is_dir():
+        files = [path]
+    else:
+        files = sorted(Path(path).glob("*.bam"))
+        if len(files) == 0:
+            files = [path]
+    return files
 
 
 class DatasetReader:
@@ -21,31 +31,39 @@ class DatasetReader:
         self.end = end
         self.prefix = prefix
 
-    def read_one(self, path, output_bam_path, cell_id_tag="CB", require_umis=True):
+    def read_multiple(
+        self, input_path, output_bam_path, cell_id_tag="CB", require_umis=True
+    ):
         allowed_cell_ids = None
-        bam = path
-        if cell_id_tag == "CB":
-            cellranger_dir = make_cellranger(path, self.genome_name)
-            allowed_cell_ids = cellranger_dir.cellids()
-            bam = cellranger_dir.bam
-        reads = read_bam(
-            bam,
-            output_bam_path,
-            allowed_cell_ids,
-            self.chromosome,
-            self.start,
-            self.end,
-            require_umis,
-            cell_id_tag,
+        bam_paths = find_paths(input_path, cell_id_tag)
+        all_reads = []
+        all_reads_seq = []
+        for bam_path in bam_paths:
+            bam = bam_path
+            if cell_id_tag == "CB":
+                cellranger_dir = make_cellranger(bam, self.genome_name)
+                allowed_cell_ids = cellranger_dir.cellids()
+                bam = cellranger_dir.bam
+
+            reads, reads_seq, input_bam_path = read_bam(
+                bam,
+                allowed_cell_ids,
+                self.chromosome,
+                self.start,
+                self.end,
+                require_umis,
+                cell_id_tag,
+            )
+            all_reads.extend(reads)
+            all_reads_seq.extend(reads_seq)
+
+        write_outbam(
+            all_reads_seq=all_reads_seq,
+            output_bam_path=output_bam_path,
+            input_bam_path=input_bam_path,
         )
-        umis = list()
-        if require_umis:
-            for read in reads:
-                if read.umi:
-                    umis.append(read.umi)
-            assert len(umis) > 0, "No UMIs"
-        assert len(reads) > 0, "No reads"
-        return reads
+
+        return all_reads
 
     def read_all(
         self,
@@ -65,7 +83,7 @@ class DatasetReader:
         assert n_transcriptome == len(names)
 
         if n_transcriptome == 1:
-            reads = self.read_one(
+            reads = self.read_multiple(
                 transcriptome_inputs[0],
                 self.output_dir / "entries.bam",
                 cell_id_tag,
@@ -73,7 +91,7 @@ class DatasetReader:
             )
             if n_amplicon == 1:
                 reads.extend(
-                    self.read_one(
+                    self.read_multiple(
                         amplicon_inputs[0],
                         self.output_dir / "amplicon_entries.bam",
                         cell_id_tag,
@@ -86,15 +104,18 @@ class DatasetReader:
                 transcriptome_inputs, amplicon_inputs, names
             ):
                 assert name is not None
-                reads = self.read_one(
-                    paths[0],
-                    self.output_dir / (name + "_entries.bam"),
-                    cell_id_tag,
-                    require_umis,
+                reads = []
+                reads.exend(
+                    self.read_multiple(
+                        paths[0],
+                        self.output_dir / (name + "_entries.bam"),
+                        cell_id_tag,
+                        require_umis,
+                    )
                 )
                 if paths[1]:
                     reads.extend(
-                        self.read_one(
+                        self.read_multiple(
                             paths[1],
                             self.output_dir / (name + "_amplicon_entries.bam"),
                             cell_id_tag,
@@ -114,6 +135,14 @@ class DatasetReader:
                 "\n- ".join(r.cell_id for r in reads[:10]),
             )
             reads = [r for r in reads if r.cell_id in allowed_cell_ids]
+
+        if require_umis:
+            umis = list()
+            for read in reads:
+                if read.umi:
+                    umis.append(read.umi)
+            assert len(umis) > 0, "No UMIs"
+        assert len(reads) > 0, "No reads"
 
         sorted_reads = sorted(reads, key=lambda rd: (rd.cell_id, rd.clone_id))
         return sorted_reads
