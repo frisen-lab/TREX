@@ -2,6 +2,7 @@ from pathlib import Path
 from itertools import zip_longest
 import logging
 from typing import Optional, List
+from dataclasses import replace
 
 from .bam import read_bam, write_outbam
 from .cellranger import make_cellranger
@@ -105,7 +106,7 @@ class DatasetReader:
             ):
                 assert name is not None
                 reads = []
-                reads.exend(
+                reads.extend(
                     self.read_multiple(
                         paths[0],
                         self.output_dir / (name + "_entries.bam"),
@@ -161,6 +162,6 @@ class DatasetReader:
         reads = []
         for dataset, name in zip(datasets, names):
             for read in dataset:
-                reads.append(read._replace(cell_id=combine(read.cell_id, name)))
+                reads.append(replace(read, cell_id=combine(read.cell_id, name)))
 
         return reads
