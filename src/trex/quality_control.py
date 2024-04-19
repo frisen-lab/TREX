@@ -323,10 +323,9 @@ def jaccard_similarity_matrix(umi_count: pd.DataFrame) -> npt.ArrayLike:
     Build Jaccard similarity matrix from the UMI count matrix loaded as
     pandas DataFrame.
 
-    Note: columns are cell IDs and first column is disregarded as it usually has
-    the index to cloneIDs
+    Note: index are cell IDs and each column has cloneIDs and their counts.
     """
-    this_cell_ids = umi_count.columns[1:]
+    this_cell_ids = umi_count.columns
     jaccard_matrix = np.zeros([len(this_cell_ids)] * 2)
     bool_umi = pd.DataFrame(
         umi_count.values > 0, columns=umi_count.columns, index=umi_count.index
