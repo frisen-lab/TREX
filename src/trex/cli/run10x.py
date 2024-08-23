@@ -248,7 +248,7 @@ def run_trex(
         corrected_molecules = [
             molecule
             for molecule in corrected_molecules
-            if not is_similar_to_any(molecule.clone_id, excluded_clone_ids)
+            if molecule.clone_id not in excluded_clone_ids
         ]
         clone_ids = [
             m.clone_id
