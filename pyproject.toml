@@ -23,7 +23,7 @@ requires-python = ">=3.7"
 dynamic = ["version"]
 dependencies = [
     "pysam",
-    "numpy",
+    "numpy<2",
     "loompy",
     "xopen>=0.5.0",
     "tinyalign",
