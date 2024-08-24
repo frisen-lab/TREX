@@ -245,10 +245,11 @@ def run_trex(
     )
 
     if excluded_clone_ids is not None:
+        similarity_set = SimilaritySet(excluded_clone_ids)
         corrected_molecules = [
             molecule
             for molecule in corrected_molecules
-            if molecule.clone_id not in excluded_clone_ids
+            if not similarity_set.contains(molecule.clone_id)
         ]
         clone_ids = [
             m.clone_id
@@ -397,14 +398,37 @@ def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
     # TODO allowed Hamming distance should be reduced relative to the overlap length
 
 
-def is_similar_to_any(
-    s: str, exclusion_list: List[str], min_overlap: int = 0, max_hamming: int = 0
-) -> bool:
-    """Check if s is similar to any sequence in the exclusion list"""
-    for t in exclusion_list:
-        if is_similar(s, t, min_overlap, max_hamming):
+class SimilaritySet:
+    def __init__(self, strings: set[str]):
+        self._length = len(next(iter(strings)))
+        if not all(len(s) == self._length for s in strings):
+            raise ValueError("All strings must have the same length")
+        self._exact = {s for s in strings if "0" not in s and "-" not in s}
+        self._partial = [s for s in strings if "0" in s or "-" in s]
+
+    def _is_similar(self, s, t):
+        for ch1, ch2 in zip(s, t):
+            if ch1 == "-" or ch1 == "0" or ch2 == "-" or ch2 == "0":
+                continue
+            if ch1 != ch2:
+                return False
+        return True
+
+    def _occurs_partially(self, s: str) -> bool:
+        for t in self._exact:
+            if self._is_similar(s, t):
+                return True
+        return False
+
+    def contains(self, s: str) -> bool:
+        if s in self._exact:
             return True
-    return False
+        for t in self._partial:
+            if is_similar(s, t, 0, 0):
+                return True
+        if ("0" in s or "-" in s) and self._occurs_partially(s):
+            return True
+        return False
 
 
 def correct_clone_ids(
