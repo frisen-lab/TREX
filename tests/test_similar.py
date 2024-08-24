@@ -1,4 +1,4 @@
-from trex.cli.run10x import is_similar, is_similar_to_any
+from trex.cli.run10x import is_similar, SimilaritySet
 
 import pytest
 
@@ -64,5 +64,6 @@ def test_is_similar(s, t, similar):
         ("AAAAAAAAAA", ["TTTTTTTAAA"], False),
     ],
 )
-def test_is_similar_to_any(s, strings, similar):
-    assert is_similar_to_any(s, strings) == similar
+def test_similarity_set(s, strings, similar):
+    similarity_set = SimilaritySet(strings)
+    assert similarity_set.contains(s) == similar
