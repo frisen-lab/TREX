@@ -118,7 +118,7 @@ class CloneGraph:
     @staticmethod
     def write_clones(file, clones):
         print("clone_nr", "cell_id", sep="\t", file=file)
-        for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
+        for index, (clone_id, cells, _) in enumerate(sorted(clones), start=1):
             cells = sorted(cells)
             for cell in cells:
                 print(index, cell.cell_id, sep="\t", file=file)
@@ -126,17 +126,16 @@ class CloneGraph:
     @staticmethod
     def write_clone_sequences(file, clones):
         print("clone_nr", "clone_id", sep="\t", file=file)
-        for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
+        for index, (clone_id, cells, _) in enumerate(sorted(clones), start=1):
             print(index, clone_id, sep="\t", file=file)
 
-    def clones(self) -> List[Tuple[str, List[Cell]]]:
+    def clones(self) -> List[Tuple[str, List[Cell], int]]:
         """
         Compute clones. Return a dict that maps a cloneID to a list of cells.
         """
-        compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
+        clone_clusters = [g.nodes() for g in self._graph.connected_components()]
         # Expand the Clone instances into cells
-        clusters = [self._expand_clones(cluster) for cluster in compressed_clusters]
-
+        clusters = [(self._expand_clones(cluster), len(cluster)) for cluster in clone_clusters]
         logger.debug(
             "CloneGraph.clones() called. %s connected components (clones) found",
             len(clusters),
@@ -148,7 +147,7 @@ class CloneGraph:
                 counts.update(cell.counts)
             return max(counts, key=lambda k: (counts[k], k))
 
-        return [(most_abundant_clone_id(cells), cells) for cells in clusters]
+        return [(most_abundant_clone_id(cells), cells, unique) for (cells, unique) in clusters]
 
     def plot(self, path, highlight_cell_ids=None, highlight_doublets=None):
         graphviz_path = path.with_suffix(".gv")
@@ -228,7 +227,9 @@ class CloneGraph:
                 self._expand_clones(subgraph.nodes()), key=lambda c: c.cell_id
             )
             n_nodes = len(cells)
+            # Edges between compressed nodes
             n_edges = sum(n1.n * n2.n for n1, n2 in subgraph.edges())
+            # Edges internal to compressed nodes
             n_edges += sum(node.n * (node.n - 1) // 2 for node in subgraph.nodes())
             possible_edges = n_nodes * (n_nodes - 1) // 2
             if n_edges == possible_edges:

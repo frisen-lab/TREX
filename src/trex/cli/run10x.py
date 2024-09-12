@@ -324,11 +324,17 @@ def run_trex(
     with open(output_dir / "clone_sequences.txt", "w") as f:
         clone_graph.write_clone_sequences(f, clones)
     logger.info(f"Detected {len(clones)} clones")
-    clone_sizes = Counter(len(cells) for clone_id, cells in clones)
+    clone_sizes = Counter(len(cells) for clone_id, cells, _ in clones)
     logger.info(
         "Clone size histogram\n size count\n%s",
         "\n".join(f"{k:5d} {clone_sizes[k]:5d}" for k in sorted(clone_sizes)),
     )
+    unique_sizes = Counter(unique for _, _, unique in clones)
+    logger.info(
+        "Clone size histogram counting only unique cloneID combinations\n size count\n%s",
+        "\n".join(f"{k:5d} {unique_sizes[k]:5d}" for k in sorted(unique_sizes)),
+    )
+
     number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
     logger.debug("No. of cells in clones: %d", number_of_cells_in_clones)
 
