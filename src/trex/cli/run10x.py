@@ -103,7 +103,7 @@ def main(args):
             max_hamming=args.max_hamming,
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
-            keep_single_reads=args.keep_single_reads,
+            min_read_count=args.min_read_count,
             keep_doublets=args.keep_doublets,
             should_write_umi_matrix=args.umi_matrix,
             should_run_visium=args.visium,
@@ -119,10 +119,17 @@ def add_arguments(parser):
     groups = add_common_arguments(parser, smartseq=False)
 
     groups.filter.add_argument(
+        "--min-read-count",
+        type=int,
+        default=2,
+        help="Discard cloneIDs supported by fewer than N reads. Default: %(default)s",
+    )
+    groups.filter.add_argument(
         "--keep-single-reads",
-        action="store_true",
-        default=False,
-        help="Keep cloneIDs supported by only a single read. Default: Discard them",
+        dest="min_read_count",
+        action="store_const",
+        const=1,
+        help="DEPRECATED. Use --min-read-count=1 instead.",
     )
     groups.filter.add_argument(
         "--keep-doublets",
@@ -179,7 +186,7 @@ def run_trex(
     correct_per_cell: bool = False,
     min_length: int = 20,
     jaccard_threshold: float = 0.7,
-    keep_single_reads: bool = False,
+    min_read_count: int = 2,
     keep_doublets: bool = False,
     should_write_umi_matrix: bool = False,
     should_run_visium: bool = False,
@@ -269,7 +276,7 @@ def run_trex(
         logger.info(f"{len(cells)} filtered cells remain")
         write_cells(output_dir / "cells_filtered.txt", cells)
     else:
-        cells = filter_cells(cells, corrected_molecules, keep_single_reads)
+        cells = filter_cells(cells, corrected_molecules, min_read_count)
         logger.info(f"{len(cells)} filtered cells remain")
         write_cells(output_dir / "cells_filtered.txt", cells)
 
@@ -566,7 +573,7 @@ def filter_visium(
 def filter_cells(
     cells: Iterable[Cell],
     molecules: Iterable[Molecule],
-    keep_single_reads: bool = False,
+    min_read_count: int = 2,
 ) -> List[Cell]:
     """
     Filter cloneIDs according to two criteria:
@@ -580,13 +587,13 @@ def filter_cells(
     for cell in cells:
         overall_counts.update(cell.counts)
 
-    single_read_clone_ids = set()
+    too_few_reads_clone_ids = set()
     for molecule in molecules:
-        if molecule.read_count == 1:
-            single_read_clone_ids.add(molecule.clone_id)
-    logger.info(f"Found {len(single_read_clone_ids)} single-read cloneIDs")
+        if molecule.read_count < min_read_count:
+            too_few_reads_clone_ids.add(molecule.clone_id)
+    logger.info(f"Found {len(too_few_reads_clone_ids)} cloneIDs")
 
-    # Filter out cloneIDs with a count of one that appear in another cell
+    # Filter out cloneIDs with too few reads that appear in another cell
     new_cells = []
     for cell in cells:
         counts = cell.counts.copy()
@@ -597,7 +604,7 @@ def filter_cells(
             if overall_counts[clone_id] > 1:
                 # This cloneID occurs also in other cells - remove it
                 del counts[clone_id]
-            elif clone_id in single_read_clone_ids and not keep_single_reads:
+            elif clone_id in too_few_reads_clone_ids:
                 del counts[clone_id]
         if counts:
             new_cells.append(Cell(cell_id=cell.cell_id, counts=counts))
