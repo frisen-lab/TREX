@@ -191,8 +191,12 @@ class CellGraph:
         print("  graph [outputorder=edgesfirst];", file=s)
         print("  edge [color=blue];", file=s)
         print('  node [style=filled, fillcolor=white, fontname="Roboto"];', file=s)
-        for node in self._graph.nodes():
-            if self._graph.neighbors(node):
+
+        for subgraph in self.graph.connected_components():
+            nodes = subgraph.nodes()
+            if len(nodes) < 2:
+                continue
+            for node in nodes:
                 width = int(1 + node_scaling * math.log(node.n))
                 intersection = set(node.cell_ids) & highlight_cell_ids
                 if node in highlight_doublets:
@@ -209,19 +213,22 @@ class CellGraph:
                     f'\\n{node.n}{hl_label}"];',
                     file=s,
                 )
-        for node1, node2 in self._graph.edges():
-            width = int(1 + edge_scaling * math.log(node1.n * node2.n))
-            neighbors1 = self._graph.neighbors(node1)
-            neighbors2 = self._graph.neighbors(node2)
-            common_neighbors = set(neighbors1) & set(neighbors2)
-            bridge = ""
-            if (len(neighbors1) > 1 or len(neighbors2) > 1) and not common_neighbors:
-                bridge = ", style=dashed, color=red"
-                width = 2
-            print(
-                f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}{bridge}];',
-                file=s,
-            )
+            for node1, node2 in subgraph.edges():
+                width = int(1 + edge_scaling * math.log(node1.n * node2.n))
+                neighbors1 = self._graph.neighbors(node1)
+                neighbors2 = self._graph.neighbors(node2)
+                common_neighbors = set(neighbors1) & set(neighbors2)
+                bridge = ""
+                if (
+                    len(neighbors1) > 1 or len(neighbors2) > 1
+                ) and not common_neighbors:
+                    bridge = ", style=dashed, color=red"
+                    width = 2
+                print(
+                    f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}{bridge}];',
+                    file=s,
+                )
+            print(file=s)
         print("}", file=s)
 
         return s.getvalue()
