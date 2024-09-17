@@ -17,7 +17,7 @@ from . import (
 )
 from .. import __version__
 from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
-from ..clone import CloneGraph
+from ..clone import CellGraph
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
 from ..error import TrexError
@@ -200,7 +200,7 @@ def run_smartseq3(
         logger.info("Writing UMI matrix")
         write_count_matrix(output_dir / "umi_count_matrix.csv", cells)
 
-    clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
+    clone_graph = CellGraph(cells, jaccard_threshold=jaccard_threshold)
 
     with open(output_dir / "components.txt", "w") as components_file:
         print(
