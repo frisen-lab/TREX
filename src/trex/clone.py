@@ -194,7 +194,7 @@ class CellGraph:
 
         for subgraph in self.graph.connected_components():
             nodes = subgraph.nodes()
-            if len(nodes) < 2:
+            if len(nodes) < 3:
                 continue
             for node in nodes:
                 width = int(1 + node_scaling * math.log(node.n))
