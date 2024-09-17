@@ -75,12 +75,13 @@ def write_reads(path, reads, require_umis=True):
 def write_molecules(path, molecules, require_umis=True):
     with open(path, "w") as f:
         if require_umis:
-            print("#cell_id", "umi", "clone_id", sep="\t", file=f)
+            print("#cell_id", "umi", "clone_id", "read_count", sep="\t", file=f)
             for molecule in molecules:
                 print(
                     molecule.cell_id,
                     molecule.umi,
                     molecule.clone_id,
+                    molecule.read_count,
                     sep="\t",
                     file=f,
                 )
