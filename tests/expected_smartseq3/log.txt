@@ -3,15 +3,15 @@ Found 9631 reads with usable cloneIDs and UMIs. Skipped 0 without cell id, 24435
 Read 9631 reads containing (parts of) the cloneID (4593 full cloneIDs, 943 unique)
 Detected 3448 molecules (2183 full cloneIDs, 779 unique)
 After cloneID correction, 430 unique cloneIDs remain
-Detected 1547 cells
+Detected 1544 cells
 Found 719 single-read cloneIDs
-610 filtered cells remain
+606 filtered cells remain
 Writing UMI matrix
 Removing 0 bridges from the graph
-Detected 343 clones
+Detected 339 clones
 Clone size histogram
  size count
-    1   253
+    1   249
     2    36
     3    20
     4     7

@@ -1,2 +1,2 @@
 # Clone graph components (only incomplete/density<1)
-# 343 complete components
+# 339 complete components
