@@ -55,36 +55,39 @@ def write_cells(path: Path, cells: List[Cell]) -> None:
             print(*row, sep="\t", file=f)
 
 
-def write_reads_or_molecules(path, mols_or_reads, require_umis=True, sort=True):
+def write_reads(path, reads, require_umis=True):
     with open(path, "w") as f:
         if require_umis:
-            if sort:
-                mols_or_reads = sorted(
-                    mols_or_reads,
-                    key=lambda mol_or_read: (
-                        mol_or_read.umi,
-                        mol_or_read.cell_id,
-                        mol_or_read.clone_id,
-                    ),
-                )
+            reads = sorted(
+                reads,
+                key=lambda read: (read.umi, read.cell_id, read.clone_id),
+            )
             print("#cell_id", "umi", "clone_id", sep="\t", file=f)
-            for mol_or_read in mols_or_reads:
+            for read in reads:
+                print(read.cell_id, read.umi, read.clone_id, sep="\t", file=f)
+        else:
+            reads = sorted(reads, key=lambda read: (read.clone_id, read.cell_id))
+            print("#cell_id", "clone_id", sep="\t", file=f)
+            for read in reads:
+                print(read.cell_id, read.clone_id, sep="\t", file=f)
+
+
+def write_molecules(path, molecules, require_umis=True):
+    with open(path, "w") as f:
+        if require_umis:
+            print("#cell_id", "umi", "clone_id", sep="\t", file=f)
+            for molecule in molecules:
                 print(
-                    mol_or_read.cell_id,
-                    mol_or_read.umi,
-                    mol_or_read.clone_id,
+                    molecule.cell_id,
+                    molecule.umi,
+                    molecule.clone_id,
                     sep="\t",
                     file=f,
                 )
         else:
-            if sort:
-                mols_or_reads = sorted(
-                    mols_or_reads,
-                    key=lambda mol_or_read: (mol_or_read.clone_id, mol_or_read.cell_id),
-                )
             print("#cell_id", "clone_id", sep="\t", file=f)
-            for mol_or_read in mols_or_reads:
-                print(mol_or_read.cell_id, mol_or_read.clone_id, sep="\t", file=f)
+            for molecule in molecules:
+                print(molecule.cell_id, molecule.clone_id, sep="\t", file=f)
 
 
 def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
