@@ -14,7 +14,7 @@ from .run10x import read_allowed_cellids, correct_clone_ids
 from . import CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
 from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
-from ..clone import CloneGraph
+from ..clone import CellGraph
 from ..molecule import Molecule
 from ..error import TrexError
 from ..cell import Cell, compute_cells
@@ -193,7 +193,7 @@ def run_smartseq2(
         logger.info("Writing read matrix")
         write_count_matrix(output_dir / "read_count_matrix.csv", cells)
 
-    clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
+    clone_graph = CellGraph(cells, jaccard_threshold=jaccard_threshold)
 
     with open(output_dir / "components.txt", "w") as components_file:
         print(

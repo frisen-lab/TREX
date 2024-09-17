@@ -29,7 +29,7 @@ from ..writers import (
     write_loom,
 )
 from ..clustering import cluster_sequences
-from ..clone import CloneGraph
+from ..clone import CellGraph
 from ..filters import is_low_complexity
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
@@ -280,7 +280,7 @@ def run_trex(
         logger.info("Writing UMI matrix")
         write_count_matrix(output_dir / "umi_count_matrix.csv", cells)
 
-    clone_graph = CloneGraph(cells, jaccard_threshold=jaccard_threshold)
+    clone_graph = CellGraph(cells, jaccard_threshold=jaccard_threshold)
 
     with open(output_dir / "components.txt", "w") as components_file:
         print(

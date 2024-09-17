@@ -32,7 +32,12 @@ class Clone:
         return self._hash
 
 
-class CloneGraph:
+class CellGraph:
+    """
+    Graph of cells. An edge is drawn between two cells if the Jaccard similarity between
+    their sets of cloneIDs is above the given threshold.
+    """
+
     def __init__(self, cells: List[Cell], jaccard_threshold: float):
         self._jaccard_threshold = jaccard_threshold
         self._clones = self._precluster_cells(cells)
@@ -256,7 +261,7 @@ class CloneGraph:
 
 
 # TODO this is unused
-class UncompressedCloneGraph:
+class UncompressedCellGraph:
     def __init__(self, cells: List[Cell]):
         self._cells = cells
         self._graph = self._make_cell_graph()
