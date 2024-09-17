@@ -1,6 +1,7 @@
 """
 Clone computation. A clone is represented as a set of cells.
 """
+
 from typing import List, Dict, Tuple
 from collections import Counter, defaultdict
 from io import StringIO
@@ -180,7 +181,8 @@ class CloneGraph:
             node_scaling = max_width - 1
         s = StringIO()
         print("graph g {", file=s)
-        # Using overlap=false would be nice here, but that does not work with some Graphviz builds
+        # Using overlap=false would be nice here,
+        # but that does not work with some Graphviz builds
         print("  graph [outputorder=edgesfirst];", file=s)
         print("  edge [color=blue];", file=s)
         print('  node [style=filled, fillcolor=white, fontname="Roboto"];', file=s)
@@ -215,8 +217,8 @@ class CloneGraph:
                 f'  "{node1.cell_id}" -- "{node2.cell_id}" [penwidth={width}{bridge}];',
                 file=s,
             )
-
         print("}", file=s)
+
         return s.getvalue()
 
     def components_txt(self, highlight=None):

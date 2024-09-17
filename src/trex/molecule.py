@@ -1,6 +1,7 @@
 """
 A molecule is a DNA/RNA fragment that has potentially been sequenced multiple times
 """
+
 from dataclasses import dataclass
 from typing import List, Sequence
 from collections import defaultdict

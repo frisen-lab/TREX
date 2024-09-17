@@ -45,6 +45,8 @@ write_to = "src/trex/_version.py"
 testpaths = ["tests"]
 xfail_strict = true
 
-[tool.ruff]
+[tool.ruff.lint]
 select = ["E", "F", "W"]
-line-length = 100
+
+[tool.ruff]
+line-length = 92

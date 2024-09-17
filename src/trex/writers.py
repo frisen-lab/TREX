@@ -89,11 +89,12 @@ def write_reads_or_molecules(path, mols_or_reads, require_umis=True, sort=True):
 
 def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
     """
-    Create a loom file from a Cell Ranger result directory and augment it with information about
-    the most abundant cloneIDs and their counts.
+    Create a loom file from a Cell Ranger result directory
+    and augment it with information about the most abundant cloneIDs and their counts.
     """
     # For each cell, collect the most abundant cloneIDs and their counts
-    # Maps cell_id to a list of (clone_id, count) pairs that represent the most abundant cloneIDs.
+    # Maps cell_id to a list of (clone_id, count) pairs
+    # that represent the most abundant cloneIDs.
     most_abundant = dict()
     for cell in cells:
         if not cell.counts:
@@ -110,7 +111,8 @@ def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n
     loom_path = output_dir / (sample_name + ".loom")
 
     with loompy.connect(loom_path) as ds:
-        # Cell ids in the loom file are prefixed by the sample name and a ':'. Remove that prefix.
+        # Cell ids in the loom file are prefixed
+        # by the sample name and a ':'. Remove that prefix.
         loom_cell_ids = [cell_id[len(sample_name) + 1 :] for cell_id in ds.ca.CellID]
 
         # Transform cloneIDs and count data

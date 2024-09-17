@@ -1,6 +1,7 @@
 """
 Dealing with CellRanger "outs/" files
 """
+
 from pathlib import Path
 from typing import Set, Optional
 
@@ -52,7 +53,8 @@ class CellRangerDir2:
 
     def cellids(self) -> Set[str]:
         """
-        Read barcodes.tsv, which contains a list of corrected and approved cellIDs like this:
+        Read barcodes.tsv, which contains a list of
+        corrected and approved cellIDs like this:
 
         AAACCTGAGCGACGTA-1
         AAACCTGCATACTCTT-1
@@ -74,7 +76,10 @@ class CellRangerDir3(CellRangerDir2):
 
 
 def make_cellranger(path: Path, *args, **kwargs):
-    """Detect CellRanger outs/ format and return an appropriate instance of CellRangerDir2/3"""
+    """
+    Detect CellRanger outs/ format
+    and return an appropriate instance of CellRangerDir2/3
+    """
     path = Path(path)
     if (path / "outs" / "filtered_gene_bc_matrices").exists():
         return CellRangerDir2(path, *args, **kwargs)

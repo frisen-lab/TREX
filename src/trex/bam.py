@@ -1,6 +1,7 @@
 """
 Extract reads from BAM files
 """
+
 import logging
 from collections import Counter
 from dataclasses import dataclass
@@ -32,8 +33,8 @@ def read_bam(
 ):
     """
     bam_path -- path to input BAM file
-    output_dir -- path to an output directory into which a BAM file is written that contais all
-        reads on the chromosome that have the required tags.
+    output_dir -- path to an output directory into which a BAM file is written that
+    contains all reads on the chromosome that have the required tags.
     """
     with AlignmentFile(bam_path) as alignment_file:
         if chr_name is None:
@@ -70,7 +71,8 @@ def read_bam(
         )
     else:
         logger.info(
-            f"Found {len(reads)} reads with usable cloneIDs. Skipped {no_cell_id} without cell id"
+            f"Found {len(reads)} reads with usable cloneIDs. Skipped "
+            f"{no_cell_id} without cell id"
         )
 
     return reads, reads_seq, bam_path
@@ -240,8 +242,8 @@ def detect_clone_id_location(
         # look at pileups and check base frequencies (over the cloneID, bases should
         # be roughly uniformly distributed).
         if clone_id_start >= reference_length:
-            # The most common reference position that is soft clipped is often the 3' end
-            # of the contig. Skip that.
+            # The most common reference position that is soft clipped is often
+            # the 3' end of the contig. Skip that.
             continue
         clone_id_end = clone_id_start
         for column in alignment_file.pileup(reference_name, start=clone_id_start):

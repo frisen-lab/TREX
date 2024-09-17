@@ -62,8 +62,8 @@ def add_common_arguments(parser, smartseq: bool):
     input_group.add_argument(
         "--genome-name",
         metavar="NAME",
-        help="Name of the genome as indicated in 'cellranger count' run with the flag --genome. "
-        "Default: Auto-detected",
+        help="Name of the genome as indicated in 'cellranger count' run with the "
+        "flag --genome. Default: Auto-detected",
         default=None,
     )
     input_group.add_argument(
@@ -91,8 +91,8 @@ def add_common_arguments(parser, smartseq: bool):
     )
     if smartseq:
         help = (
-            "Path to united BAM file for all cells or path to a folder with several BAM files"
-            ", containing sequencing of the cloneID amplicon library."
+            "Path to united BAM file for all cells or path to a folder with several "
+            "BAM files, containing sequencing of the cloneID amplicon library."
         )
     else:
         help = (
@@ -146,8 +146,8 @@ def add_common_arguments(parser, smartseq: bool):
         type=float,
         default=0.7,
         metavar="VALUE",
-        help="If the Jaccard index between cloneIDs of two cells is higher than VALUE, they "
-        "are considered similar. Default: %(default)s",
+        help="If the Jaccard index between cloneIDs of two cells is higher than VALUE, "
+        "they are considered similar. Default: %(default)s",
     )
     filter_group.add_argument(
         "--filter-cellids",
@@ -176,7 +176,8 @@ def add_common_arguments(parser, smartseq: bool):
         "-n",
         metavar="DIRECTORY",
         type=Path,
-        help="Name of the run directory to be created by the program. Default: %(default)s",
+        help="Name of the run directory to be created by the program. "
+        "Default: %(default)s",
         default=Path("trex_run"),
     )
     output_group.add_argument(

@@ -337,9 +337,9 @@ def jaccard_similarity_matrix(umi_count: pd.DataFrame) -> npt.ArrayLike:
     for id1, id2 in combinations(this_cell_ids, 2):
         clones_cell_1 = bool_umi[id1].values
         clones_cell_2 = bool_umi[id2].values
-        jaccard_matrix[
-            cell_id_position_dict[id1], cell_id_position_dict[id2]
-        ] = jaccard(clones_cell_1, clones_cell_2)
+        jaccard_matrix[cell_id_position_dict[id1], cell_id_position_dict[id2]] = (
+            jaccard(clones_cell_1, clones_cell_2)
+        )
 
     jaccard_matrix = jaccard_matrix + jaccard_matrix.T
     jaccard_matrix[np.diag_indices_from(jaccard_matrix)] = 1

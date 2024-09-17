@@ -1,6 +1,7 @@
 """
 Print a quality report from the run10x analysis.
 """
+
 import logging
 import sys
 from pathlib import Path
@@ -72,7 +73,8 @@ def plot_clone_size_histogram(clones: pd.DataFrame) -> plt.Figure:
     text = (
         f"There are {len(clone_sizes)} clones. On average, they have {mean:.2f}\n"
         f"cells, with a median of {quantiles[1]} and interquartile range of \n"
-        f"{quantiles[0]} - {quantiles[2]}. {sum(clone_sizes == 1)} clones have a single cell."
+        f"{quantiles[0]} - {quantiles[2]}. "
+        f"{sum(clone_sizes == 1)} clones have a single cell."
     )
 
     fig, axes = plt.subplots(1, 1)
@@ -104,8 +106,9 @@ def plot_unique_clone_ids_per_clone(
     )
 
     text = (
-        f"There are {len(clone_ids_per_clone)} clones. On average, they have {mean:.2f}\n"
-        f"unique cloneIDs, with a median of {quantiles[1]} and interquartile range of \n"
+        f"There are {len(clone_ids_per_clone)} clones. "
+        f"On average, they have {mean:.2f}\nunique cloneIDs, "
+        f"with a median of {quantiles[1]} and interquartile range of \n"
         f"{quantiles[0]} - {quantiles[2]}. "
         f"{sum(clone_ids_per_clone == 1)} clones have a single unique cloneID."
     )
@@ -166,9 +169,11 @@ def plot_unique_clone_ids_per_cell(cells_filtered: pd.DataFrame) -> plt.Figure:
     text = (
         f"There are {len(unique_clone_ids_per_cell)} cells in the end. "
         f"On average, they have {mean:.2f}\n"
-        f"unique cloneIDs, with a median of {quantiles[1]} and interquartile range of \n"
+        f"unique cloneIDs, with a median of {quantiles[1]} "
+        f"and interquartile range of \n"
         f"{quantiles[0]} - {quantiles[2]}. "
-        f"{sum(unique_clone_ids_per_cell == 1)} cells have only a single unique cloneID."
+        f"{sum(unique_clone_ids_per_cell == 1)} cells have only "
+        f"a single unique cloneID."
     )
 
     fig, axes = plt.subplots(1, 1)

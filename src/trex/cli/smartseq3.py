@@ -1,6 +1,7 @@
 """
 Run on Smart-seq3 data processed by zUMIs software.
 """
+
 import sys
 import logging
 from pathlib import Path
@@ -247,8 +248,8 @@ def filter_cells(
 
     - CloneIDs that have only a count of one and can be found in another cell are most
       likely results of contamination and are removed,
-    - If keep_single_reads is False, cloneIDs that have only a count of one and are also only based
-      on one read are also removed
+    - If keep_single_reads is False, cloneIDs that have only a count of one and are
+      also only based on one read are also removed
     """
     overall_counts: Dict[str, int] = Counter()
     for cell in cells:

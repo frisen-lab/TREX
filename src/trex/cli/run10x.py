@@ -1,6 +1,9 @@
 """
-Run on single cell 10X Chromium or spatial Visium data processed by Cell / Space Ranger software
+Process a single-cell 10X Chromium or spatial Visium run
+
+The data must have been processed by Cell / Space Ranger software
 """
+
 import re
 import sys
 import logging
@@ -134,8 +137,8 @@ def add_arguments(parser):
         "--visium",
         default=False,
         action="store_true",
-        help="Adjust filter settings for 10x Visium data: Filter out cloneIDs only based on "
-        "one read, but keep those with only one UMI",
+        help="Adjust filter settings for 10x Visium data: Filter out cloneIDs only "
+        "based on one read, but keep those with only one UMI",
     )
     groups.filter.add_argument(
         "--per-cell",
@@ -531,7 +534,7 @@ def filter_visium(
     molecules: Iterable[Molecule],
 ) -> List[Cell]:
     """
-    Filter: cloneIDs that have only a count of one and are also only based on one read are  removed
+    Discard cloneIDs that have only a count of one and are also only based on one read
     """
     new_cells = []
     del_cells = 0
@@ -573,8 +576,8 @@ def filter_cells(
 
     - CloneIDs that have only a count of one and can be found in another cell are most
       likely results of contamination and are removed,
-    - If keep_single_reads is False, cloneIDs that have only a count of one and are also only based
-      on one read are also removed
+    - If keep_single_reads is False, cloneIDs that have only a count of one and are
+      also only based on one read are also removed
     """
     overall_counts: Dict[str, int] = Counter()
     for cell in cells:
