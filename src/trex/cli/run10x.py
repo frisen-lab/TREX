@@ -25,8 +25,9 @@ from ..cellranger import make_cellranger, CellRangerError
 from ..writers import (
     write_count_matrix,
     write_cells,
-    write_reads_or_molecules,
     write_loom,
+    write_reads,
+    write_molecules,
 )
 from ..clustering import cluster_sequences
 from ..clone import CellGraph
@@ -210,7 +211,7 @@ def run_trex(
         f"({len(clone_ids)} full cloneIDs, {len(set(clone_ids))} unique)"
     )
 
-    write_reads_or_molecules(output_dir / "reads.txt", reads)
+    write_reads(output_dir / "reads.txt", reads)
 
     molecules = compute_molecules(reads)
     clone_ids = [
@@ -220,13 +221,11 @@ def run_trex(
         f"Detected {len(molecules)} molecules ({len(clone_ids)} full cloneIDs, "
         f"{len(set(clone_ids))} unique)"
     )
-    write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
+    write_molecules(output_dir / "molecules.txt", molecules)
 
     molecules = [m for m in molecules if not is_low_complexity(m.clone_id)]
     logger.info(f"{len(molecules)} remain after low-complexity filtering")
-    write_reads_or_molecules(
-        output_dir / "molecules_filtered.txt", molecules, sort=False
-    )
+    write_molecules(output_dir / "molecules_filtered.txt", molecules)
 
     if correct_per_cell:
         corrected_molecules = correct_clone_ids_per_cell(
@@ -243,9 +242,7 @@ def run_trex(
         f"After cloneID correction, {len(set(clone_ids))} unique cloneIDs remain"
     )
 
-    write_reads_or_molecules(
-        output_dir / "molecules_corrected.txt", corrected_molecules, sort=False
-    )
+    write_molecules(output_dir / "molecules_corrected.txt", corrected_molecules)
 
     if excluded_clone_ids is not None:
         similarity_set = SimilaritySet(excluded_clone_ids)

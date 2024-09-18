@@ -13,7 +13,12 @@ import trex.cli
 from .run10x import read_allowed_cellids, correct_clone_ids
 from . import CommandLineError, add_file_logging, make_output_dir
 from .. import __version__
-from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
+from ..writers import (
+    write_count_matrix,
+    write_cells,
+    write_reads,
+    write_molecules,
+)
 from ..clone import CellGraph
 from ..molecule import Molecule
 from ..error import TrexError
@@ -159,7 +164,7 @@ def run_smartseq2(
         f"({len(clone_ids)} full cloneIDs, {len(set(clone_ids))} unique)"
     )
 
-    write_reads_or_molecules(output_dir / "reads.txt", reads, require_umis=False)
+    write_reads(output_dir / "reads.txt", reads, require_umis=False)
 
     # We do not have multiple reads per molecule, so we treat each read as one molecule
     molecules = reads
@@ -174,11 +179,8 @@ def run_smartseq2(
         f"After cloneID correction, {len(set(clone_ids))} unique cloneIDs remain"
     )
 
-    write_reads_or_molecules(
-        output_dir / "molecules_corrected.txt",
-        corrected_molecules,
-        require_umis=False,
-        sort=False,
+    write_molecules(
+        output_dir / "molecules_corrected.txt", corrected_molecules, require_umis=False
     )
 
     cells = compute_cells(corrected_molecules, min_length)

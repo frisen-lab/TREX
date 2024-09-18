@@ -16,7 +16,12 @@ from . import (
     add_common_arguments,
 )
 from .. import __version__
-from ..writers import write_count_matrix, write_cells, write_reads_or_molecules
+from ..writers import (
+    write_count_matrix,
+    write_cells,
+    write_reads,
+    write_molecules,
+)
 from ..clone import CellGraph
 from ..molecule import Molecule, compute_molecules
 from ..cell import Cell, compute_cells
@@ -161,7 +166,7 @@ def run_smartseq3(
         f"({len(clone_ids)} full cloneIDs, {len(set(clone_ids))} unique)"
     )
 
-    write_reads_or_molecules(output_dir / "reads.txt", reads)
+    write_reads(output_dir / "reads.txt", reads)
 
     molecules = compute_molecules(reads)
     clone_ids = [
@@ -172,7 +177,7 @@ def run_smartseq3(
         f"{len(set(clone_ids))} unique)"
     )
 
-    write_reads_or_molecules(output_dir / "molecules.txt", molecules, sort=False)
+    write_molecules(output_dir / "molecules.txt", molecules)
 
     corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
     clone_ids = [
@@ -184,9 +189,7 @@ def run_smartseq3(
         f"After cloneID correction, {len(set(clone_ids))} unique cloneIDs remain"
     )
 
-    write_reads_or_molecules(
-        output_dir / "molecules_corrected.txt", corrected_molecules, sort=False
-    )
+    write_molecules(output_dir / "molecules_corrected.txt", corrected_molecules)
 
     cells = compute_cells(corrected_molecules, min_length)
     logger.info(f"Detected {len(cells)} cells")
