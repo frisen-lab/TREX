@@ -280,32 +280,32 @@ def run_trex(
         logger.info("Writing UMI matrix")
         write_count_matrix(output_dir / "umi_count_matrix.csv", cells)
 
-    clone_graph = CellGraph(cells, jaccard_threshold=jaccard_threshold)
+    cell_graph = CellGraph(cells, jaccard_threshold=jaccard_threshold)
 
     with open(output_dir / "components.txt", "w") as components_file:
         print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+            cell_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
 
-    bridges = clone_graph.bridges()
+    bridges = cell_graph.bridges()
     logger.info(f"Removing {len(bridges)} bridges from the graph")
-    clone_graph.remove_edges(bridges)
+    cell_graph.remove_edges(bridges)
 
     if not keep_doublets:
-        doublets = clone_graph.doublets()
+        doublets = cell_graph.doublets()
         logger.info(f"Removing {len(doublets)} doublets from the graph (first round)")
-        clone_graph.remove_nodes(doublets)
+        cell_graph.remove_nodes(doublets)
 
-        bridges2 = clone_graph.bridges()
+        bridges2 = cell_graph.bridges()
         logger.info(f"Removing {len(bridges2)} bridges from the graph (second round)")
-        clone_graph.remove_edges(bridges2)
-        doublets2 = clone_graph.doublets()
+        cell_graph.remove_edges(bridges2)
+        doublets2 = cell_graph.doublets()
         if should_plot:
             logger.info("Plotting clone graph")
-            clone_graph.plot(output_dir / "graph", highlight_cell_ids, doublets2)
+            cell_graph.plot(output_dir / "graph", highlight_cell_ids, doublets2)
 
         logger.info(f"Removing {len(doublets2)} doublets from the graph (second round)")
-        clone_graph.remove_nodes(doublets2)
+        cell_graph.remove_nodes(doublets2)
 
         with open(output_dir / "doublets.txt", "w") as doublets_file:
             for clone in doublets + doublets2:
@@ -314,18 +314,18 @@ def run_trex(
 
     if should_plot:
         logger.info("Plotting corrected clone graph")
-        clone_graph.plot(output_dir / "graph_corrected", highlight_cell_ids)
+        cell_graph.plot(output_dir / "graph_corrected", highlight_cell_ids)
 
     with open(output_dir / "components_corrected.txt", "w") as components_file:
         print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+            cell_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
 
-    clones = clone_graph.clones()
+    clones = cell_graph.clones()
     with open(output_dir / "clones.txt", "w") as f:
-        clone_graph.write_clones(f, clones)
+        cell_graph.write_clones(f, clones)
     with open(output_dir / "clone_sequences.txt", "w") as f:
-        clone_graph.write_clone_sequences(f, clones)
+        cell_graph.write_clone_sequences(f, clones)
     logger.info(f"Detected {len(clones)} clones")
     clone_sizes = Counter(len(cells) for clone_id, cells in clones)
     logger.info(

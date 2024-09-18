@@ -193,33 +193,33 @@ def run_smartseq2(
         logger.info("Writing read matrix")
         write_count_matrix(output_dir / "read_count_matrix.csv", cells)
 
-    clone_graph = CellGraph(cells, jaccard_threshold=jaccard_threshold)
+    cell_graph = CellGraph(cells, jaccard_threshold=jaccard_threshold)
 
     with open(output_dir / "components.txt", "w") as components_file:
         print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+            cell_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
     if should_plot:
         logger.info("Plotting clone graph")
-        clone_graph.plot(output_dir / "graph", highlight_cell_ids)
+        cell_graph.plot(output_dir / "graph", highlight_cell_ids)
 
-    bridges = clone_graph.bridges()
+    bridges = cell_graph.bridges()
     logger.info(f"Removing {len(bridges)} bridges from the graph")
-    clone_graph.remove_edges(bridges)
+    cell_graph.remove_edges(bridges)
     with open(output_dir / "components_corrected.txt", "w") as components_file:
         print(
-            clone_graph.components_txt(highlight_cell_ids), file=components_file, end=""
+            cell_graph.components_txt(highlight_cell_ids), file=components_file, end=""
         )
 
     if should_plot:
         logger.info("Plotting corrected clone graph")
-        clone_graph.plot(output_dir / "graph_corrected", highlight_cell_ids)
+        cell_graph.plot(output_dir / "graph_corrected", highlight_cell_ids)
 
-    clones = clone_graph.clones()
+    clones = cell_graph.clones()
     with open(output_dir / "clones.txt", "w") as f:
-        clone_graph.write_clones(f, clones)
+        cell_graph.write_clones(f, clones)
     with open(output_dir / "clone_sequences.txt", "w") as f:
-        clone_graph.write_clone_sequences(f, clones)
+        cell_graph.write_clone_sequences(f, clones)
     logger.info(f"Detected {len(clones)} clones")
     clone_sizes = Counter(len(cells) for clone_id, cells in clones)
     logger.info(
