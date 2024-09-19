@@ -84,7 +84,7 @@ def test_run_smartseq2(tmp_path):
         readcount_threshold=1,
         chromosome="EGFP-30N",
     )
-    diff("tests/expected_smartseq2/log.txt", tmp_path / "log.txt")
+    diff("tests/expected_smartseq2/", tmp_path, ignore=["entries.bam"], recursive=True)
 
 
 def test_run_smartseq3(tmp_path):
@@ -101,7 +101,7 @@ def test_run_smartseq3(tmp_path):
         chromosome="EGFP-30N",
         should_write_umi_matrix=True,
     )
-    diff("tests/expected_smartseq3/log.txt", tmp_path / "log.txt")
+    diff("tests/expected_smartseq3/", tmp_path, ignore=["entries.bam"], recursive=True)
     assert tmp_path.joinpath("umi_count_matrix.csv").exists()
 
 
