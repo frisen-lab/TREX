@@ -8,7 +8,7 @@ from .molecule import Molecule
 @dataclass(frozen=True, order=True)
 class Cell:
     cell_id: str
-    counts: Dict[str, int]
+    counts: Dict[str, int]  # UMI counts
 
     def __hash__(self):
         return hash(self.cell_id)
@@ -23,13 +23,9 @@ def compute_cells(
     cell_id_groups = defaultdict(list)
     for molecule in sorted_molecules:
         clone_id = molecule.clone_id
-        pure_li = clone_id.strip("-")
-        # TODO may not work as intended (strip only removes prefixes and suffixes)
-        pure_bc0 = clone_id.strip("0")
-        if (
-            len(pure_li) >= minimum_clone_id_length
-            and len(pure_bc0) >= minimum_clone_id_length
-        ):
+        dashes = clone_id.count("-")
+        zeroes = clone_id.count("0")
+        if len(clone_id) - dashes - zeroes >= minimum_clone_id_length:
             cell_id_groups[molecule.cell_id].append(molecule)
 
     cells = []
