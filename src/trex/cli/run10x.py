@@ -107,6 +107,7 @@ def main(args):
             max_hamming=args.max_hamming,
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
+            min_umi_count=args.min_umi_count,
             keep_single_reads=args.keep_single_reads,
             keep_doublets=args.keep_doublets,
             should_write_umi_matrix=args.umi_matrix,
@@ -127,6 +128,14 @@ def add_arguments(parser):
         action="store_true",
         default=False,
         help="Keep cloneIDs supported by only a single read. Default: Discard them",
+    )
+    groups.filter.add_argument(
+        "--min-umi-count",
+        metavar="N",
+        type=int,
+        default=2,
+        help="CloneIDs occurring less often than N times in a cell are only kept "
+        "if the occur in any other cell at most once. Default: %(default)s",
     )
     groups.filter.add_argument(
         "--keep-doublets",
@@ -183,6 +192,7 @@ def run_trex(
     correct_per_cell: bool = False,
     min_length: int = 20,
     jaccard_threshold: float = 0.7,
+    min_umi_count: int = 2,
     keep_single_reads: bool = False,
     keep_doublets: bool = False,
     should_write_umi_matrix: bool = False,
@@ -269,7 +279,9 @@ def run_trex(
         logger.info(f"{len(cells)} filtered cells remain")
         write_cells(output_dir / "cells_filtered.txt", cells)
     else:
-        cells = filter_cells(cells, corrected_molecules, keep_single_reads)
+        cells = filter_cells(
+            cells, corrected_molecules, min_umi_count, keep_single_reads
+        )
         logger.info(f"{len(cells)} filtered cells remain")
         write_cells(output_dir / "cells_filtered.txt", cells)
 
@@ -566,13 +578,14 @@ def filter_visium(
 def filter_cells(
     cells: Iterable[Cell],
     molecules: Iterable[Molecule],
+    min_umi_count: int = 2,
     keep_single_reads: bool = False,
 ) -> List[Cell]:
     """
     Filter cloneIDs according to two criteria:
 
-    - CloneIDs that have only a count of one and can be found in another cell are most
-      likely results of contamination and are removed,
+    - CloneIDs that have only a count of one (or less than min_umi_count) and can
+      be found in another cell are most likely results of contamination and are removed,
     - If keep_single_reads is False, cloneIDs that have only a count of one and are
       also only based on one read are also removed
     """
@@ -591,10 +604,10 @@ def filter_cells(
     for cell in cells:
         counts = cell.counts.copy()
         for clone_id, count in cell.counts.items():
-            if count > 1:
-                # This cloneID occurs more than once in this cell - keep it
+            if count >= min_umi_count:
+                # This cloneID occurs sufficiently often in this cell - keep it
                 continue
-            if overall_counts[clone_id] > 1:
+            if overall_counts[clone_id] > min_umi_count:
                 # This cloneID occurs also in other cells - remove it
                 del counts[clone_id]
             elif clone_id in single_read_clone_ids and not keep_single_reads:
