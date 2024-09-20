@@ -1,11 +1,11 @@
 Reading cloneIDs from chrTomato-N:695-724 in tests/data/outs/possorted_genome_bam.bam
-Found 3857 reads with usable cloneIDs and UMIs. Skipped 1692 without cell id, 3 without UMI.
-Read 3857 reads containing (parts of) the cloneID (2703 full cloneIDs, 71 unique)
-Detected 3800 molecules (2676 full cloneIDs, 70 unique)
-3639 remain after low-complexity filtering
+Found 3856 reads with usable cloneIDs and UMIs. Skipped 1692 without cell id, 3 without UMI, 1 with deletions.
+Read 3856 reads containing (parts of) the cloneID (2703 full cloneIDs, 71 unique)
+Detected 3799 molecules (2676 full cloneIDs, 70 unique)
+3638 remain after low-complexity filtering
 After cloneID correction, 39 unique cloneIDs remain
 Detected 1835 cells
-Found 92 single-read cloneIDs
+Found 91 single-read cloneIDs
 697 filtered cells remain
 Removing 0 bridges from the graph
 Removing 0 doublets from the graph (first round)

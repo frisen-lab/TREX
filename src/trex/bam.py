@@ -54,7 +54,7 @@ def read_bam(
             f"Reading cloneIDs from {chr_name}:{clone_id_start + 1}-{clone_id_end} "
             f"in {bam_path}"
         )
-        reads, no_umi, no_cell_id, reads_seq = read_alignment_file(
+        reads, no_umi, no_cell_id, has_deletion, reads_seq = read_alignment_file(
             alignment_file,
             allowed_cell_ids,
             chr_name,
@@ -67,12 +67,14 @@ def read_bam(
         logger.info(
             f"Found {len(reads)} reads with usable cloneIDs and UMIs. "
             f"Skipped {no_cell_id} without cell id, "
-            f"{no_umi} without UMI."
+            f"{no_umi} without UMI, "
+            f"{has_deletion} with deletions."
         )
     else:
         logger.info(
             f"Found {len(reads)} reads with usable cloneIDs. Skipped "
-            f"{no_cell_id} without cell id"
+            f"{no_cell_id} without cell id, "
+            f"{has_deletion} with deletions."
         )
 
     return reads, reads_seq, bam_path
@@ -86,19 +88,20 @@ def read_alignment_file(
     clone_id_end: int,
     require_umis: bool = True,
     cell_id_tag: str = "CB",
-) -> Tuple[List[Read], int, int, List[AlignedSegment]]:
+) -> Tuple[List[Read], int, int, int, List[AlignedSegment]]:
     """
     Return a tuple with
     - list of Read objects,
     - number of reads that did not have a UMI,
     - number of reads that did not have a cell ID
+    - number of reads that contained a deleted base
     - list of AlignedSegments
     """
     clone_id_extractor = CachedCloneIdExtractor(clone_id_start, clone_id_end)
     # Fetch reads aligning to the artifical, clone-id-containing chromosome
     reads = []
     aligned_segments = []
-    no_cell_id = no_umi = 0
+    no_cell_id = no_umi = has_deletion = 0
     start, stop = max(0, clone_id_start - 10), clone_id_end + 10
     for read in alignment_file.fetch(chr_name, start, stop):
         # Skip reads without cellID or UMI
@@ -137,6 +140,9 @@ def read_alignment_file(
         if require_umis and not umi:
             # Read does not have a UMI
             continue
+        if "0" in clone_id:
+            has_deletion += 1
+            continue
         reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
         # Collect all read sequences for output BAM file
         aligned_segments.append(read)
@@ -145,7 +151,7 @@ def read_alignment_file(
         f"CloneID extractor cache hits: {clone_id_extractor.hits}. "
         f"Cache misses: {clone_id_extractor.misses}"
     )
-    return reads, no_umi, no_cell_id, aligned_segments
+    return reads, no_umi, no_cell_id, has_deletion, aligned_segments
 
 
 def write_outbam(aligned_segments, output_bam_path, input_bam_path):
@@ -176,7 +182,7 @@ class CachedCloneIdExtractor:
         self.misses = 0
         self._prev_start = None
 
-    def extract(self, read):
+    def extract(self, read) -> Optional[str]:
         if self._prev_start != read.reference_start:
             self._cache = dict()
             self._prev_start = read.reference_start
