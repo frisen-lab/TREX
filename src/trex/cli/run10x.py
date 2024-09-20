@@ -474,7 +474,7 @@ def correct_clone_ids_per_cell(
 ) -> List[Molecule]:
     """
     Attempt to correct sequencing errors in the CloneID sequences of all
-    molecules looking for similar sequences in the same cell.
+    molecules by looking for similar sequences in the same cell.
     """
     # Count all cloneIDs (including those with '-' and '0')
     counts = Counter(m.clone_id for m in molecules)

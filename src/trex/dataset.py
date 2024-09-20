@@ -59,7 +59,7 @@ class DatasetReader:
             all_reads_seq.extend(reads_seq)
 
         write_outbam(
-            all_reads_seq=all_reads_seq,
+            aligned_segments=all_reads_seq,
             output_bam_path=output_bam_path,
             input_bam_path=input_bam_path,
         )

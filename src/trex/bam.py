@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Tuple
 from typing import Optional
 
-from pysam import AlignmentFile
+from pysam import AlignmentFile, AlignedSegment
 import pysam
 
 logger = logging.getLogger(__name__)
@@ -84,13 +84,20 @@ def read_alignment_file(
     chr_name: str,
     clone_id_start: int,
     clone_id_end: int,
-    require_umis=True,
-    cell_id_tag="CB",
-) -> Tuple[List[Read], int, int]:
+    require_umis: bool = True,
+    cell_id_tag: str = "CB",
+) -> Tuple[List[Read], int, int, List[AlignedSegment]]:
+    """
+    Return a tuple with
+    - list of Read objects,
+    - number of reads that did not have a UMI,
+    - number of reads that did not have a cell ID
+    - list of AlignedSegments
+    """
     clone_id_extractor = CachedCloneIdExtractor(clone_id_start, clone_id_end)
-    # Fetches those reads aligning to the artifical, clone-id-containing chromosome
+    # Fetch reads aligning to the artifical, clone-id-containing chromosome
     reads = []
-    reads_seq = []
+    aligned_segments = []
     no_cell_id = no_umi = 0
     start, stop = max(0, clone_id_start - 10), clone_id_end + 10
     for read in alignment_file.fetch(chr_name, start, stop):
@@ -132,22 +139,22 @@ def read_alignment_file(
             continue
         reads.append(Read(cell_id=cell_id, umi=umi, clone_id=clone_id))
         # Collect all read sequences for output BAM file
-        reads_seq.append(read)
+        aligned_segments.append(read)
 
     logger.debug(
         f"CloneID extractor cache hits: {clone_id_extractor.hits}. "
         f"Cache misses: {clone_id_extractor.misses}"
     )
-    return reads, no_umi, no_cell_id, reads_seq
+    return reads, no_umi, no_cell_id, aligned_segments
 
 
-def write_outbam(all_reads_seq, output_bam_path, input_bam_path):
+def write_outbam(aligned_segments, output_bam_path, input_bam_path):
     # Write the passing alignments to a separate file
     alignment_file = AlignmentFile(input_bam_path, "rb")
 
     new_path = output_bam_path.with_name("temp.bam")
     with AlignmentFile(new_path, "wb", template=alignment_file) as out_bam:
-        for read in all_reads_seq:
+        for read in aligned_segments:
             out_bam.write(read)
 
     # Sort reads
