@@ -1,13 +1,13 @@
 Reading cloneIDs from EGFP-30N:2330-2359 in tests/data/smartseq2_test.bam
-Found 286 reads with usable cloneIDs. Skipped 0 without cell id
-Read 286 reads containing (parts of) the cloneID (135 full cloneIDs, 115 unique)
+Found 279 reads with usable cloneIDs. Skipped 0 without cell id, 7 with deletions.
+Read 279 reads containing (parts of) the cloneID (135 full cloneIDs, 115 unique)
 After cloneID correction, 110 unique cloneIDs remain
-Detected 93 cells
-93 filtered cells remain
+Detected 91 cells
+91 filtered cells remain
 Writing read matrix
 Removing 0 bridges from the graph
-Detected 91 clones
+Detected 89 clones
 Clone size histogram
  size count
-    1    89
+    1    87
     2     2
