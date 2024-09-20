@@ -18,3 +18,4 @@ Clone size histogram
     2     1
     8     1
   679     1
+Average clone size: 63.36

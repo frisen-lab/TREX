@@ -329,8 +329,9 @@ def run_trex(
         "Clone size histogram\n size count\n%s",
         "\n".join(f"{k:5d} {clone_sizes[k]:5d}" for k in sorted(clone_sizes)),
     )
-    number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
+    number_of_cells_in_clones = sum(size * count for size, count in clone_sizes.items())
     logger.debug("No. of cells in clones: %d", number_of_cells_in_clones)
+    logger.info(f"Average clone size: {number_of_cells_in_clones / len(clones):.2f}")
 
     if should_write_loom:
         if len(transcriptome_inputs) > 1:
