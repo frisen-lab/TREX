@@ -11,6 +11,7 @@
   out correctly.
 * [#76](https://github.com/frisen-lab/TREX/pull/76):
   Added a `read_count` column to the `molecules*.txt` files
+* Added a `--min-overlap` command-line option.
 
 ## v0.5 (2024-08-24)
 

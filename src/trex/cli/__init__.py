@@ -134,6 +134,14 @@ def add_common_arguments(parser, smartseq: bool):
         default=20,
     )
     filter_group.add_argument(
+        "--min-overlap",
+        "-O",
+        help="Minimum number of nucleotides two cloneIDs must have in common for one "
+        "cloneID to be corrected to the other. Default: same as --min-length",
+        type=int,
+        metavar="INT",
+    )
+    filter_group.add_argument(
         "--max-hamming",
         help="Maximum hamming distance allowed for two cloneIDs to be called similar. "
         "Default: %(default)s",

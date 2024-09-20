@@ -89,6 +89,8 @@ def main(args):
     if args.highlight:
         with open(args.highlight) as f:
             highlight_cell_ids = [line.strip() for line in f]
+    if args.min_overlap is None:
+        args.min_overlap = args.min_length
 
     try:
         run_trex(
@@ -106,6 +108,7 @@ def main(args):
             correct_per_cell=args.correct_per_cell,
             max_hamming=args.max_hamming,
             min_length=args.min_length,
+            min_overlap=args.min_overlap,
             jaccard_threshold=args.jaccard_threshold,
             keep_single_reads=args.keep_single_reads,
             keep_doublets=args.keep_doublets,
@@ -182,6 +185,7 @@ def run_trex(
     max_hamming: int = 5,
     correct_per_cell: bool = False,
     min_length: int = 20,
+    min_overlap: int = 20,
     jaccard_threshold: float = 0.7,
     keep_single_reads: bool = False,
     keep_doublets: bool = False,
@@ -229,10 +233,12 @@ def run_trex(
 
     if correct_per_cell:
         corrected_molecules = correct_clone_ids_per_cell(
-            molecules, max_hamming, min_length
+            molecules,
+            max_hamming,
+            min_overlap=min_overlap,
         )
     else:
-        corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
+        corrected_molecules = correct_clone_ids(molecules, max_hamming, min_overlap)
     clone_ids = [
         m.clone_id
         for m in corrected_molecules

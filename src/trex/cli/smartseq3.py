@@ -77,6 +77,8 @@ def main(args):
     if args.highlight:
         with open(args.highlight) as f:
             highlight_cell_ids = [line.strip() for line in f]
+    if args.min_overlap is None:
+        args.min_overlap = args.min_length
 
     try:
         run_smartseq3(
@@ -135,6 +137,7 @@ def run_smartseq3(
     prefix: bool = False,
     max_hamming: int = 5,
     min_length: int = 20,
+    min_overlap: int = 20,
     jaccard_threshold: float = 0.7,
     keep_single_reads: bool = False,
     should_write_umi_matrix: bool = False,
@@ -179,7 +182,7 @@ def run_smartseq3(
 
     write_molecules(output_dir / "molecules.txt", molecules)
 
-    corrected_molecules = correct_clone_ids(molecules, max_hamming, min_length)
+    corrected_molecules = correct_clone_ids(molecules, max_hamming, min_overlap)
     clone_ids = [
         m.clone_id
         for m in corrected_molecules
