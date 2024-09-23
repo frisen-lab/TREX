@@ -12,8 +12,8 @@ from .bam import Read
 
 @dataclass
 class Molecule:
-    umi: str
     cell_id: str
+    umi: str
     clone_id: str
     read_count: int
 

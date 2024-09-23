@@ -8,6 +8,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore", "Conversion of the second argument of issubdtype")
     import loompy
 import numpy as np
+import pandas as pd
 
 
 def write_count_matrix(path: Path, cells: List[Cell]):
@@ -73,22 +74,11 @@ def write_reads(path, reads, require_umis=True):
 
 
 def write_molecules(path, molecules, require_umis=True):
-    with open(path, "w") as f:
-        if require_umis:
-            print("#cell_id", "umi", "clone_id", "read_count", sep="\t", file=f)
-            for molecule in molecules:
-                print(
-                    molecule.cell_id,
-                    molecule.umi,
-                    molecule.clone_id,
-                    molecule.read_count,
-                    sep="\t",
-                    file=f,
-                )
-        else:
-            print("#cell_id", "clone_id", sep="\t", file=f)
-            for molecule in molecules:
-                print(molecule.cell_id, molecule.clone_id, sep="\t", file=f)
+    df = pd.DataFrame([vars(m) for m in molecules])
+    if not require_umis:
+        del df["umi"]
+    df.rename(columns={"cell_id": "#cell_id"}, inplace=True)
+    df.to_csv(path, sep="\t", index=False)
 
 
 def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
