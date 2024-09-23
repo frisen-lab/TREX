@@ -28,6 +28,7 @@ from ..writers import (
     write_loom,
     write_reads,
     write_molecules,
+    write_corrected_molecules,
 )
 from ..clustering import cluster_sequences
 from ..clone import CellGraph
@@ -225,7 +226,6 @@ def run_trex(
 
     molecules = [m for m in molecules if not is_low_complexity(m.clone_id)]
     logger.info(f"{len(molecules)} remain after low-complexity filtering")
-    write_molecules(output_dir / "molecules_filtered.txt", molecules)
 
     if correct_per_cell:
         corrected_molecules = correct_clone_ids_per_cell(
@@ -242,7 +242,9 @@ def run_trex(
         f"After cloneID correction, {len(set(clone_ids))} unique cloneIDs remain"
     )
 
-    write_molecules(output_dir / "molecules_corrected.txt", corrected_molecules)
+    write_corrected_molecules(
+        output_dir / "molecules_corrected.txt", molecules, corrected_molecules
+    )
 
     if excluded_clone_ids is not None:
         similarity_set = SimilaritySet(excluded_clone_ids)

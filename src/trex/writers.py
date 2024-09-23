@@ -81,6 +81,22 @@ def write_molecules(path, molecules, require_umis=True):
     df.to_csv(path, sep="\t", index=False)
 
 
+def write_corrected_molecules(path, molecules, corrected_molecules, require_umis=True):
+    df = pd.DataFrame([vars(m) for m in molecules])
+    corrected_df = pd.DataFrame([vars(m) for m in corrected_molecules])
+    assert len(df) == len(corrected_df)
+    if not require_umis:
+        del df["umi"]
+        del corrected_df["umi"]
+    assert df["umi"].equals(corrected_df["umi"])
+    assert df["cell_id"].equals(corrected_df["cell_id"])
+    df.rename(
+        columns={"cell_id": "#cell_id", "clone_id": "original_clone_id"}, inplace=True
+    )
+    df.insert(3, "clone_id", corrected_df["clone_id"])
+    df.to_csv(path, sep="\t", index=False)
+
+
 def write_loom(cells: List[Cell], cellranger, output_dir, clone_id_length, top_n=6):
     """
     Create a loom file from a Cell Ranger result directory
