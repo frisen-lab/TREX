@@ -2,7 +2,7 @@
 Clone computation. A clone is represented as a set of cells.
 """
 
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 from collections import Counter, defaultdict
 from io import StringIO
 import math
@@ -260,67 +260,6 @@ class CellGraph:
                 print(cell.cell_id, highlighting, *clone_ids, sep="\t", file=s)
                 counter.update(cell.counts.keys())
         print(f"# {n_complete} complete components", file=s)
-        return s.getvalue()
-
-    @property
-    def graph(self):
-        return self._graph
-
-
-# TODO this is unused
-class UncompressedCellGraph:
-    def __init__(self, cells: List[Cell]):
-        self._cells = cells
-        self._graph = self._make_cell_graph()
-
-    def _make_cell_graph(self):
-        """
-        Create graph of cells; add edges between cells that
-        share at least one barcode. Return created graph.
-        """
-        cells = [cell for cell in self._cells if cell.counts]
-        graph = Graph(cells)
-        for i in range(len(cells)):
-            for j in range(i + 1, len(cells)):
-                if set(cells[i].counts) & set(cells[j].counts):
-                    # Cell i and j share a cloneID
-                    graph.add_edge(cells[i], cells[j])
-        return graph
-
-    def _make_barcode_graph(self) -> Graph:
-        counts: Dict[str, int] = Counter()
-        for cell in self._cells:
-            counts.update(cell.counts)
-        all_clone_ids = list(counts)
-
-        # Create a graph of barcodes; add an edge for barcodes occuring in the same cell
-        graph = Graph(all_clone_ids)
-        for cell in self._cells:
-            barcodes = list(cell.counts)
-            for other in barcodes[1:]:
-                graph.add_edge(barcodes[0], other)
-        return graph
-
-    def clones(self) -> Dict[str, List[Cell]]:
-        """
-        Compute clones. Return a dict that maps a representative cloneID to a list of cells.
-        """
-        clusters = [g.nodes() for g in self._graph.connected_components()]
-
-        def most_abundant_clone_id(cells: List[Cell]):
-            counts: Counter = Counter()
-            for cell in cells:
-                counts.update(cell.counts)
-            return max(counts, key=lambda k: (counts[k], k))
-
-        return {most_abundant_clone_id(cells): cells for cells in clusters}
-
-    def dot(self, highlight=None):
-        s = StringIO()
-        print("graph g {", file=s)
-        for node1, node2 in self._graph.edges():
-            print(f'"{node1.cell_id}" -- "{node2.cell_id}"', file=s)
-        print("}", file=s)
         return s.getvalue()
 
     @property
