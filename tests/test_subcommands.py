@@ -121,10 +121,10 @@ def test_qc(tmp_path):
     assert pdf_path.exists()
 
 
-EXCLUDED_CLONE_IDS = {
+EXCLUDED_CLONE_IDS = [
     "GGTCTCCCTATACCAACAGTATCGTCTCAA",
     "GGGTTCTGGGATATTACGTTGACTTGAGAG",
-}
+]
 
 
 def test_filter_clone_ids(tmp_path):

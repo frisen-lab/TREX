@@ -2,7 +2,7 @@
 Clone computation. A clone is represented as a set of cells.
 """
 
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 from collections import Counter, defaultdict
 from io import StringIO
 import math
@@ -16,7 +16,11 @@ from .cell import Cell
 logger = logging.getLogger(__name__)
 
 
-class Clone:
+class CellSet:
+    """
+    A node in the CellGraph. All cells in one CellSet share the same set of clone_ids.
+    """
+
     def __init__(self, cells: List[Cell]):
         self.cells = cells
         self.cell_ids = tuple(sorted(c.cell_id for c in cells))
@@ -26,7 +30,7 @@ class Clone:
         self._hash = hash(self.cell_ids)
 
     def __repr__(self):
-        return f"Clone(cells={self.cells!r})"
+        return f"CellSet(cells={self.cells!r})"
 
     def __hash__(self):
         return self._hash
@@ -34,8 +38,14 @@ class Clone:
 
 class CellGraph:
     """
-    Graph of cells. An edge is drawn between two cells if the Jaccard similarity between
+    A graph of cells.
+
+    An edge is drawn between two cells if the Jaccard similarity between
     their sets of cloneIDs is above the given threshold.
+
+    To speed up clustering, the nodes in the graph are not cells but CellSets.
+    All cells sharing the same set of clone_ids are put into a single CellSet
+    because they would end up in the same cluster anyway.
     """
 
     def __init__(self, cells: List[Cell], jaccard_threshold: float):
@@ -44,16 +54,14 @@ class CellGraph:
         self._graph = self._make_graph()
 
     @staticmethod
-    def _precluster_cells(cells):
-        """Put cells that have identical sets of cloneIDs into a clone"""
+    def _precluster_cells(cells) -> List[CellSet]:
+        """Put cells that have identical sets of cloneIDs into a single CellSet"""
         cell_lists = defaultdict(list)
         for cell in cells:
             clone_ids = tuple(sorted(cell.counts))
             cell_lists[clone_ids].append(cell)
 
-        clones = []
-        for cells in cell_lists.values():
-            clones.append(Clone(cells))
+        clones = [CellSet(cells) for cells in cell_lists.values()]
         return clones
 
     def _make_graph(self):
@@ -114,7 +122,7 @@ class CellGraph:
             self._graph.remove_node(node)
 
     @staticmethod
-    def _expand_clones(clones: List[Clone]) -> List[Cell]:
+    def _expand_clones(clones: List[CellSet]) -> List[Cell]:
         """Expand a list of Clone instances into a list of Cells"""
         cells = []
         for clone in clones:
@@ -130,17 +138,27 @@ class CellGraph:
                 print(index, cell.cell_id, sep="\t", file=file)
 
     @staticmethod
-    def write_clone_sequences(file, clones):
-        print("clone_nr", "clone_id", sep="\t", file=file)
+    def write_clone_details(file, clones: list[tuple[str, list[Cell]]]):
+        print(
+            "clone_nr", "clone_id", "n_cells", "clone_ids_per_cell", sep="\t", file=file
+        )
         for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
-            print(index, clone_id, sep="\t", file=file)
+            clone_ids_per_cell = sum(len(cell.counts) for cell in cells) / len(cells)
+            print(
+                index,
+                clone_id,
+                len(cells),
+                f"{clone_ids_per_cell:.2f}",
+                sep="\t",
+                file=file,
+            )
 
     def clones(self) -> List[Tuple[str, List[Cell]]]:
         """
         Compute clones. Return a dict that maps a cloneID to a list of cells.
         """
         compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
-        # Expand the Clone instances into cells
+        # Expand the CellSets into cells
         clusters = [self._expand_clones(cluster) for cluster in compressed_clusters]
 
         logger.debug(
@@ -260,67 +278,6 @@ class CellGraph:
                 print(cell.cell_id, highlighting, *clone_ids, sep="\t", file=s)
                 counter.update(cell.counts.keys())
         print(f"# {n_complete} complete components", file=s)
-        return s.getvalue()
-
-    @property
-    def graph(self):
-        return self._graph
-
-
-# TODO this is unused
-class UncompressedCellGraph:
-    def __init__(self, cells: List[Cell]):
-        self._cells = cells
-        self._graph = self._make_cell_graph()
-
-    def _make_cell_graph(self):
-        """
-        Create graph of cells; add edges between cells that
-        share at least one barcode. Return created graph.
-        """
-        cells = [cell for cell in self._cells if cell.counts]
-        graph = Graph(cells)
-        for i in range(len(cells)):
-            for j in range(i + 1, len(cells)):
-                if set(cells[i].counts) & set(cells[j].counts):
-                    # Cell i and j share a cloneID
-                    graph.add_edge(cells[i], cells[j])
-        return graph
-
-    def _make_barcode_graph(self) -> Graph:
-        counts: Dict[str, int] = Counter()
-        for cell in self._cells:
-            counts.update(cell.counts)
-        all_clone_ids = list(counts)
-
-        # Create a graph of barcodes; add an edge for barcodes occuring in the same cell
-        graph = Graph(all_clone_ids)
-        for cell in self._cells:
-            barcodes = list(cell.counts)
-            for other in barcodes[1:]:
-                graph.add_edge(barcodes[0], other)
-        return graph
-
-    def clones(self) -> Dict[str, List[Cell]]:
-        """
-        Compute clones. Return a dict that maps a representative cloneID to a list of cells.
-        """
-        clusters = [g.nodes() for g in self._graph.connected_components()]
-
-        def most_abundant_clone_id(cells: List[Cell]):
-            counts: Counter = Counter()
-            for cell in cells:
-                counts.update(cell.counts)
-            return max(counts, key=lambda k: (counts[k], k))
-
-        return {most_abundant_clone_id(cells): cells for cells in clusters}
-
-    def dot(self, highlight=None):
-        s = StringIO()
-        print("graph g {", file=s)
-        for node1, node2 in self._graph.edges():
-            print(f'"{node1.cell_id}" -- "{node2.cell_id}"', file=s)
-        print("}", file=s)
         return s.getvalue()
 
     @property

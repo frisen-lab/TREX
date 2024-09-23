@@ -341,14 +341,21 @@ identifies the clone.
     1        TGGCGCAAGAATAGGG
 
 
-### `clone_sequences.txt`
+### `clone_details.txt`
 
-A table listing the 30N sequence of each cloneID.
+A table listing all clones (a clone is a set of cells), one line per clone.
+The columns are:
+
+* *clone_nr*: A number identifying the clone
+* *clone_id*: The most common cloneID among all cells in the clone.
+* *n_cells*: The number of cells in the clone.
+* *clone_ids_per_cell*: The average number of cloneIDs per cell.
+
 The columns are *clone#* and *clone_seq* where *clone_id* is a number
 that identifies the clone and *clone_seq* its nucleotide sequence.
 
-    clone#  clone_seq
-    1       ACTAGGAGATTGACGGATCACCTTTGGTCG
+    clone_nr  clone_id                        n_cells clone_ids_per_cell
+    1         ACTAGGAGATTGACGGATCACCTTTGGTCG  3       1.00
 
 
 ### `data.loom`

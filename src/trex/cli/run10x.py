@@ -10,7 +10,7 @@ import logging
 import dataclasses
 from pathlib import Path
 from collections import Counter, defaultdict
-from typing import List, Dict, Iterable, Optional, DefaultDict, Union
+from typing import List, Dict, Iterable, Optional, DefaultDict, Sequence
 
 import pandas as pd
 
@@ -169,7 +169,7 @@ def add_arguments(parser):
 def run_trex(
     output_dir: Path,
     *,
-    transcriptome_inputs: List[Union[Path, str]],
+    transcriptome_inputs: List[Path],
     amplicon_inputs: List[Path],
     genome_name: Optional[str] = None,
     allowed_cell_ids: Optional[List[str]] = None,
@@ -321,16 +321,17 @@ def run_trex(
     clones = cell_graph.clones()
     with open(output_dir / "clones.txt", "w") as f:
         cell_graph.write_clones(f, clones)
-    with open(output_dir / "clone_sequences.txt", "w") as f:
-        cell_graph.write_clone_sequences(f, clones)
+    with open(output_dir / "clone_details.txt", "w") as f:
+        cell_graph.write_clone_details(f, clones)
     logger.info(f"Detected {len(clones)} clones")
     clone_sizes = Counter(len(cells) for clone_id, cells in clones)
     logger.info(
         "Clone size histogram\n size count\n%s",
         "\n".join(f"{k:5d} {clone_sizes[k]:5d}" for k in sorted(clone_sizes)),
     )
-    number_of_cells_in_clones = sum(k * v for k, v in clone_sizes.items())
+    number_of_cells_in_clones = sum(size * count for size, count in clone_sizes.items())
     logger.debug("No. of cells in clones: %d", number_of_cells_in_clones)
+    logger.info(f"Average clone size: {number_of_cells_in_clones / len(clones):.2f}")
 
     if should_write_loom:
         if len(transcriptome_inputs) > 1:
@@ -374,7 +375,7 @@ def read_excluded_clone_ids(path: Path) -> List[str]:
     logger.info(
         f"{len(excluded_clone_ids)} CloneIDs will be ignored during the analysis"
     )
-    return set(excluded_clone_ids)
+    return list(excluded_clone_ids)
 
 
 def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
@@ -399,7 +400,7 @@ def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
 
 
 class SimilaritySet:
-    def __init__(self, strings: set[str]):
+    def __init__(self, strings: Sequence[str]):
         self._length = len(next(iter(strings)))
         if not all(len(s) == self._length for s in strings):
             raise ValueError("All strings must have the same length")
