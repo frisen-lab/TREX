@@ -16,7 +16,11 @@ from .cell import Cell
 logger = logging.getLogger(__name__)
 
 
-class Clone:
+class CellSet:
+    """
+    A node in the CellGraph. All cells in one CellSet share the same set of clone_ids.
+    """
+
     def __init__(self, cells: List[Cell]):
         self.cells = cells
         self.cell_ids = tuple(sorted(c.cell_id for c in cells))
@@ -26,7 +30,7 @@ class Clone:
         self._hash = hash(self.cell_ids)
 
     def __repr__(self):
-        return f"Clone(cells={self.cells!r})"
+        return f"CellSet(cells={self.cells!r})"
 
     def __hash__(self):
         return self._hash
@@ -34,8 +38,14 @@ class Clone:
 
 class CellGraph:
     """
-    Graph of cells. An edge is drawn between two cells if the Jaccard similarity between
+    A graph of cells.
+
+    An edge is drawn between two cells if the Jaccard similarity between
     their sets of cloneIDs is above the given threshold.
+
+    To speed up clustering, the nodes in the graph are not cells but CellSets.
+    All cells sharing the same set of clone_ids are put into a single CellSet
+    because they would end up in the same cluster anyway.
     """
 
     def __init__(self, cells: List[Cell], jaccard_threshold: float):
@@ -44,16 +54,14 @@ class CellGraph:
         self._graph = self._make_graph()
 
     @staticmethod
-    def _precluster_cells(cells):
-        """Put cells that have identical sets of cloneIDs into a clone"""
+    def _precluster_cells(cells) -> List[CellSet]:
+        """Put cells that have identical sets of cloneIDs into a single CellSet"""
         cell_lists = defaultdict(list)
         for cell in cells:
             clone_ids = tuple(sorted(cell.counts))
             cell_lists[clone_ids].append(cell)
 
-        clones = []
-        for cells in cell_lists.values():
-            clones.append(Clone(cells))
+        clones = [CellSet(cells) for cells in cell_lists.values()]
         return clones
 
     def _make_graph(self):
@@ -114,7 +122,7 @@ class CellGraph:
             self._graph.remove_node(node)
 
     @staticmethod
-    def _expand_clones(clones: List[Clone]) -> List[Cell]:
+    def _expand_clones(clones: List[CellSet]) -> List[Cell]:
         """Expand a list of Clone instances into a list of Cells"""
         cells = []
         for clone in clones:
@@ -140,7 +148,7 @@ class CellGraph:
         Compute clones. Return a dict that maps a cloneID to a list of cells.
         """
         compressed_clusters = [g.nodes() for g in self._graph.connected_components()]
-        # Expand the Clone instances into cells
+        # Expand the CellSets into cells
         clusters = [self._expand_clones(cluster) for cluster in compressed_clusters]
 
         logger.debug(
