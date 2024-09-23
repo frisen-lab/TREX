@@ -139,9 +139,19 @@ class CellGraph:
 
     @staticmethod
     def write_clone_details(file, clones: list[tuple[str, list[Cell]]]):
-        print("clone_nr", "clone_id", "n_cells", sep="\t", file=file)
+        print(
+            "clone_nr", "clone_id", "n_cells", "clone_ids_per_cell", sep="\t", file=file
+        )
         for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
-            print(index, clone_id, len(cells), sep="\t", file=file)
+            clone_ids_per_cell = sum(len(cell.counts) for cell in cells) / len(cells)
+            print(
+                index,
+                clone_id,
+                len(cells),
+                f"{clone_ids_per_cell:.2f}",
+                sep="\t",
+                file=file,
+            )
 
     def clones(self) -> List[Tuple[str, List[Cell]]]:
         """
