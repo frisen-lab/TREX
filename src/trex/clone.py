@@ -138,10 +138,10 @@ class CellGraph:
                 print(index, cell.cell_id, sep="\t", file=file)
 
     @staticmethod
-    def write_clone_sequences(file, clones):
-        print("clone_nr", "clone_id", sep="\t", file=file)
+    def write_clone_details(file, clones: list[tuple[str, list[Cell]]]):
+        print("clone_nr", "clone_id", "n_cells", sep="\t", file=file)
         for index, (clone_id, cells) in enumerate(sorted(clones), start=1):
-            print(index, clone_id, sep="\t", file=file)
+            print(index, clone_id, len(cells), sep="\t", file=file)
 
     def clones(self) -> List[Tuple[str, List[Cell]]]:
         """

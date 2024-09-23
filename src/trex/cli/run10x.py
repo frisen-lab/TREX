@@ -321,8 +321,8 @@ def run_trex(
     clones = cell_graph.clones()
     with open(output_dir / "clones.txt", "w") as f:
         cell_graph.write_clones(f, clones)
-    with open(output_dir / "clone_sequences.txt", "w") as f:
-        cell_graph.write_clone_sequences(f, clones)
+    with open(output_dir / "clone_details.txt", "w") as f:
+        cell_graph.write_clone_details(f, clones)
     logger.info(f"Detected {len(clones)} clones")
     clone_sizes = Counter(len(cells) for clone_id, cells in clones)
     logger.info(
