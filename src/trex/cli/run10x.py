@@ -10,7 +10,7 @@ import logging
 import dataclasses
 from pathlib import Path
 from collections import Counter, defaultdict
-from typing import List, Dict, Iterable, Optional, DefaultDict, Union
+from typing import List, Dict, Iterable, Optional, DefaultDict, Sequence
 
 import pandas as pd
 
@@ -169,7 +169,7 @@ def add_arguments(parser):
 def run_trex(
     output_dir: Path,
     *,
-    transcriptome_inputs: List[Union[Path, str]],
+    transcriptome_inputs: List[Path],
     amplicon_inputs: List[Path],
     genome_name: Optional[str] = None,
     allowed_cell_ids: Optional[List[str]] = None,
@@ -375,7 +375,7 @@ def read_excluded_clone_ids(path: Path) -> List[str]:
     logger.info(
         f"{len(excluded_clone_ids)} CloneIDs will be ignored during the analysis"
     )
-    return set(excluded_clone_ids)
+    return list(excluded_clone_ids)
 
 
 def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
@@ -400,7 +400,7 @@ def is_similar(s: str, t: str, min_overlap: int, max_hamming: int) -> bool:
 
 
 class SimilaritySet:
-    def __init__(self, strings: set[str]):
+    def __init__(self, strings: Sequence[str]):
         self._length = len(next(iter(strings)))
         if not all(len(s) == self._length for s in strings):
             raise ValueError("All strings must have the same length")

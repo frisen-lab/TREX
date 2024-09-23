@@ -1,29 +1,32 @@
 from collections import OrderedDict
+from typing import TypeVar, Generic, Iterable, Iterator
+
+T = TypeVar("T")
 
 
-class Graph:
+class Graph(Generic[T]):
     """Undirected graph that can find connected components"""
 
-    def __init__(self, nodes):
+    def __init__(self, nodes: Iterable[T]):
         # values are lists of adjacent nodes
-        self._nodes = OrderedDict()
+        self._nodes: dict[T, list[T]] = OrderedDict()
         for node in nodes:
             self._nodes[node] = []
 
-    def add_edge(self, node1, node2):
+    def add_edge(self, node1: T, node2: T) -> None:
         self._nodes[node1].append(node2)
         self._nodes[node2].append(node1)
 
-    def remove_edge(self, node1, node2):
+    def remove_edge(self, node1: T, node2: T) -> None:
         self._nodes[node1].remove(node2)
         self._nodes[node2].remove(node1)
 
-    def remove_node(self, node):
+    def remove_node(self, node) -> None:
         for neighbor in list(self._nodes[node]):
             self._nodes[neighbor] = [n for n in self._nodes[neighbor] if n != node]
         del self._nodes[node]
 
-    def connected_components(self):
+    def connected_components(self) -> list["Graph[T]"]:
         """Return a list of connected components."""
         visited = set()
         components = []
@@ -49,11 +52,11 @@ class Graph:
             components.append(subgraph)
         return components
 
-    def nodes(self):
+    def nodes(self) -> list[T]:
         """Return all nodes as a list"""
         return list(self._nodes)
 
-    def edges(self):
+    def edges(self) -> Iterator[tuple[T, T]]:
         """Yield all edges as pair (node1, node2)"""
         seen = set()
         for node1 in self._nodes:
@@ -63,17 +66,17 @@ class Graph:
                     continue
                 yield node1, node2
 
-    def neighbors(self, node):
+    def neighbors(self, node) -> list[T]:
         """Return a list of all neighbors of a node"""
         return self._nodes[node]
 
-    def induced_subgraph(self, nodes):
+    def induced_subgraph(self, nodes: Iterable[T]) -> "Graph[T]":
         nodes_set = set(nodes)
         new_nodes = {
             node: [neighbor for neighbor in self._nodes[node] if neighbor in nodes_set]
             for node in nodes
         }
-        subgraph = Graph([])
+        subgraph = Graph[T]([])
         subgraph._nodes = new_nodes
 
         return subgraph
@@ -82,7 +85,7 @@ class Graph:
         """Return number of edges"""
         return sum(len(neighbors) for neighbors in self._nodes.values()) // 2
 
-    def local_cut_vertices(self):
+    def local_cut_vertices(self) -> list[T]:
         """
         Return all vertices that, when removed, would lead to their neighborhood being split
         into two or more connected components.
