@@ -260,18 +260,15 @@ Example:
     AAACCTGAGAGGTACC        AGTTAAAGTA      TGTCAATCGTTCGGTTGAGCAAGATCTTAG
 
 
-### `molecules_filtered.txt`
-
-The same `molecules.txt`, but with those molecules removed that did not pass
-some filtering criteria (such as low-complexity cloneID filtering).
-
-
 ### `molecules_corrected.txt`
 
-A table with molecules where cloneIDs have been error corrected.
+Same as `molecules.txt`, but after filtering and error correction:
+- CloneIDs have been error corrected.
+- Molecules are removed that did not pass filtering criteria
+  (such as low-complexity cloneID filtering).
 
-The file is the same as `molecules.txt` with some changes in the *clone_id*
-column.
+For the `run10x` subcommand, this table contains an additional `original_clone_id`
+column that shows how the original cloneID before correction.
 
 
 ### `cells.txt`
