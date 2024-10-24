@@ -47,11 +47,14 @@ This will create a folder `trex_run/` in the current directory
 See the "Runnning TREX" section below for further details.
 
 
-# Running TREX on data from the Nature Neuroscience paper
+# Running TREX on single-cell data from the Nature Neuroscience paper
 
-Here we show how to run TREX on the data we analyzed in our Nature Neuroscience paper (<https://doi.org/10.1038/s41593-022-01011-x>).
+Here we show how to run TREX on some of the single-cell data we analyzed in our Nature Neuroscience paper (<https://doi.org/10.1038/s41593-022-01011-x>).
 
 These instructions have been tested with Cell Ranger 6.1.2, but the original analysis was done with Cell Ranger 2.2.0.
+
+These instructions apply only partially to the spatial data (samples GSM4644079-GSM4644094),
+see the [Visium](#visium) section below for the differences.
 
 
 ## Data
@@ -127,6 +130,48 @@ With `trex` installed (as described above), run
     trex run10x -o trex_brain1_str brain1_str
 
 Results will be written to a new directory named `trex_brain1_str`.
+
+
+## Visium
+
+If you want to re-run our experiments on the Visium samples (GSM4644079-GSM4644094),
+you need to use Space Ranger and a different virus sequence.
+We used Space Ranger 1.0.0.
+
+You can find the virus sequence in `references/pMR526_LV-EF1a-H2B-EGFP-BC.fa` in this repository.
+
+This is the association between the GEO sample names and our custom library
+names listed in Supplementary Table 4:
+
+GEO sample id | Name in Suppl. Tab. 4
+-|-
+GSM4644079 | V9
+GSM4644080 | V10
+GSM4644081 | V11
+GSM4644082 | V12
+GSM4644083 | V13
+GSM4644084 | V14
+GSM4644085 | V15
+GSM4644086 | V16
+GSM4644087 | amp56
+GSM4644088 | amp57
+GSM4644089 | amp58
+GSM4644090 | amp59
+GSM4644091 | amp60
+GSM4644092 | amp61
+GSM4644093 | amp62
+GSM4644094 | amp63
+
+V... are the gene expression libraries and amp... are the libraries targeting the cloneID.
+There will be only few reads with cloneIDs in the V... libraries.
+
+
+When analyzing the Space Ranger output with TREX,
+you need to add `--visium` to the command.
+You can also analyze the transcriptome and amplicon data at the same time.
+For example:
+
+    trex run --visium --output trex-V9 --start 1147 --end 1176 --umi-matrix --prefix --visium --samples V9 visium-data/V9 --amplicon visium-data/amp56
 
 
 # Running TREX
