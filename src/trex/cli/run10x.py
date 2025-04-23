@@ -271,7 +271,7 @@ def run_trex(
         logger.info(f"{len(cells)} filtered cells remain")
         write_cells(output_dir / "cells_filtered.txt", cells)
     else:
-        cells = filter_cells(cells, corrected_molecules, keep_single_reads)
+        cells = filter_cells(cells, corrected_molecules, not keep_single_reads)
         logger.info(f"{len(cells)} filtered cells remain")
         write_cells(output_dir / "cells_filtered.txt", cells)
 
@@ -569,14 +569,14 @@ def filter_visium(
 def filter_cells(
     cells: Iterable[Cell],
     molecules: Iterable[Molecule],
-    keep_single_reads: bool = False,
+    discard_single_reads: bool = True,
 ) -> List[Cell]:
     """
     Filter cloneIDs according to two criteria:
 
     - CloneIDs that have only a count of one and can be found in another cell are most
       likely results of contamination and are removed,
-    - If keep_single_reads is False, cloneIDs that have only a count of one and are
+    - If discard_single_reads is True, cloneIDs that have only a count of one and are
       also only based on one read are also removed
     """
     overall_counts: Dict[str, int] = Counter()
@@ -600,7 +600,7 @@ def filter_cells(
             if overall_counts[clone_id] > 1:
                 # This cloneID occurs also in other cells - remove it
                 del counts[clone_id]
-            elif clone_id in single_read_clone_ids and not keep_single_reads:
+            elif clone_id in single_read_clone_ids and discard_single_reads:
                 del counts[clone_id]
         if counts:
             new_cells.append(Cell(cell_id=cell.cell_id, counts=counts))
