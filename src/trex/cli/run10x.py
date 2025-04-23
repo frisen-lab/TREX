@@ -109,6 +109,7 @@ def main(args):
             min_length=args.min_length,
             jaccard_threshold=args.jaccard_threshold,
             keep_single_reads=args.keep_single_reads,
+            keep_cross_contamination=args.keep_cross_contamination,
             keep_doublets=args.keep_doublets,
             should_write_umi_matrix=args.umi_matrix,
             should_run_visium=args.visium,
@@ -128,6 +129,13 @@ def add_arguments(parser):
         action="store_true",
         default=False,
         help="Keep cloneIDs supported by only a single read. Default: Discard them",
+    )
+    groups.filter.add_argument(
+        "--keep-cross-contamination",
+        action="store_true",
+        default=False,
+        help="Keep cloneIDs with a count of one that also occur in at least one "
+        "other cell. Default: Discard them",
     )
     groups.filter.add_argument(
         "--keep-doublets",
@@ -185,6 +193,7 @@ def run_trex(
     min_length: int = 20,
     jaccard_threshold: float = 0.7,
     keep_single_reads: bool = False,
+    keep_cross_contamination: bool = False,
     keep_doublets: bool = False,
     should_write_umi_matrix: bool = False,
     should_run_visium: bool = False,
@@ -271,7 +280,12 @@ def run_trex(
         logger.info(f"{len(cells)} filtered cells remain")
         write_cells(output_dir / "cells_filtered.txt", cells)
     else:
-        cells = filter_cells(cells, corrected_molecules, not keep_single_reads)
+        cells = filter_cells(
+            cells,
+            corrected_molecules,
+            not keep_single_reads,
+            not keep_cross_contamination,
+        )
         logger.info(f"{len(cells)} filtered cells remain")
         write_cells(output_dir / "cells_filtered.txt", cells)
 
@@ -570,14 +584,15 @@ def filter_cells(
     cells: Iterable[Cell],
     molecules: Iterable[Molecule],
     discard_single_reads: bool = True,
+    discard_cross_contamination: bool = True,
 ) -> List[Cell]:
     """
     Filter cloneIDs according to two criteria:
 
-    - CloneIDs that have only a count of one and can be found in another cell are most
-      likely results of contamination and are removed,
-    - If discard_single_reads is True, cloneIDs that have only a count of one and are
-      also only based on one read are also removed
+    - If discard_cross_contamination is True, then cloneIDs that have only a count of
+      one and that can also be found in another cell are discarded.
+    - If discard_single_reads is True, then cloneIDs that have only a count of
+      one and that are only based on one read are also discarded.
     """
     overall_counts: Dict[str, int] = Counter()
     for cell in cells:
@@ -597,7 +612,7 @@ def filter_cells(
             if count > 1:
                 # This cloneID occurs more than once in this cell - keep it
                 continue
-            if overall_counts[clone_id] > 1:
+            if overall_counts[clone_id] > 1 and discard_cross_contamination:
                 # This cloneID occurs also in other cells - remove it
                 del counts[clone_id]
             elif clone_id in single_read_clone_ids and discard_single_reads:
