@@ -4,6 +4,6 @@ repos:
   hooks:
     - id: ruff
 - repo: https://github.com/psf/black
-  rev: 23.10.1
+  rev: 25.1.0
   hooks:
     - id: black
