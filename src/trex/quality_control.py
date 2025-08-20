@@ -104,9 +104,9 @@ def get_clone_ids_per_cell(
     used, then this must be False.
     """
     if molecules_dataframe:
-        return df.groupby(["#cell_id"]).umi.agg("count")
+        return df.groupby(["#cell_id"], observed=True).umi.agg("count")
     else:
-        return df.groupby(["cell_id"]).counts.sum()
+        return df.groupby(["cell_id"], observed=True).counts.sum()
 
 
 def get_molecules_per_clone_ids(
@@ -118,9 +118,9 @@ def get_molecules_per_clone_ids(
     DataFrame is being used, then this must be False.
     """
     if molecules_dataframe:
-        return df.groupby(["clone_id"]).umi.agg("count")
+        return df.groupby(["clone_id"], observed=True).umi.agg("count")
     else:
-        return df.groupby(["clone_id"]).counts.sum()
+        return df.groupby(["clone_id"], observed=True).counts.sum()
 
 
 def get_unique_clone_ids_per_cell(
@@ -132,9 +132,9 @@ def get_unique_clone_ids_per_cell(
     being used, then this must be False.
     """
     if molecules_dataframe:
-        return df.groupby("#cell_id").clone_id.unique().apply(len)
+        return df.groupby("#cell_id", observed=True).clone_id.unique().apply(len)
     else:
-        return df.groupby(["cell_id"]).clone_id.unique().apply(len)
+        return df.groupby(["cell_id"], observed=True).clone_id.unique().apply(len)
 
 
 def add_clone_ids_per_clone(
@@ -145,7 +145,9 @@ def add_clone_ids_per_clone(
     DataFrame. clones is the clones dataframe from clones.txt and cells_filtered
     is the dataframe containing cloneIDs per cell (cells_filtered.txt).
     """
-    cells_clone_id = cells_filtered.groupby("cell_id").clone_id.apply(set)
+    cells_clone_id = cells_filtered.groupby("cell_id", observed=True).clone_id.apply(
+        set
+    )
     clones["clone_ids"] = clones.cell_id.apply(lambda x: cells_clone_id[x])
     return clones
 
