@@ -615,7 +615,11 @@ def filter_cells(
             if overall_counts[clone_id] > 1 and discard_cross_contamination:
                 # This cloneID occurs also in other cells - remove it
                 del counts[clone_id]
-            elif clone_id in single_read_clone_ids and discard_single_reads:
+            elif (
+                overall_counts[clone_id] == 1
+                and clone_id in single_read_clone_ids
+                and discard_single_reads
+            ):
                 del counts[clone_id]
         if counts:
             new_cells.append(Cell(cell_id=cell.cell_id, counts=counts))
